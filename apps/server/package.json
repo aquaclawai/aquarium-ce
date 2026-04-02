@@ -1,6 +1,6 @@
 {
   "name": "@aquaclawai/aquarium",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Aquarium CE - AI agent management platform",
   "type": "module",
   "license": "Apache-2.0",
@@ -23,7 +23,6 @@
   },
   "dependencies": {
     "@kubernetes/client-node": "^1.4.0",
-    "@aquarium/shared": "*",
     "adm-zip": "^0.5.16",
     "ajv": "^8.18.0",
     "archiver": "^7.0.1",
