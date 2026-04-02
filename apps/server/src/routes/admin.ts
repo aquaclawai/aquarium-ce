@@ -14,7 +14,7 @@ import {
   type WizardConfigType,
   type WizardConfigRow,
 } from '../services/wizard-config-store.js';
-import type { AdminStats, AdminUser, AdminUserInstance, StorageStats, StorageTableStats, AdminUserWithRole, UserRole } from '@aquarium/shared';
+import type { AdminStats, AdminUser, AdminUserInstance, StorageStats, StorageTableStats, AdminUserWithRole, UserRole, InstanceStatus, DeploymentTarget } from '@aquarium/shared';
 
 const router = Router();
 
@@ -104,10 +104,10 @@ router.get('/users', async (_req: Request, res: Response) => {
     }
 
     const adminUsers: AdminUser[] = users.map((u: Record<string, unknown>) => ({
-      id: u.id,
-      email: u.email,
-      displayName: u.display_name,
-      createdAt: u.created_at,
+      id: u.id as string,
+      email: u.email as string,
+      displayName: u.display_name as string,
+      createdAt: u.created_at as string,
       instanceCount: countMap.get(u.id as string) ?? 0,
       runningCount: runningMap.get(u.id as string) ?? 0,
     }));
@@ -139,15 +139,15 @@ router.get('/users/:userId/instances', async (req: Request, res: Response) => {
       .orderBy('created_at', 'desc');
 
     const result: AdminUserInstance[] = instances.map((i: Record<string, unknown>) => ({
-      id: i.id,
-      name: i.name,
-      agentType: i.agent_type,
-      status: i.status,
-      statusMessage: i.status_message,
-      deploymentTarget: i.deployment_target,
-      imageTag: i.image_tag,
-      createdAt: i.created_at,
-      updatedAt: i.updated_at,
+      id: i.id as string,
+      name: i.name as string,
+      agentType: i.agent_type as string,
+      status: i.status as InstanceStatus,
+      statusMessage: i.status_message as string | null,
+      deploymentTarget: i.deployment_target as DeploymentTarget,
+      imageTag: i.image_tag as string,
+      createdAt: i.created_at as string,
+      updatedAt: i.updated_at as string,
     }));
 
     res.json({ ok: true, data: result });
@@ -400,11 +400,11 @@ router.get('/users-with-roles', async (_req: Request, res: Response) => {
     }
 
     const result: AdminUserWithRole[] = users.map((u: Record<string, unknown>) => ({
-      id: u.id,
-      email: u.email,
-      displayName: u.display_name,
-      role: (u.role as UserRole) ?? 'user',
-      createdAt: u.created_at,
+      id: u.id as string,
+      email: u.email as string,
+      displayName: u.display_name as string,
+      role: ((u.role as UserRole) ?? 'user'),
+      createdAt: u.created_at as string,
       instanceCount: countMap.get(u.id as string) ?? 0,
     }));
 
