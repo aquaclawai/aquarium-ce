@@ -21,7 +21,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Publish to npm
-        run: npm publish -w @aquarium/server --access public
+        run: npm publish --workspace apps/server --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
