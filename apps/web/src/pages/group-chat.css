@@ -1,0 +1,786 @@
+/* ═══════════════════════════════════════════════════════════════
+   Group Chat — Layout, Messages, Sidebar, Input, Delivery Status
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── 1. Page Layout ─── */
+
+.gc-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gc-page .dashboard-header {
+  flex-shrink: 0;
+}
+
+.gc-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ─── 2. Message Area ─── */
+
+.gc-messages {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-md);
+  overflow-y: auto;
+  background-color: var(--color-bg);
+}
+
+.gc-msg-wrapper {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: var(--spacing-md);
+}
+
+.gc-msg-wrapper--user {
+  align-items: flex-end;
+}
+
+.gc-msg-wrapper--bot {
+  align-items: flex-start;
+}
+
+.gc-msg-wrapper--human {
+  align-items: flex-start;
+}
+
+.gc-msg-wrapper--system {
+  align-items: center;
+}
+
+/* ─── 3. Message Bubbles ─── */
+
+.gc-msg-bubble {
+  max-width: 70%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  position: relative;
+}
+
+/* Owner (current user) messages */
+.gc-msg-bubble--user {
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+  border-bottom-right-radius: var(--radius-sm);
+}
+
+/* Bot messages */
+.gc-msg-bubble--bot {
+  background-color: var(--color-card-bg);
+  color: var(--color-text);
+  border-bottom-left-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+/* Human member messages (not the owner) */
+.gc-msg-bubble--human {
+  background-color: var(--color-info-subtle-bg);
+  color: var(--color-text);
+  border-bottom-left-radius: var(--radius-sm);
+  border: 1px solid var(--color-info-subtle-border);
+}
+
+/* System messages */
+.gc-msg-bubble--system {
+  background-color: var(--color-light);
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-full);
+  max-width: 90%;
+}
+
+/* ─── 4. Message Header (name + role) ─── */
+
+.gc-msg-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  margin-bottom: 0.25rem;
+}
+
+.gc-msg-sender {
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.gc-msg-bubble--user .gc-msg-sender {
+  opacity: 0.9;
+}
+
+.gc-msg-role {
+  font-size: 0.65rem;
+  font-weight: 500;
+  opacity: 0.6;
+  font-style: italic;
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gc-msg-type-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--radius-sm);
+  line-height: 1.4;
+}
+
+.gc-msg-type-badge--bot {
+  background-color: var(--color-success-subtle-bg);
+  color: var(--color-success-subtle-text);
+}
+
+.gc-msg-type-badge--human {
+  background-color: var(--color-info-subtle-bg);
+  color: var(--color-info-subtle-text);
+}
+
+/* ─── 5. Message Content ─── */
+
+.gc-msg-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ─── 6. Delivery Status ─── */
+
+.gc-delivery {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.gc-delivery-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: help;
+}
+
+.gc-delivery-icon {
+  font-size: 0.7rem;
+}
+
+.gc-delivery-item--pending { color: var(--color-neutral); }
+.gc-delivery-item--delivered { color: var(--color-neutral); }
+.gc-delivery-item--processing { color: var(--color-warning); }
+.gc-delivery-item--completed { color: var(--color-success); }
+.gc-delivery-item--error { color: var(--color-danger); }
+
+/* Retry progress bar */
+.gc-retry-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.125rem;
+}
+
+.gc-retry-bar {
+  display: flex;
+  gap: 2px;
+}
+
+.gc-retry-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--color-border);
+  transition: background-color var(--transition-fast);
+}
+
+.gc-retry-dot--used {
+  background-color: var(--color-danger);
+}
+
+.gc-retry-label {
+  font-size: 0.65rem;
+  color: var(--color-danger);
+  font-weight: 500;
+}
+
+/* ─── 7. Members Sidebar ─── */
+
+.gc-sidebar {
+  width: 260px;
+  border-left: 1px solid var(--color-border);
+  padding: var(--spacing-md);
+  overflow-y: auto;
+  background-color: var(--color-surface);
+  flex-shrink: 0;
+}
+
+.gc-sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.gc-sidebar-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.gc-sidebar-add-btn {
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--transition-fast);
+}
+
+.gc-sidebar-add-btn:hover {
+  background-color: var(--color-primary-light);
+}
+
+/* ─── 8. Member Card ─── */
+
+.gc-member {
+  margin-bottom: 0.75rem;
+  position: relative;
+}
+
+.gc-member-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.375rem;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.gc-member-row:hover {
+  background-color: var(--color-light);
+}
+
+.gc-member-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+.gc-member-dot--bot {
+  background-color: var(--color-success);
+}
+
+.gc-member-dot--human {
+  background-color: var(--color-info);
+}
+
+.gc-member-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.gc-member-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gc-member-name-left {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  gap: 0.25rem;
+}
+
+.gc-member-name {
+  font-size: 0.875rem;
+  color: var(--color-text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gc-member-type {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 0.05rem 0.3rem;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  line-height: 1.5;
+}
+
+.gc-member-type--bot {
+  background-color: var(--color-success-subtle-bg);
+  color: var(--color-success-subtle-text);
+}
+
+.gc-member-type--human {
+  background-color: var(--color-info-subtle-bg);
+  color: var(--color-info-subtle-text);
+}
+
+.gc-member-role {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gc-member-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.gc-member-row:hover .gc-member-actions {
+  opacity: 1;
+}
+
+.gc-member-action-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.875rem;
+  opacity: 0.6;
+  padding: 0 2px;
+  color: var(--color-text-secondary);
+  transition: opacity var(--transition-fast);
+}
+
+.gc-member-action-btn:hover {
+  opacity: 1;
+}
+
+.gc-member-action-btn--danger {
+  color: var(--color-danger);
+  opacity: 0.8;
+}
+
+.gc-member-action-btn--danger:hover {
+  opacity: 1;
+}
+
+/* ─── 9. Member Edit Form ─── */
+
+.gc-member-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background-color: var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+
+.gc-member-edit input {
+  width: 100%;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  font-size: 0.875rem;
+  background: var(--color-card-bg);
+  color: var(--color-text);
+}
+
+.gc-member-edit input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+.gc-member-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.gc-member-edit-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.gc-member-edit-btn--cancel {
+  border: 1px solid var(--color-border);
+  background: var(--color-card-bg);
+  color: var(--color-text);
+}
+
+.gc-member-edit-btn--save {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border: none;
+}
+
+.gc-member-edit-btn--save:hover {
+  background: var(--color-primary-dark);
+}
+
+/* ─── 10. Chat Input Area ─── */
+
+.gc-input-area {
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-card-bg);
+  position: relative;
+}
+
+.gc-input-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.gc-input-field {
+  flex: 1;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  outline: none;
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.gc-input-field:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.gc-input-field:disabled {
+  opacity: 0.6;
+}
+
+.gc-send-btn {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.gc-send-btn:hover:not(:disabled) {
+  background-color: var(--color-primary-dark);
+}
+
+.gc-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── 11. Mention Dropdown ─── */
+
+.gc-mention-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: var(--spacing-md);
+  background-color: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 10;
+  width: 220px;
+}
+
+.gc-mention-item {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  transition: background-color var(--transition-fast);
+}
+
+.gc-mention-item:hover {
+  background-color: var(--color-light);
+}
+
+/* ─── 12. Add Member Modal Tabs ─── */
+
+.gc-tab-bar {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 1.5rem;
+}
+
+.gc-tab {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+  font-family: var(--font-sans);
+}
+
+.gc-tab--active {
+  border-bottom-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.gc-tab:hover:not(.gc-tab--active) {
+  color: var(--color-text);
+}
+
+/* ─── 13. User Search (in modals) ─── */
+
+.gc-user-search-results {
+  margin-top: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  max-height: 150px;
+  overflow-y: auto;
+  background-color: var(--color-card-bg);
+}
+
+.gc-user-search-item {
+  padding: 0.5rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.875rem;
+  transition: background-color var(--transition-fast);
+}
+
+.gc-user-search-item:last-child {
+  border-bottom: none;
+}
+
+.gc-user-search-item:hover {
+  background-color: var(--color-light);
+}
+
+.gc-user-search-name {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.gc-user-search-email {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+/* Selected user chip */
+.gc-selected-user {
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  background-color: var(--color-primary-light);
+  border-radius: var(--radius-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gc-selected-user-name {
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--color-text);
+}
+
+.gc-selected-user-email {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.gc-selected-user-remove {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+  padding: 0.25rem;
+  transition: color var(--transition-fast);
+}
+
+.gc-selected-user-remove:hover {
+  color: var(--color-text);
+}
+
+/* ─── 14. Context Preview (creation modal) ─── */
+
+.gc-context-preview {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-md);
+  background-color: var(--color-light);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.gc-context-preview-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+.gc-context-preview-members {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.gc-context-preview-member {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.gc-context-preview-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.gc-context-preview-dot--bot {
+  background-color: var(--color-success);
+}
+
+.gc-context-preview-dot--human {
+  background-color: var(--color-info);
+}
+
+.gc-context-preview-name {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.gc-context-preview-role {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.gc-context-preview-empty {
+  font-size: 0.8rem;
+  color: var(--color-neutral);
+  font-style: italic;
+}
+
+/* ─── 15. Attachments ─── */
+
+.gc-attachment-preview {
+  display: flex;
+  gap: 8px;
+  padding: 0 0 8px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.gc-attachment-thumb {
+  position: relative;
+  width: 64px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gc-attachment-thumb img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.gc-attachment-remove {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-danger);
+  color: #fff;
+  border: 2px solid var(--color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.75rem;
+  line-height: 1;
+  transition: opacity var(--transition-fast);
+}
+
+.gc-attachment-remove:hover {
+  opacity: 0.85;
+}
+
+.gc-attach-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.gc-attach-btn:hover:not(:disabled) {
+  color: var(--color-primary);
+  background-color: var(--color-primary-light);
+}
+
+.gc-attach-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── 16. Responsive ─── */
+
+@media (max-width: 768px) {
+  .gc-sidebar {
+    display: none;
+  }
+
+  .gc-msg-bubble {
+    max-width: 85%;
+  }
+}

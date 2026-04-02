@@ -1,0 +1,38 @@
+node_modules/
+dist/
+.env
+*.local
+test-results/
+playwright-report/
+blob-report/
+.DS_Store
+*.tsbuildinfo
+*.png
+*.log
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+tfplan
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# iCloud sync conflict duplicates (e.g. "node_modules 2/")
+**/node_modules */
+**/dist */
+
+# Kubernetes secrets (contain real credentials)
+k8s/platform/secrets.yaml
+
+# Debug and scratch files
+DESIGN-*.md
+*-snapshot.md
+*架构设计.md
+MANUAL_TEST_CHECKLIST.md
+test-screenshots/
+skills/

@@ -1,0 +1,14 @@
+{
+  "name": "platform-bridge",
+  "version": "0.0.1",
+  "description": "Minimal OpenClaw plugin for platform management bridge",
+  "type": "module",
+  "devDependencies": {
+    "openclaw": "workspace:*"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

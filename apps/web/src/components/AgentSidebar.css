@@ -1,0 +1,295 @@
+/* ═══════════════════════════════════════════════════════════════
+   Agent Sidebar — Right-side agent list for ChatHub
+   ═══════════════════════════════════════════════════════════════ */
+
+.agent-sidebar {
+  width: 260px;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-surface);
+  height: 100%;
+  overflow: hidden;
+}
+
+.agent-sidebar--collapsed {
+  width: 56px;
+  min-width: 56px;
+  align-items: center;
+  padding-top: 0.5rem;
+}
+
+/* ─── Header ─── */
+
+.agent-sidebar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0.75rem 0.5rem;
+  flex-shrink: 0;
+}
+
+.agent-sidebar__title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.agent-sidebar__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.agent-sidebar__toggle:hover {
+  background: var(--color-light);
+  color: var(--color-text);
+}
+
+/* ─── Search ─── */
+
+.agent-sidebar__search {
+  position: relative;
+  padding: 0 0.75rem 0.5rem;
+  flex-shrink: 0;
+}
+
+.agent-sidebar__search-icon {
+  position: absolute;
+  left: 1.05rem;
+  top: 50%;
+  transform: translateY(calc(-50% - 0.25rem));
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+.agent-sidebar__search-input {
+  width: 100%;
+  padding: 0.35rem 1.8rem 0.35rem 1.8rem;
+  font-size: 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-background);
+  color: var(--color-text);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.agent-sidebar__search-input:focus {
+  border-color: var(--color-primary);
+}
+
+.agent-sidebar__search-input::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.agent-sidebar__search-clear {
+  position: absolute;
+  right: 1.05rem;
+  top: 50%;
+  transform: translateY(calc(-50% - 0.25rem));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0;
+}
+
+.agent-sidebar__search-clear:hover {
+  color: var(--color-text);
+}
+
+/* ─── List ─── */
+
+.agent-sidebar__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 0.5rem;
+}
+
+.agent-sidebar__empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+}
+
+/* ─── Item ─── */
+
+.agent-sidebar__item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.5rem 0.5rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+  box-shadow: none;
+}
+
+.agent-sidebar__item:hover {
+  background: var(--color-light);
+}
+
+.agent-sidebar__item--active {
+  background: var(--color-primary-bg, var(--color-light));
+}
+
+.agent-sidebar__item--offline {
+  opacity: 0.55;
+}
+
+.agent-sidebar__item--offline:hover {
+  opacity: 0.8;
+}
+
+/* ─── Item Avatar + Status Dot ─── */
+
+.agent-sidebar__item-avatar {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.agent-sidebar__dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-surface);
+  background: var(--color-text-secondary);
+}
+
+.agent-sidebar__dot--running {
+  background: var(--color-success);
+}
+
+.agent-sidebar__dot--starting,
+.agent-sidebar__dot--stopping {
+  background: var(--color-warning);
+}
+
+.agent-sidebar__dot--error {
+  background: var(--color-danger);
+}
+
+.agent-sidebar__dot--stopped,
+.agent-sidebar__dot--created {
+  background: var(--color-text-secondary);
+}
+
+/* ─── Item Info ─── */
+
+.agent-sidebar__item-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.1rem;
+}
+
+.agent-sidebar__item-name {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-sidebar__item-status {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+  text-transform: capitalize;
+}
+
+/* ─── Collapsed: avatar-only list ─── */
+
+.agent-sidebar__avatars-only {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.agent-sidebar__avatar-btn {
+  position: relative;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  padding: 0.25rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.agent-sidebar__avatar-btn:hover {
+  background: var(--color-light);
+}
+
+.agent-sidebar__avatar-btn--active {
+  background: var(--color-primary-bg, var(--color-light));
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+/* ─── Create Button ─── */
+
+.agent-sidebar__create {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0.5rem 0.75rem 0.75rem;
+  padding: 0.45rem;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.agent-sidebar__create:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* ─── Responsive ─── */
+
+@media (max-width: 768px) {
+  .agent-sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .agent-sidebar--collapsed {
+    display: none;
+  }
+}

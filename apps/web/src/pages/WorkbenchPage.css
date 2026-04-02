@@ -1,0 +1,56 @@
+.workbench-page {
+  padding: var(--spacing-xl) var(--spacing-2xl);
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.workbench-page__header {
+  margin-bottom: var(--spacing-xl);
+}
+
+.workbench-page__title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+}
+
+.workbench-page__subtitle {
+  margin: var(--spacing-xs) 0 0;
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+}
+
+.workbench-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.workbench-bottom-row {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr;
+  gap: var(--spacing-lg);
+  align-items: start;
+}
+
+.workbench-page__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+}
+
+.workbench-page__error {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-danger-subtle-bg);
+  color: var(--color-danger-subtle-text);
+  border: 1px solid var(--color-danger-subtle-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+  font-size: 0.9rem;
+}

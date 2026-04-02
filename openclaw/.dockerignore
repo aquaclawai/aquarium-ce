@@ -1,0 +1,38 @@
+# Version control
+.git
+.gitignore
+
+# Documentation (not needed in image)
+docker/README.md
+docker/.env.example
+docker/Makefile
+LICENSE
+docs/
+
+# Local environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Kubernetes manifests (separate concern)
+k8s/
+manifests/
+charts/
+
+# Build artifacts
+*.tar
+*.tar.gz
+
+# Allow local OpenClaw dist tarball for development builds
+!openclaw-dist.tar.gz

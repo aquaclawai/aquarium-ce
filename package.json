@@ -1,0 +1,19 @@
+{
+  "name": "aquarium-ce",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "npm run dev -w @aquarium/server",
+    "dev:web": "npm run dev -w @aquarium/web",
+    "build": "npm run build -w @aquarium/shared && npm run build -w @aquarium/server && npm run build:ce -w @aquarium/web",
+    "typecheck": "npm run build -w @aquarium/shared && npm run typecheck -w @aquarium/server",
+    "lint": "npm run lint -w @aquarium/web",
+    "start": "node apps/server/dist/cli.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

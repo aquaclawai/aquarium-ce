@@ -1,0 +1,467 @@
+/* ═══════════════════════════════════════════════════════════════
+   Chat Content Rendering — Markdown, Code, Tool Calls, Thinking
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── 1. Markdown Elements (scoped to .chat-message-content) ─── */
+
+.chat-message-content {
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.chat-message-content p {
+  margin: 0.4em 0;
+}
+
+.chat-message-content p:first-child {
+  margin-top: 0;
+}
+
+.chat-message-content p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-message-content ul,
+.chat-message-content ol {
+  margin: 0.4em 0;
+  padding-left: 1.5em;
+}
+
+.chat-message-content table {
+  border-collapse: collapse;
+  max-width: 100%;
+  display: block;
+  overflow-x: auto;
+  margin: 0.5em 0;
+  font-size: 0.85em;
+}
+
+.chat-message-content th,
+.chat-message-content td {
+  border: 1px solid var(--color-border);
+  padding: 0.3em 0.6em;
+}
+
+.chat-message-content th {
+  background: var(--color-light);
+  font-weight: 600;
+}
+
+.chat-message-content blockquote {
+  border-left: 3px solid var(--color-border);
+  margin: 0.5em 0;
+  padding: 0.2em 0 0.2em 0.8em;
+  color: var(--color-text-secondary);
+}
+
+.chat-message-content hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 0.8em 0;
+}
+
+.chat-message-content :not(pre) > code {
+  background: var(--color-light);
+  padding: 0.15em 0.3em;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+.chat-message-content a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.chat-message-content a:hover {
+  text-decoration: underline;
+}
+
+.chat-message-content img {
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+}
+
+/* ─── 2. Code Block Wrapper ─── */
+
+.code-block-wrapper {
+  position: relative;
+  margin: 0.5em 0;
+}
+
+.code-copy-btn {
+  position: absolute;
+  top: 0.5em;
+  right: 0.5em;
+  padding: 0.2em 0.5em;
+  font-size: 0.75em;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 1;
+  color: var(--color-text);
+}
+
+.code-block-wrapper:hover .code-copy-btn {
+  opacity: 1;
+}
+
+.code-copy-btn:active {
+  opacity: 0.7;
+}
+
+.chat-message-content pre {
+  margin: 0;
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+
+.chat-message-content pre code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  line-height: 1.5;
+  display: block;
+  padding: 1em;
+}
+
+/* ─── 3. Highlight.js Theme — Light Mode ─── */
+
+.chat-message-content .hljs {
+  background: #f6f8fa;
+  color: #24292e;
+  padding: 1em;
+}
+
+.chat-message-content .hljs-keyword {
+  color: #d73a49;
+}
+
+.chat-message-content .hljs-string {
+  color: #032f62;
+}
+
+.chat-message-content .hljs-comment {
+  color: #6a737d;
+  font-style: italic;
+}
+
+.chat-message-content .hljs-function {
+  color: #6f42c1;
+}
+
+.chat-message-content .hljs-number {
+  color: #005cc5;
+}
+
+.chat-message-content .hljs-title {
+  color: #6f42c1;
+}
+
+.chat-message-content .hljs-built_in {
+  color: #e36209;
+}
+
+.chat-message-content .hljs-type {
+  color: #d73a49;
+}
+
+.chat-message-content .hljs-params {
+  color: #24292e;
+}
+
+.chat-message-content .hljs-literal {
+  color: #005cc5;
+}
+
+.chat-message-content .hljs-attr {
+  color: #005cc5;
+}
+
+.chat-message-content .hljs-selector-class {
+  color: #6f42c1;
+}
+
+.chat-message-content .hljs-selector-tag {
+  color: #22863a;
+}
+
+.chat-message-content .hljs-meta {
+  color: #005cc5;
+}
+
+.chat-message-content .hljs-variable {
+  color: #e36209;
+}
+
+/* ─── 3b. Highlight.js Theme — Dark Mode ─── */
+
+:root.dark .chat-message-content .hljs {
+  background: #0d1117;
+  color: #c9d1d9;
+}
+
+:root.dark .chat-message-content .hljs-keyword {
+  color: #ff7b72;
+}
+
+:root.dark .chat-message-content .hljs-string {
+  color: #a5d6ff;
+}
+
+:root.dark .chat-message-content .hljs-comment {
+  color: #8b949e;
+  font-style: italic;
+}
+
+:root.dark .chat-message-content .hljs-function {
+  color: #d2a8ff;
+}
+
+:root.dark .chat-message-content .hljs-number {
+  color: #79c0ff;
+}
+
+:root.dark .chat-message-content .hljs-title {
+  color: #d2a8ff;
+}
+
+:root.dark .chat-message-content .hljs-built_in {
+  color: #ffa657;
+}
+
+:root.dark .chat-message-content .hljs-type {
+  color: #ff7b72;
+}
+
+:root.dark .chat-message-content .hljs-params {
+  color: #c9d1d9;
+}
+
+:root.dark .chat-message-content .hljs-literal {
+  color: #79c0ff;
+}
+
+:root.dark .chat-message-content .hljs-attr {
+  color: #79c0ff;
+}
+
+:root.dark .chat-message-content .hljs-selector-class {
+  color: #d2a8ff;
+}
+
+:root.dark .chat-message-content .hljs-selector-tag {
+  color: #7ee787;
+}
+
+:root.dark .chat-message-content .hljs-meta {
+  color: #79c0ff;
+}
+
+:root.dark .chat-message-content .hljs-variable {
+  color: #ffa657;
+}
+
+/* ─── 4. Tool Call Blocks ─── */
+
+.tool-call-block {
+  margin: 0.5em 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.85em;
+  overflow: hidden;
+}
+
+.tool-call-summary {
+  padding: 0.4em 0.6em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  background: var(--color-light);
+  user-select: none;
+}
+
+.tool-call-summary::-webkit-details-marker {
+  display: none;
+}
+
+.tool-call-icon {
+  font-size: 0.85em;
+  flex-shrink: 0;
+}
+
+.tool-call-name {
+  font-weight: 600;
+}
+
+.tool-call-status {
+  margin-left: auto;
+  color: var(--color-success);
+  font-size: 0.85em;
+}
+
+.tool-call-error .tool-call-status {
+  color: var(--color-danger);
+}
+
+.tool-call-body {
+  padding: 0.5em 0.6em;
+}
+
+.tool-call-section {
+  margin-bottom: 0.4em;
+}
+
+.tool-call-section:last-child {
+  margin-bottom: 0;
+}
+
+.tool-call-label {
+  font-size: 0.75em;
+  color: var(--color-secondary);
+  text-transform: uppercase;
+  margin-bottom: 0.2em;
+  font-weight: 600;
+}
+
+.tool-call-json {
+  margin: 0;
+  padding: 0.4em;
+  background: var(--color-light);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  overflow-x: auto;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.tool-call-json-error {
+  color: var(--color-danger);
+}
+
+/* ─── 5. Thinking Blocks ─── */
+
+.thinking-block {
+  margin: 0.5em 0;
+  border-left: 3px solid var(--color-info);
+  border-radius: var(--radius-sm);
+  font-size: 0.85em;
+  overflow: hidden;
+}
+
+.thinking-summary {
+  padding: 0.4em 0.6em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  color: var(--color-info);
+  font-style: italic;
+  user-select: none;
+}
+
+.thinking-summary::-webkit-details-marker {
+  display: none;
+}
+
+.thinking-icon {
+  font-size: 0.85em;
+}
+
+.thinking-content {
+  padding: 0.4em 0.6em;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  max-height: 400px;
+  overflow-y: auto;
+  line-height: 1.5;
+}
+
+/* ─── 6. Task List Checkboxes (GFM) ─── */
+
+.chat-message-content input[type="checkbox"] {
+  margin-right: 0.3em;
+  pointer-events: none;
+}
+
+/* ─── 7. Strikethrough (GFM) ─── */
+
+.chat-message-content del {
+  color: var(--color-secondary);
+}
+
+/* --- 8. Message Copy Button --- */
+
+.chat-message {
+  position: relative;
+}
+
+.chat-msg-copy-btn {
+  position: absolute;
+  top: 0.4em;
+  right: 0.4em;
+  padding: 0.15em 0.4em;
+  font-size: 0.7em;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+  color: var(--color-text);
+  z-index: 1;
+}
+
+.chat-message:hover .chat-msg-copy-btn {
+  opacity: 1;
+}
+
+.chat-msg-copy-btn:active {
+  opacity: 0.7;
+}
+
+/* --- 9. Message Timestamps --- */
+
+.chat-msg-timestamp {
+  display: block;
+  font-size: 0.7em;
+  color: var(--color-secondary);
+  margin-top: 0.2em;
+}
+
+.chat-message.user .chat-msg-timestamp {
+  text-align: right;
+}
+
+/* --- 10. Skeleton Loader --- */
+
+.chat-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+  padding: 0.2em 0;
+}
+
+.chat-skeleton-line {
+  height: 0.9em;
+  background: linear-gradient(90deg, var(--color-light) 25%, var(--color-border) 50%, var(--color-light) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+.chat-skeleton-line:nth-child(1) { width: 80%; }
+.chat-skeleton-line:nth-child(2) { width: 60%; }
+.chat-skeleton-line:nth-child(3) { width: 40%; }
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

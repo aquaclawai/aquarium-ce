@@ -1,0 +1,8 @@
+{
+  "id": "platform-bridge",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}
