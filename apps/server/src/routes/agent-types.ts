@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { listAgentTypes, getAgentType } from '../agent-types/registry.js';
-import { DEFAULT_MODEL_NAME } from '../ee/litellm/litellm-model-seeder.js';
+// CE has no LiteLLM — no default platform model
+const DEFAULT_MODEL_NAME = '';
 import { fetchOpenRouterModels } from '../services/openrouter-models.js';
 import { getWizardConfigs, type WizardConfigs } from '../services/wizard-config-store.js';
 import type { ApiResponse, AgentTypeInfo } from '@aquarium/shared';

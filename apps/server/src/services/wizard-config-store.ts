@@ -1,4 +1,5 @@
 import { db } from '../db/index.js';
+import { getAdapter } from '../db/adapter.js';
 
 export type WizardConfigType =
   | 'principles'
@@ -62,7 +63,8 @@ export async function getWizardConfigs(
 
     if (seen.has(configType) && row.locale !== locale) continue;
 
-    (result as unknown as Record<string, unknown[]>)[key] = row.items;
+    const items = typeof row.items === 'string' ? getAdapter().parseJson<unknown[]>(row.items) : row.items;
+    (result as unknown as Record<string, unknown[]>)[key] = items;
     if (row.locale === locale) seen.add(configType);
   }
 

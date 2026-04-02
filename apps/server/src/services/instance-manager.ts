@@ -9,7 +9,13 @@ import { connectGateway, disconnectGateway } from './gateway-event-relay.js';
 import { validateConfigPatch } from './config-validator.js';
 import type { Instance, InstanceStatus, InstanceEvent, DeploymentTarget, CreateInstanceRequest, SetupCommand, BillingMode, SecurityProfile, PromptGuardResult, OutputFilterResult } from '@aquarium/shared';
 import type { InstanceSpec, ExecResult } from '../runtime/types.js';
-import { litellmKeyManager } from '../ee/litellm/litellm-key-manager.js';
+// CE stub — LiteLLM key management is EE-only
+const litellmKeyManager = {
+  async createKeyForInstance(_params: { instanceId: string; userId: string; userEmail: string }): Promise<{ virtualKey: string }> {
+    return { virtualKey: '' };
+  },
+  async revokeKeyForInstance(_instanceId: string): Promise<void> { /* no-op */ },
+};
 import { safeAutoSnapshot } from './snapshot-store.js';
 import { buildCredentialIndex, clearCredentialIndex, buildWorkspaceContentIndex, clearWorkspaceContentIndex } from './output-filter.js';
 import { preloadDlpConfig, evictDlpConfig } from './gateway-event-relay.js';

@@ -34,7 +34,7 @@ export function setAuthHandler(handler: AuthHandler): void {
  *   - Production CE (no Clerk secret key): no handler registered → pass-through (open access)
  *   - Production EE (Clerk secret present): delegate to registered Clerk auth handler
  */
-export function requireAuth(req: Request, res: Response, next: NextFunction): void {
+export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
   // Test-mode bypass: if NODE_ENV=test, check for test auth cookie first.
   // The test cookie has the format `test:<userId>` set by /api/auth/test-signup.
   if (config.nodeEnv === 'test' || !config.clerk.secretKey) {
@@ -59,6 +59,17 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
     }
     // No test cookie — if no auth handler registered, pass through (CE mode)
     if (!_authHandler) {
+      // CE mode: auto-authenticate as the first user in the DB (single-user self-hosted)
+      if (!req.auth) {
+        try {
+          const firstUser = await db('users').select('id', 'email').first() as { id: string; email: string } | undefined;
+          if (firstUser) {
+            req.auth = { userId: firstUser.id, email: firstUser.email };
+          }
+        } catch {
+          // DB may not be ready yet — pass through without auth
+        }
+      }
       next();
       return;
     }
@@ -70,6 +81,16 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
   // Production: delegate to registered auth handler
   if (!_authHandler) {
     // No handler = CE mode = pass through (open access for single local user)
+    if (!req.auth) {
+      try {
+        const firstUser = await db('users').select('id', 'email').first() as { id: string; email: string } | undefined;
+        if (firstUser) {
+          req.auth = { userId: firstUser.id, email: firstUser.email };
+        }
+      } catch {
+        // DB may not be ready yet
+      }
+    }
     next();
     return;
   }

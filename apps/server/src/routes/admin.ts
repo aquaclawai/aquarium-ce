@@ -3,7 +3,10 @@ import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { db } from '../db/index.js';
 import { getAdapter } from '../db/adapter.js';
 import { config as appConfig } from '../config.js';
-import { litellmKeyManager } from '../ee/litellm/litellm-key-manager.js';
+// CE stub — LiteLLM key management is EE-only
+const litellmKeyManager = {
+  async syncUserBudgetToTeam(_userId: string, _usageLimitUsd: number | null): Promise<void> { /* no-op in CE */ },
+};
 import { getConfig } from '../services/system-config.js';
 import {
   listWizardConfigs,

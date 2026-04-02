@@ -201,12 +201,35 @@ export async function startServer(server: HttpServer, options: StartServerOption
       );
     }
 
+    // Detect whether we're running from compiled dist/ or source src/.
+    // When running from dist/ (e.g. node dist/cli.js), migrations are .js files.
+    // When running from src/ via tsx, migrations are .ts files.
+    const runningFromDist = import.meta.url.includes('/dist/');
     await db.migrate.latest({
       directory: migrationDirs,
-      loadExtensions: [process.env.NODE_ENV === 'production' ? '.js' : '.ts'],
+      loadExtensions: [runningFromDist ? '.js' : '.ts'],
     });
 
     await options.onAfterMigrate?.();
+
+    // CE mode: ensure a default admin user exists (single-user self-hosted)
+    if (config.isCE) {
+      const existingUser = await db('users').first();
+      if (!existingUser) {
+        const { getAdapter } = await import('./db/adapter.js');
+        const adapter = getAdapter();
+        await db('users').insert({
+          id: adapter.generateId(),
+          email: 'admin@localhost',
+          password_hash: 'ce-no-auth',
+          display_name: 'Admin',
+          role: 'admin',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+        console.log('[CE] Created default admin user: admin@localhost');
+      }
+    }
 
     await reloadDynamicMiddleware();
 
