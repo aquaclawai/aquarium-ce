@@ -1,6 +1,6 @@
 {
   "name": "@aquarium/server",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Aquarium CE - AI agent management platform",
   "type": "module",
   "license": "Apache-2.0",
@@ -20,7 +20,7 @@
     "typecheck": "tsc --noEmit",
     "migrate": "NODE_OPTIONS=--no-experimental-require-module tsx src/db/run-migrations.ts",
     "migrate:make": "knex migrate:make --knexfile src/db/knexfile.ts",
-    "prepublishOnly": "npm run build -w @aquarium/shared && npm run build -w @aquarium/web && npm run build && mkdir -p dist/web-dist && cp -r ../web/dist/* dist/web-dist/"
+    "prepublishOnly": "npm run build -w @aquarium/shared && npm run build:ce -w @aquarium/web && npm run build && mkdir -p dist/web-dist && cp -r ../web/dist/* dist/web-dist/"
   },
   "dependencies": {
     "@kubernetes/client-node": "^1.4.0",
