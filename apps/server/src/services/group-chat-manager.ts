@@ -662,7 +662,7 @@ export async function sendMessage(groupChatId: string, userId: string, content: 
     const profileRows = await db('instances')
       .whereIn('id', targetInstanceIds)
       .select('id', 'security_profile');
-    const profileMap = new Map(profileRows.map((r: Record<string, unknown>) => [r.id as string, (r.security_profile as SecurityProfile) ?? 'standard']));
+    const profileMap = new Map<string, SecurityProfile>(profileRows.map((r: Record<string, unknown>) => [r.id as string, ((r.security_profile as SecurityProfile | null | undefined) ?? 'standard')] as [string, SecurityProfile]));
     const scannedByProfile = new Map<string, ReturnType<typeof scanMessage>>();
 
     for (const instanceId of targetInstanceIds) {

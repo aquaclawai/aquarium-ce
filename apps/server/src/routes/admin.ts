@@ -103,13 +103,13 @@ router.get('/users', async (_req: Request, res: Response) => {
       runningMap.set(row.user_id as string, Number(row.count));
     }
 
-    const adminUsers: AdminUser[] = users.map(u => ({
+    const adminUsers: AdminUser[] = users.map((u: Record<string, unknown>) => ({
       id: u.id,
       email: u.email,
       displayName: u.display_name,
       createdAt: u.created_at,
-      instanceCount: countMap.get(u.id) ?? 0,
-      runningCount: runningMap.get(u.id) ?? 0,
+      instanceCount: countMap.get(u.id as string) ?? 0,
+      runningCount: runningMap.get(u.id as string) ?? 0,
     }));
 
     res.json({ ok: true, data: adminUsers });
@@ -138,7 +138,7 @@ router.get('/users/:userId/instances', async (req: Request, res: Response) => {
       .where('user_id', userId)
       .orderBy('created_at', 'desc');
 
-    const result: AdminUserInstance[] = instances.map(i => ({
+    const result: AdminUserInstance[] = instances.map((i: Record<string, unknown>) => ({
       id: i.id,
       name: i.name,
       agentType: i.agent_type,
@@ -399,13 +399,13 @@ router.get('/users-with-roles', async (_req: Request, res: Response) => {
       countMap.set(row.user_id as string, Number(row.count));
     }
 
-    const result: AdminUserWithRole[] = users.map(u => ({
+    const result: AdminUserWithRole[] = users.map((u: Record<string, unknown>) => ({
       id: u.id,
       email: u.email,
       displayName: u.display_name,
       role: (u.role as UserRole) ?? 'user',
       createdAt: u.created_at,
-      instanceCount: countMap.get(u.id) ?? 0,
+      instanceCount: countMap.get(u.id as string) ?? 0,
     }));
 
     res.json({ ok: true, data: { users: result, adminEmails: appConfig.adminEmails } });

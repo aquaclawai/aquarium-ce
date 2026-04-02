@@ -24,7 +24,7 @@ const CE_AUTH_VALUE: AuthContextType = {
   updateUser: () => {
     // CE user is static — no-op
   },
-  getToken: async () => null,
+  getToken: async () => 'ce-admin',
 };
 
 export function CeAuthProvider({ children }: { children: ReactNode }) {
