@@ -1,5 +1,5 @@
 {
-  "name": "@aquarium/server",
+  "name": "@aquaclawai/aquarium",
   "version": "1.0.0",
   "description": "Aquarium CE - AI agent management platform",
   "type": "module",
@@ -10,7 +10,6 @@
     "aquarium": "./dist/cli.js"
   },
   "publishConfig": {
-    "name": "@aquaclawai/aquarium",
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {

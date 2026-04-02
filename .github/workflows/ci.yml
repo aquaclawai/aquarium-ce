@@ -17,6 +17,6 @@ jobs:
       - run: npm ci
       - run: npm run build -w @aquarium/shared
       - name: Typecheck
-        run: npm run typecheck -w @aquarium/server
+        run: npm run typecheck -w @aquaclawai/aquarium
       - name: Lint
         run: npm run lint -w @aquarium/web

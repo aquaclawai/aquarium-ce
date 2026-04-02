@@ -3,10 +3,10 @@
   "private": true,
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "dev": "npm run dev -w @aquarium/server",
+    "dev": "npm run dev -w @aquaclawai/aquarium",
     "dev:web": "npm run dev -w @aquarium/web",
-    "build": "npm run build -w @aquarium/shared && npm run build -w @aquarium/server && npm run build:ce -w @aquarium/web",
-    "typecheck": "npm run build -w @aquarium/shared && npm run typecheck -w @aquarium/server",
+    "build": "npm run build -w @aquarium/shared && npm run build -w @aquaclawai/aquarium && npm run build:ce -w @aquarium/web",
+    "typecheck": "npm run build -w @aquarium/shared && npm run typecheck -w @aquaclawai/aquarium",
     "lint": "npm run lint -w @aquarium/web",
     "start": "node apps/server/dist/cli.js"
   },
