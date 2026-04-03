@@ -30,7 +30,15 @@
   3. User can configure extension-scoped credentials for a skill that requires them
   4. User can enable, disable, and uninstall an installed skill
   5. After an instance restart, previously active skills are restored and dashboard alerts surface any failed or degraded extensions
-**Plans**: TBD
+**Plans:** 6 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Shared types, DB migration (3 tables), serverSessionId
+- [ ] 01-02-PLAN.md — Extension lock service, skill store service (lifecycle CRUD)
+- [ ] 01-03-PLAN.md — Skills REST API routes, extension credentials route
+- [ ] 01-04-PLAN.md — Boot reconciliation, orphan recovery, adapter integration
+- [ ] 01-05-PLAN.md — Extensions tab UI, sub-tabs, skill list/catalog, i18n
+- [ ] 01-06-PLAN.md — Credential config panel, alert banners, visual checkpoint
 
 ### Phase 2: Plugin Management
 **Goal**: Users can install, activate, configure credentials for, enable/disable, and uninstall plugins from the bundled catalog, with gateway restart handled automatically and rollback on failure
@@ -93,7 +101,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 1. Skill Management | v1.1 | 0/TBD | Not started | - |
+| 1. Skill Management | v1.1 | 0/6 | Planning complete | - |
 | 2. Plugin Management | v1.1 | 0/TBD | Not started | - |
 | 3. ClawHub & Trust Policy | v1.1 | 0/TBD | Not started | - |
 | 4. Template Portability | v1.1 | 0/TBD | Not started | - |
