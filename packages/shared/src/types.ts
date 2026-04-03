@@ -1365,3 +1365,112 @@ export interface AdminUserWithRole {
   createdAt: string;
   instanceCount: number;
 }
+
+// === Extension Lifecycle Types ===
+
+export type ExtensionStatus = 'pending' | 'installed' | 'active' | 'disabled' | 'degraded' | 'failed';
+export type ExtensionKind = 'plugin' | 'skill';
+
+export type PluginSource =
+  | { type: 'bundled' }
+  | { type: 'clawhub'; spec: string }
+  | { type: 'npm'; spec: string };
+
+export type ExtensionSkillSource =
+  | { type: 'bundled' }
+  | { type: 'clawhub'; spec: string }
+  | { type: 'url'; url: string };
+
+export interface ExtensionCredentialRequirement {
+  field: string;
+  label: string;
+  type: 'api_key' | 'env_var' | 'oauth_token';
+  required: boolean;
+  description?: string;
+}
+
+export interface GatewayExtensionInfo {
+  id: string;
+  name: string;
+  description: string;
+  version: string;
+  source: 'bundled';
+  enabled: boolean;
+}
+
+export interface InstancePlugin {
+  id: string;
+  instanceId: string;
+  pluginId: string;
+  source: PluginSource;
+  version: string | null;
+  lockedVersion: string | null;
+  integrityHash: string | null;
+  enabled: boolean;
+  config: Record<string, unknown>;
+  status: ExtensionStatus;
+  errorMessage: string | null;
+  failedAt: string | null;
+  pendingOwner: string | null;
+  retryCount: number;
+  installedAt: string;
+  updatedAt: string;
+}
+
+export interface InstanceSkill {
+  id: string;
+  instanceId: string;
+  skillId: string;
+  source: ExtensionSkillSource;
+  version: string | null;
+  lockedVersion: string | null;
+  integrityHash: string | null;
+  enabled: boolean;
+  config: Record<string, unknown>;
+  status: ExtensionStatus;
+  errorMessage: string | null;
+  failedAt: string | null;
+  pendingOwner: string | null;
+  retryCount: number;
+  installedAt: string;
+  updatedAt: string;
+}
+
+export interface SkillCatalogEntry {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  category: string;
+  source: 'bundled' | 'clawhub';
+  version: string;
+  requiredCredentials: ExtensionCredentialRequirement[];
+  requiredBinaries: string[];
+  requiredEnvVars: string[];
+}
+
+export interface PluginCatalogEntry {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  source: 'bundled' | 'clawhub';
+  version: string;
+  requiredCredentials: ExtensionCredentialRequirement[];
+  capabilities: string[];
+}
+
+export interface ExtensionOperation {
+  id: string;
+  instanceId: string;
+  fencingToken: string;
+  operationType: string;
+  targetExtension: string;
+  extensionKind: ExtensionKind;
+  pendingOwner: string;
+  cancelRequested: boolean;
+  startedAt: string;
+  completedAt: string | null;
+  result: string | null;
+  errorMessage: string | null;
+}
