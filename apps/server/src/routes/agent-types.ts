@@ -52,6 +52,7 @@ function toInfo(
       providers: m.wizard.providers.map(p => ({
         name: p.name,
         displayName: p.displayName,
+        authMethods: p.authMethods?.map(a => ({ value: a.value, label: a.label, hint: a.hint ?? '', type: a.type })),
         models: p.models,
       })),
       defaultProvider: m.wizard.defaultProvider,
