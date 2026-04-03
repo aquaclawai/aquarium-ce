@@ -1134,6 +1134,21 @@
     },
     "plugins": {
       "comingSoon": "Plugin-Verwaltung kommt in Phase 2"
+    },
+    "credentials": {
+      "title": "Anmeldedaten konfigurieren",
+      "requiresCredentials": "Dieser Skill benötigt Anmeldedaten zur Aktivierung.",
+      "fieldLabel": "Anmeldedatenfeld",
+      "valueLabel": "API-Schlüssel / Wert",
+      "save": "Anmeldedaten speichern",
+      "saving": "Wird gespeichert...",
+      "saved": "Anmeldedaten erfolgreich gespeichert",
+      "saveFailed": "Anmeldedaten konnten nicht gespeichert werden"
+    },
+    "alerts": {
+      "failed": "{{name}} fehlgeschlagen: {{error}}",
+      "degraded": "{{name}} ist eingeschränkt — läuft möglicherweise noch aus dem Cache",
+      "retry": "Wiederholen"
     }
   }
 }

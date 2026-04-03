@@ -1816,6 +1816,21 @@
     },
     "plugins": {
       "comingSoon": "Plugin management coming in Phase 2"
+    },
+    "credentials": {
+      "title": "Configure Credentials",
+      "requiresCredentials": "This skill requires credentials to activate.",
+      "fieldLabel": "Credential Field",
+      "valueLabel": "API Key / Value",
+      "save": "Save Credential",
+      "saving": "Saving...",
+      "saved": "Credential saved successfully",
+      "saveFailed": "Failed to save credential"
+    },
+    "alerts": {
+      "failed": "{{name}} failed: {{error}}",
+      "degraded": "{{name}} is degraded — may still be running from cache",
+      "retry": "Retry"
     }
   }
 }

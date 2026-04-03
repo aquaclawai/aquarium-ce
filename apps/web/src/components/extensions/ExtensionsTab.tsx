@@ -4,6 +4,7 @@ import { api } from '../../api';
 import type { InstanceSkill, SkillCatalogEntry, GatewayExtensionInfo } from '@aquarium/shared';
 import { SkillRow } from './SkillRow';
 import { CatalogSkillRow } from './CatalogSkillRow';
+import { CredentialConfigPanel } from './CredentialConfigPanel';
 import './ExtensionsTab.css';
 
 interface ExtensionsTabProps {
@@ -104,15 +105,46 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
   }, [instanceId, fetchData, t]);
 
   const handleConfigure = useCallback((skillId: string) => {
-    setConfiguringSkillId(skillId);
+    setConfiguringSkillId(prev => (prev === skillId ? null : skillId));
   }, []);
 
   // Filter catalog to exclude already-installed skills
   const installedSkillIds = new Set(managedSkills.map(s => s.skillId));
   const availableCatalog = catalog.filter(entry => !installedSkillIds.has(entry.slug));
 
+  // Alert banners for failed/degraded skills
+  const alertSkills = managedSkills.filter(
+    s => s.status === 'failed' || s.status === 'degraded'
+  );
+
   return (
     <div className="extensions-tab">
+      {/* Alert banners for failed/degraded extensions */}
+      {alertSkills.map(skill => (
+        <div
+          key={skill.skillId}
+          className={`extension-alert extension-alert--${skill.status}`}
+          role="alert"
+        >
+          <span className="extension-alert__icon" aria-hidden="true">
+            {skill.status === 'failed' ? '✕' : '⚠'}
+          </span>
+          <span className="extension-alert__message">
+            {skill.status === 'failed'
+              ? t('extensions.alerts.failed', { name: skill.skillId, error: skill.errorMessage ?? '' })
+              : t('extensions.alerts.degraded', { name: skill.skillId })}
+          </span>
+          {skill.status === 'failed' && (
+            <button
+              className="btn btn--sm extension-alert__retry"
+              onClick={() => void api.post(`/instances/${instanceId}/skills/install`, { skillId: skill.skillId, source: 'bundled' }).then(() => void fetchData())}
+            >
+              {t('extensions.alerts.retry')}
+            </button>
+          )}
+        </div>
+      ))}
+
       <div className="extensions-tab__header">
         <div className="sub-tab-toggle" role="tablist" aria-label={t('extensions.title')}>
           <button
@@ -146,11 +178,6 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
         <div className="error-message" role="alert">{error}</div>
       )}
 
-      {/* Hidden configuringSkillId state — consumed by CredentialConfigPanel in Plan 01-06 */}
-      {configuringSkillId && (
-        <div data-configuring-skill-id={configuringSkillId} style={{ display: 'none' }} />
-      )}
-
       {subTab === 'plugins' && (
         <div className="extensions-tab__coming-soon">
           <p>{t('extensions.plugins.comingSoon')}</p>
@@ -173,14 +200,26 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
             ) : (
               <div className="skill-list">
                 {managedSkills.map(skill => (
-                  <SkillRow
-                    key={skill.id}
-                    skill={skill}
-                    onToggle={handleToggle}
-                    onUninstall={handleUninstall}
-                    onConfigure={handleConfigure}
-                    disabled={mutationsDisabled}
-                  />
+                  <div key={skill.id}>
+                    <SkillRow
+                      skill={skill}
+                      onToggle={handleToggle}
+                      onUninstall={handleUninstall}
+                      onConfigure={handleConfigure}
+                      disabled={mutationsDisabled}
+                    />
+                    {configuringSkillId === skill.skillId && (
+                      <CredentialConfigPanel
+                        instanceId={instanceId}
+                        skillId={skill.skillId}
+                        skillName={skill.skillId}
+                        status={skill.status}
+                        onClose={() => setConfiguringSkillId(null)}
+                        onSaved={() => { setConfiguringSkillId(null); void fetchData(); }}
+                        disabled={mutationsDisabled}
+                      />
+                    )}
+                  </div>
                 ))}
               </div>
             )}

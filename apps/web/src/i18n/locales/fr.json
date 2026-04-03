@@ -1134,6 +1134,21 @@
     },
     "plugins": {
       "comingSoon": "La gestion des plugins arrive en phase 2"
+    },
+    "credentials": {
+      "title": "Configurer les identifiants",
+      "requiresCredentials": "Cette compétence nécessite des identifiants pour s'activer.",
+      "fieldLabel": "Champ d'identification",
+      "valueLabel": "Clé API / Valeur",
+      "save": "Enregistrer l'identifiant",
+      "saving": "Enregistrement...",
+      "saved": "Identifiant enregistré avec succès",
+      "saveFailed": "Échec de l'enregistrement de l'identifiant"
+    },
+    "alerts": {
+      "failed": "{{name}} a échoué : {{error}}",
+      "degraded": "{{name}} est dégradé — il est peut-être encore en cours d'exécution depuis le cache",
+      "retry": "Réessayer"
     }
   }
 }

@@ -1134,6 +1134,21 @@
     },
     "plugins": {
       "comingSoon": "La gestión de plugins llegará en la fase 2"
+    },
+    "credentials": {
+      "title": "Configurar credenciales",
+      "requiresCredentials": "Esta habilidad requiere credenciales para activarse.",
+      "fieldLabel": "Campo de credencial",
+      "valueLabel": "Clave API / Valor",
+      "save": "Guardar credencial",
+      "saving": "Guardando...",
+      "saved": "Credencial guardada correctamente",
+      "saveFailed": "Error al guardar la credencial"
+    },
+    "alerts": {
+      "failed": "{{name}} falló: {{error}}",
+      "degraded": "{{name}} está degradado — puede que siga ejecutándose desde la caché",
+      "retry": "Reintentar"
     }
   }
 }

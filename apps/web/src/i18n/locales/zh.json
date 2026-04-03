@@ -1815,6 +1815,21 @@
     },
     "plugins": {
       "comingSoon": "插件管理将在第二阶段推出"
+    },
+    "credentials": {
+      "title": "配置凭证",
+      "requiresCredentials": "此技能需要凭证才能激活。",
+      "fieldLabel": "凭证字段",
+      "valueLabel": "API 密钥 / 值",
+      "save": "保存凭证",
+      "saving": "保存中...",
+      "saved": "凭证保存成功",
+      "saveFailed": "保存凭证失败"
+    },
+    "alerts": {
+      "failed": "{{name}} 失败：{{error}}",
+      "degraded": "{{name}} 已降级 — 可能仍在从缓存中运行",
+      "retry": "重试"
     }
   }
 }
