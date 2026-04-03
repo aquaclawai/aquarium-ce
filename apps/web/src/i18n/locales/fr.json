@@ -194,7 +194,8 @@
       "settings": "Parametres",
       "files": "Fichiers",
       "security": "Sécurité",
-      "more": "Plus"
+      "more": "Plus",
+      "extensions": "Extensions"
     },
     "overview": {
       "title": "Details de l'instance",
@@ -1080,5 +1081,59 @@
       "file": "Fichier"
     },
     "previewNotAvailable": "Aperçu non disponible pour ce type de fichier. Utilisez le bouton Télécharger."
+  },
+  "extensions": {
+    "title": "Extensions",
+    "subTabs": {
+      "plugins": "Plugins",
+      "skills": "Compétences"
+    },
+    "sections": {
+      "installed": "Installées",
+      "available": "Disponibles",
+      "gatewayBuiltins": "Intégrées à la passerelle"
+    },
+    "status": {
+      "active": "Actif",
+      "installed": "Installé",
+      "pending": "En attente",
+      "disabled": "Désactivé",
+      "degraded": "Dégradé",
+      "failed": "Échoué"
+    },
+    "actions": {
+      "install": "Installer",
+      "installing": "Installation...",
+      "uninstall": "Désinstaller",
+      "enable": "Activer",
+      "disable": "Désactiver",
+      "configure": "Configurer",
+      "refresh": "Actualiser"
+    },
+    "catalog": {
+      "startInstance": "Démarrez l'instance pour parcourir les extensions disponibles",
+      "noResults": "Aucune extension disponible",
+      "requiresCredentials": "Nécessite une clé API",
+      "bundled": "Inclus",
+      "clawhub": "ClawHub"
+    },
+    "empty": {
+      "noInstalled": "Aucune compétence installée",
+      "noBuiltins": "Aucune compétence intégrée à la passerelle"
+    },
+    "confirm": {
+      "uninstall": "Voulez-vous vraiment désinstaller cette compétence ?",
+      "uninstallTitle": "Désinstaller la compétence"
+    },
+    "errors": {
+      "fetchFailed": "Échec du chargement des extensions",
+      "installFailed": "Échec de l'installation de la compétence",
+      "toggleFailed": "Échec de la mise à jour de la compétence",
+      "uninstallFailed": "Échec de la désinstallation de la compétence",
+      "conflict": "Une autre opération d'extension est en cours"
+    },
+    "plugins": {
+      "comingSoon": "La gestion des plugins arrive en phase 2"
+    }
   }
 }

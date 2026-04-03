@@ -238,7 +238,8 @@
       "events": "事件",
       "settings": "设置",
       "security": "安全",
-      "more": "更多"
+      "more": "更多",
+      "extensions": "扩展"
     },
     "overview": {
       "title": "实例详情",
@@ -1761,5 +1762,59 @@
       "file": "文件"
     },
     "previewNotAvailable": "此文件类型无法预览，请使用下载按钮。"
+  },
+  "extensions": {
+    "title": "扩展",
+    "subTabs": {
+      "plugins": "插件",
+      "skills": "技能"
+    },
+    "sections": {
+      "installed": "已安装",
+      "available": "可用",
+      "gatewayBuiltins": "网关内置"
+    },
+    "status": {
+      "active": "活跃",
+      "installed": "已安装",
+      "pending": "待处理",
+      "disabled": "已禁用",
+      "degraded": "降级",
+      "failed": "失败"
+    },
+    "actions": {
+      "install": "安装",
+      "installing": "安装中...",
+      "uninstall": "卸载",
+      "enable": "启用",
+      "disable": "禁用",
+      "configure": "配置",
+      "refresh": "刷新"
+    },
+    "catalog": {
+      "startInstance": "启动实例以浏览可用扩展",
+      "noResults": "暂无可用扩展",
+      "requiresCredentials": "需要 API 密钥",
+      "bundled": "内置",
+      "clawhub": "ClawHub"
+    },
+    "empty": {
+      "noInstalled": "未安装任何技能",
+      "noBuiltins": "无网关内置技能"
+    },
+    "confirm": {
+      "uninstall": "确定要卸载此技能吗？",
+      "uninstallTitle": "卸载技能"
+    },
+    "errors": {
+      "fetchFailed": "加载扩展失败",
+      "installFailed": "安装技能失败",
+      "toggleFailed": "更新技能失败",
+      "uninstallFailed": "卸载技能失败",
+      "conflict": "另一个扩展操作正在进行中"
+    },
+    "plugins": {
+      "comingSoon": "插件管理将在第二阶段推出"
+    }
   }
 }

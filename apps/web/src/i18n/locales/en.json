@@ -238,7 +238,8 @@
       "events": "Events",
       "settings": "Settings",
       "security": "Security",
-      "more": "More"
+      "more": "More",
+      "extensions": "Extensions"
     },
     "overview": {
       "title": "Instance Details",
@@ -1762,5 +1763,59 @@
       "file": "File"
     },
     "previewNotAvailable": "Preview not available for this file type. Use the Download button."
+  },
+  "extensions": {
+    "title": "Extensions",
+    "subTabs": {
+      "plugins": "Plugins",
+      "skills": "Skills"
+    },
+    "sections": {
+      "installed": "Installed",
+      "available": "Available",
+      "gatewayBuiltins": "Gateway Built-ins"
+    },
+    "status": {
+      "active": "Active",
+      "installed": "Installed",
+      "pending": "Pending",
+      "disabled": "Disabled",
+      "degraded": "Degraded",
+      "failed": "Failed"
+    },
+    "actions": {
+      "install": "Install",
+      "installing": "Installing...",
+      "uninstall": "Uninstall",
+      "enable": "Enable",
+      "disable": "Disable",
+      "configure": "Configure",
+      "refresh": "Refresh"
+    },
+    "catalog": {
+      "startInstance": "Start instance to browse available extensions",
+      "noResults": "No extensions available",
+      "requiresCredentials": "Requires API key",
+      "bundled": "Bundled",
+      "clawhub": "ClawHub"
+    },
+    "empty": {
+      "noInstalled": "No skills installed",
+      "noBuiltins": "No gateway built-in skills"
+    },
+    "confirm": {
+      "uninstall": "Are you sure you want to uninstall this skill?",
+      "uninstallTitle": "Uninstall Skill"
+    },
+    "errors": {
+      "fetchFailed": "Failed to load extensions",
+      "installFailed": "Failed to install skill",
+      "toggleFailed": "Failed to update skill",
+      "uninstallFailed": "Failed to uninstall skill",
+      "conflict": "Another extension operation is in progress"
+    },
+    "plugins": {
+      "comingSoon": "Plugin management coming in Phase 2"
+    }
   }
 }

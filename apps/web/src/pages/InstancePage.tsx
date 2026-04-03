@@ -18,8 +18,9 @@ import type { ExecApprovalItem } from '../components/ExecApprovalDialog';
 import { SecurityTimeline } from '../components/SecurityTimeline';
 import { SecurityStatusBadge } from '../components/SecurityStatusBadge';
 import { ChatTab } from '../components/chat/ChatTab';
+import { ExtensionsTab } from '../components/extensions/ExtensionsTab';
 
-type TabId = 'overview' | 'ai' | 'chat' | 'agent-management' | 'usage' | 'files' | 'logs' | 'events' | 'snapshots' | 'security';
+type TabId = 'overview' | 'ai' | 'chat' | 'extensions' | 'agent-management' | 'usage' | 'files' | 'logs' | 'events' | 'snapshots' | 'security';
 
 const ADVANCED_TABS: ReadonlySet<TabId> = new Set(['agent-management', 'snapshots', 'security', 'logs', 'events']);
 
@@ -244,6 +245,7 @@ export function InstancePage() {
 
       <div className="tabs">
         <button className={activeTab === 'chat' ? 'active' : ''} onClick={() => setActiveTab('chat')}>{t('instance.tabs.chat')}</button>
+        <button className={activeTab === 'extensions' ? 'active' : ''} onClick={() => setActiveTab('extensions')}>{t('instance.tabs.extensions')}</button>
         <button className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>{t('instance.tabs.overview')}</button>
         <button className={activeTab === 'ai' ? 'active' : ''} onClick={() => setActiveTab('ai')}>AI</button>
         <button className={activeTab === 'usage' ? 'active' : ''} onClick={() => setActiveTab('usage')}>{t('instance.tabs.usage')}</button>
@@ -273,6 +275,7 @@ export function InstancePage() {
         {activeTab === 'overview' && <OverviewTab instance={instance} onInstanceUpdate={fetchInstance} onLifecycle={handleLifecycle} actionInProgress={actionInProgress} onClone={handleClone} cloning={cloning} />}
         {activeTab === 'ai' && <AITab instance={instance} agentType={agentTypes.find(a => a.id === instance.agentType) ?? null} onInstanceUpdate={fetchInstance} />}
         {activeTab === 'chat' && <ChatTab instanceId={instance.id} instanceStatus={instance.status} />}
+        {activeTab === 'extensions' && <ExtensionsTab instanceId={instance.id} instanceStatus={instance.status} />}
         {activeTab === 'agent-management' && <AgentUIFrame instance={instance} agentType={agentTypes.find(a => a.id === instance.agentType) ?? null} />}
         {activeTab === 'usage' && <UsageTab instanceId={instance.id} instanceStatus={instance.status} billingMode={instance.billingMode} />}
         {activeTab === 'files' && <FilesTab instanceId={instance.id} instanceStatus={instance.status} />}

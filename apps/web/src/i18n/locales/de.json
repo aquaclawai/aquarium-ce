@@ -194,7 +194,8 @@
       "settings": "Einstellungen",
       "files": "Dateien",
       "security": "Sicherheit",
-      "more": "Mehr"
+      "more": "Mehr",
+      "extensions": "Erweiterungen"
     },
     "overview": {
       "title": "Instanzdetails",
@@ -1080,5 +1081,59 @@
       "file": "Datei"
     },
     "previewNotAvailable": "Vorschau für diesen Dateityp nicht verfügbar. Verwenden Sie den Download-Button."
+  },
+  "extensions": {
+    "title": "Erweiterungen",
+    "subTabs": {
+      "plugins": "Plugins",
+      "skills": "Skills"
+    },
+    "sections": {
+      "installed": "Installiert",
+      "available": "Verfügbar",
+      "gatewayBuiltins": "Gateway-Eingebaute"
+    },
+    "status": {
+      "active": "Aktiv",
+      "installed": "Installiert",
+      "pending": "Ausstehend",
+      "disabled": "Deaktiviert",
+      "degraded": "Eingeschränkt",
+      "failed": "Fehlgeschlagen"
+    },
+    "actions": {
+      "install": "Installieren",
+      "installing": "Installiere...",
+      "uninstall": "Deinstallieren",
+      "enable": "Aktivieren",
+      "disable": "Deaktivieren",
+      "configure": "Konfigurieren",
+      "refresh": "Aktualisieren"
+    },
+    "catalog": {
+      "startInstance": "Instanz starten, um verfügbare Erweiterungen zu durchsuchen",
+      "noResults": "Keine Erweiterungen verfügbar",
+      "requiresCredentials": "Erfordert API-Schlüssel",
+      "bundled": "Mitgeliefert",
+      "clawhub": "ClawHub"
+    },
+    "empty": {
+      "noInstalled": "Keine Skills installiert",
+      "noBuiltins": "Keine eingebauten Gateway-Skills"
+    },
+    "confirm": {
+      "uninstall": "Möchten Sie diesen Skill wirklich deinstallieren?",
+      "uninstallTitle": "Skill deinstallieren"
+    },
+    "errors": {
+      "fetchFailed": "Erweiterungen konnten nicht geladen werden",
+      "installFailed": "Skill konnte nicht installiert werden",
+      "toggleFailed": "Skill konnte nicht aktualisiert werden",
+      "uninstallFailed": "Skill konnte nicht deinstalliert werden",
+      "conflict": "Eine andere Erweiterungsoperation läuft bereits"
+    },
+    "plugins": {
+      "comingSoon": "Plugin-Verwaltung kommt in Phase 2"
+    }
   }
 }

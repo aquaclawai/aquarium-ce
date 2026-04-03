@@ -194,7 +194,8 @@
       "settings": "Configuración",
       "files": "Archivos",
       "security": "Seguridad",
-      "more": "Más"
+      "more": "Más",
+      "extensions": "Extensiones"
     },
     "overview": {
       "title": "Detalles de la instancia",
@@ -1080,5 +1081,59 @@
       "file": "Archivo"
     },
     "previewNotAvailable": "Vista previa no disponible para este tipo de archivo. Usa el botón Descargar."
+  },
+  "extensions": {
+    "title": "Extensiones",
+    "subTabs": {
+      "plugins": "Plugins",
+      "skills": "Habilidades"
+    },
+    "sections": {
+      "installed": "Instaladas",
+      "available": "Disponibles",
+      "gatewayBuiltins": "Integradas en la puerta de enlace"
+    },
+    "status": {
+      "active": "Activo",
+      "installed": "Instalado",
+      "pending": "Pendiente",
+      "disabled": "Desactivado",
+      "degraded": "Degradado",
+      "failed": "Fallido"
+    },
+    "actions": {
+      "install": "Instalar",
+      "installing": "Instalando...",
+      "uninstall": "Desinstalar",
+      "enable": "Activar",
+      "disable": "Desactivar",
+      "configure": "Configurar",
+      "refresh": "Actualizar"
+    },
+    "catalog": {
+      "startInstance": "Inicia la instancia para explorar las extensiones disponibles",
+      "noResults": "No hay extensiones disponibles",
+      "requiresCredentials": "Requiere clave API",
+      "bundled": "Incluido",
+      "clawhub": "ClawHub"
+    },
+    "empty": {
+      "noInstalled": "No hay habilidades instaladas",
+      "noBuiltins": "No hay habilidades integradas en la puerta de enlace"
+    },
+    "confirm": {
+      "uninstall": "¿Estás seguro de que quieres desinstalar esta habilidad?",
+      "uninstallTitle": "Desinstalar habilidad"
+    },
+    "errors": {
+      "fetchFailed": "Error al cargar las extensiones",
+      "installFailed": "Error al instalar la habilidad",
+      "toggleFailed": "Error al actualizar la habilidad",
+      "uninstallFailed": "Error al desinstalar la habilidad",
+      "conflict": "Otra operación de extensión está en curso"
+    },
+    "plugins": {
+      "comingSoon": "La gestión de plugins llegará en la fase 2"
+    }
   }
 }
