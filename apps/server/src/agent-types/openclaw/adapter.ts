@@ -534,7 +534,10 @@ export const openclawAdapter: AgentTypeAdapter = {
     };
 
     // OpenClaw schema: plugins.entries is Record<id, {enabled, config}>, load.paths for external
-    const pluginsCfg: Record<string, unknown> = { entries: pluginEntries };
+    const pluginsCfg: Record<string, unknown> = {
+      entries: pluginEntries,
+      load: { paths: ['/opt/openclaw-plugins/platform-bridge'] },
+    };
     cfg.plugins = pluginsCfg;
 
     const securityCfg = getSecurityConfig(instance.securityProfile ?? 'standard');
@@ -544,6 +547,18 @@ export const openclawAdapter: AgentTypeAdapter = {
     cfg.discovery = securityCfg.discovery;
     if (securityCfg.plugins) {
       cfg.plugins = deepMerge(cfg.plugins as Record<string, unknown> || {}, securityCfg.plugins as Record<string, unknown>);
+    }
+    // Ensure platform-bridge plugin is always loadable regardless of security profile.
+    // The security profile may set plugins.enabled=false which blocks all plugins
+    // including our platform-bridge (needed for platform.ping readiness checks).
+    const finalPlugins = cfg.plugins as Record<string, unknown>;
+    if (finalPlugins.enabled === false) {
+      finalPlugins.enabled = true;
+      finalPlugins.allow = [];
+    }
+    // Preserve load.paths after security deep-merge (security config may overwrite it)
+    if (!(finalPlugins.load as Record<string, unknown> | undefined)?.paths) {
+      finalPlugins.load = { paths: ['/opt/openclaw-plugins/platform-bridge'] };
     }
     cfg.skills = securityCfg.skills;
 
