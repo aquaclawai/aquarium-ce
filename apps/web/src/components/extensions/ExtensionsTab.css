@@ -1,0 +1,466 @@
+/* Extensions Tab Styles — Oxide Design System */
+
+.extensions-tab {
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+/* Header row: sub-tab toggle + refresh */
+.extensions-tab__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+/* Sub-tab toggle (pill/segmented control) */
+.sub-tab-toggle {
+  display: flex;
+  gap: 2px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 2px;
+}
+
+.sub-tab-toggle button {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: none;
+  background: transparent;
+  border-radius: calc(var(--radius-md) - 2px);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sub-tab-toggle button:hover {
+  background-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.sub-tab-toggle button.active {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+
+/* Refresh button */
+.refresh-button {
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: var(--spacing-xs);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.refresh-button:hover {
+  color: var(--color-text);
+  background-color: var(--color-surface);
+}
+
+/* Section container */
+.extensions-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* Section header */
+.section-header {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Skill list */
+.skill-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Skill row — base */
+.skill-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-xs);
+  border-bottom: 1px solid var(--color-border);
+  min-height: 52px;
+}
+
+.skill-row:last-child {
+  border-bottom: none;
+}
+
+.skill-row--readonly {
+  opacity: 0.85;
+}
+
+/* Skill icon */
+.skill-row__icon {
+  flex-shrink: 0;
+}
+
+.skill-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+/* Skill info block */
+.skill-row__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.skill-row__name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.skill-row__description {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status area */
+.skill-row__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.skill-row__status-text {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+/* Status dot */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot--active {
+  background-color: var(--color-success);
+}
+
+.status-dot--warning {
+  background-color: var(--color-warning);
+}
+
+.status-dot--error {
+  background-color: var(--color-error);
+}
+
+.status-dot--disabled {
+  background-color: var(--color-border);
+}
+
+/* Skill metadata (version, badges) */
+.skill-row__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.skill-row__version {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+/* Source badge */
+.source-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.source-badge--bundled {
+  background-color: var(--color-success);
+  color: #fff;
+}
+
+.source-badge--clawhub {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+
+/* Credential indicator */
+.credential-indicator {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Row actions */
+.skill-row__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+/* Icon buttons (gear, X) */
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.icon-button:hover:not(:disabled) {
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border-color: var(--color-text-secondary);
+}
+
+.icon-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.icon-button--danger:hover:not(:disabled) {
+  color: var(--color-error);
+  border-color: var(--color-error);
+  background-color: transparent;
+}
+
+/* Generic small primary button */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 500;
+  transition: opacity 0.15s ease;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background-color: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.btn--primary:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.btn--sm {
+  padding: 4px 12px;
+  font-size: 0.8125rem;
+}
+
+/* Toggle switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.toggle-switch__track {
+  display: block;
+  width: 36px;
+  height: 20px;
+  background-color: var(--color-border);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+  position: relative;
+}
+
+.toggle-switch__track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.toggle-switch input:checked + .toggle-switch__track {
+  background-color: var(--color-primary);
+}
+
+.toggle-switch input:checked + .toggle-switch__track::after {
+  transform: translateX(16px);
+}
+
+.toggle-switch input:disabled + .toggle-switch__track {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Gateway built-ins section — slightly dimmed to indicate read-only */
+.gateway-builtins {
+  opacity: 0.9;
+}
+
+.gateway-builtins .section-header::after {
+  content: ' (read-only)';
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.75rem;
+}
+
+/* Empty state */
+.empty-state {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  padding: var(--spacing-md) 0;
+  margin: 0;
+}
+
+.catalog-gated {
+  font-style: italic;
+}
+
+/* Coming soon placeholder */
+.extensions-tab__coming-soon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg);
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* Skeleton loading animation */
+@keyframes skeleton-pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.skeleton-row {
+  pointer-events: none;
+}
+
+.skeleton-pulse {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-sm);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton-row__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.skeleton-row__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skeleton-row__name {
+  height: 14px;
+  width: 40%;
+}
+
+.skeleton-row__description {
+  height: 12px;
+  width: 60%;
+}
+
+.skeleton-row__action {
+  width: 60px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+/* Responsive: stack on small screens */
+@media (max-width: 640px) {
+  .skill-row {
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+  }
+
+  .skill-row__info {
+    flex-basis: calc(100% - 40px);
+  }
+
+  .skill-row__status,
+  .skill-row__meta,
+  .skill-row__actions {
+    flex-basis: auto;
+    margin-left: auto;
+  }
+}
