@@ -315,6 +315,9 @@ export const openclawAdapter: AgentTypeAdapter = {
       cfg.tools = toolsCfg;
     }
 
+    // Enable /mcp command so users can manage MCP servers via chat
+    cfg.commands = { mcp: true };
+
     // Data-driven channel config: maps credential provider to channel config + plugin entry.
     // Standard channels use env var substitution; special channels handled individually below.
     const channelCredMap: Record<string, {
@@ -722,7 +725,7 @@ export const openclawAdapter: AgentTypeAdapter = {
       OPENCLAW_GATEWAY_TOKEN: instance.authToken,
       OPENCLAW_GATEWAY_BIND: 'lan',
       OPENCLAW_GATEWAY_PORT: '18789',
-      NODE_OPTIONS: '--max-old-space-size=1536',
+      NODE_OPTIONS: '--max-old-space-size=3072',
     };
 
     // Dual-mode: platform mode injects LiteLLM proxy URL only, BYOK injects provider keys

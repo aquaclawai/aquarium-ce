@@ -189,7 +189,7 @@ export const openclawManifest: AgentTypeManifest = {
 
   resources: {
     requests: { cpu: '250m', memory: '768Mi' },
-    limits: { cpu: '1500m', memory: '2Gi' },
+    limits: { cpu: '1500m', memory: '4Gi' },
   },
 
   securityContext: {

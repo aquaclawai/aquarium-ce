@@ -1,5 +1,5 @@
 import './CreateWizardPage.css';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { formatModelDisplayName } from '../utils/provider-display';
@@ -53,6 +53,14 @@ interface WizardState {
   model: string;
   contextLength: string;
   temperaturePreset: string;
+  selectedAuthMethodIndex: number;
+  oauthStatus: 'idle' | 'pending' | 'success' | 'error';
+  oauthToken: string;
+  oauthRefreshToken: string;
+  oauthExpiresIn: number | null;
+  oauthUserCode: string;
+  oauthVerificationUri: string;
+  oauthError: string;
 }
 
 const DEFAULT_STATE: WizardState = {
@@ -67,6 +75,26 @@ const DEFAULT_STATE: WizardState = {
   model: '',
   contextLength: '128K Tokens',
   temperaturePreset: 'life',
+  selectedAuthMethodIndex: 0,
+  oauthStatus: 'idle',
+  oauthToken: '',
+  oauthRefreshToken: '',
+  oauthExpiresIn: null,
+  oauthUserCode: '',
+  oauthVerificationUri: '',
+  oauthError: '',
+};
+
+// Maps OAuth auth method values to their backend API endpoints
+const OAUTH_DEVICE_FLOW_ENDPOINTS: Record<string, {
+  deviceCode: string;
+  poll: string;
+  pollBodyKey: string;
+  requiresUserCodeInPoll?: boolean;
+}> = {
+  'github-copilot': { deviceCode: '/oauth/github/device-code', poll: '/oauth/github/poll', pollBodyKey: 'deviceCode' },
+  'openai-codex': { deviceCode: '/oauth/openai/device-code', poll: '/oauth/openai/poll', pollBodyKey: 'deviceAuthId', requiresUserCodeInPoll: true },
+  'qwen-portal': { deviceCode: '/oauth/qwen/device-code', poll: '/oauth/qwen/poll', pollBodyKey: 'deviceCode' },
 };
 
 const CONTEXT_OPTIONS_FALLBACK = [
@@ -104,6 +132,8 @@ interface StepConfirmProps extends StepProps {
   credentialsLoading: boolean;
   platformModels: AvailableModel[];
   platformModelsLoading: boolean;
+  onStartOAuth: (authMethodValue: string) => void;
+  stopOAuthPolling: () => void;
 }
 
 interface StepAgentTypeProps {
@@ -310,7 +340,7 @@ function StepIdentity({ state, setState, identityTemplates }: StepIdentityProps)
   );
 }
 
-function StepConfirm({ state, setState, providers, temperaturePresets, contextOptions, userCredentials, credentialsLoading, platformModels, platformModelsLoading }: StepConfirmProps) {
+function StepConfirm({ state, setState, providers, temperaturePresets, contextOptions, userCredentials, credentialsLoading, platformModels, platformModelsLoading, onStartOAuth, stopOAuthPolling }: StepConfirmProps) {
   const { t } = useTranslation();
   const [modelSearchQuery, setModelSearchQuery] = useState('');
 
@@ -486,7 +516,11 @@ function StepConfirm({ state, setState, providers, temperaturePresets, contextOp
               id="wiz-byok-provider"
               className="wiz-select"
               value={state.byokProvider}
-              onChange={e => setState(prev => ({ ...prev, byokProvider: e.target.value, model: '', byokApiKey: '' }))}
+              onChange={e => setState(prev => ({
+                ...prev, byokProvider: e.target.value, model: '', byokApiKey: '',
+                selectedAuthMethodIndex: 0, oauthStatus: 'idle', oauthToken: '', oauthRefreshToken: '',
+                oauthExpiresIn: null, oauthUserCode: '', oauthVerificationUri: '', oauthError: '',
+              }))}
             >
               <option value="">{t('wizard.confirm.byokProviderPlaceholder')}</option>
               {providers.map(p => (
@@ -499,15 +533,97 @@ function StepConfirm({ state, setState, providers, temperaturePresets, contextOp
           {(() => {
             const selectedByokProviderInfo = providers.find(p => p.name === state.byokProvider);
             if (!selectedByokProviderInfo) return null;
-            const authMethod = selectedByokProviderInfo.authMethods?.[0];
+            const authMethods = selectedByokProviderInfo.authMethods ?? [];
+            const authMethod = authMethods[state.selectedAuthMethodIndex] ?? authMethods[0];
             const isOAuth = authMethod?.type === 'oauth';
             const isEndpoint = authMethod?.type === 'custom-endpoint';
             const credLabel = authMethod?.label ?? t('wizard.confirm.byokApiKey');
             const credPlaceholder = authMethod?.hint ?? t('wizard.confirm.byokApiKeyPlaceholder');
             const byokModels = selectedByokProviderInfo.models;
+            const hasDeviceFlow = isOAuth && !!OAUTH_DEVICE_FLOW_ENDPOINTS[authMethod.value];
             return (
               <>
-                {isOAuth ? (
+                {authMethods.length > 1 && (
+                  <div className="wiz-field">
+                    <label className="wiz-field-label">{t('wizard.confirm.authMethodLabel')}</label>
+                    <div className="wiz-auth-method-toggle">
+                      {authMethods.map((am, idx) => (
+                        <button
+                          key={am.value}
+                          type="button"
+                          className={`wiz-auth-method-btn${state.selectedAuthMethodIndex === idx ? ' wiz-auth-method-btn--active' : ''}`}
+                          onClick={() => setState(prev => ({
+                            ...prev, selectedAuthMethodIndex: idx, byokApiKey: '',
+                            oauthStatus: 'idle', oauthToken: '', oauthRefreshToken: '',
+                            oauthExpiresIn: null, oauthUserCode: '', oauthVerificationUri: '', oauthError: '',
+                          }))}
+                        >
+                          {am.type === 'oauth' ? '\u{1F517}' : '\u{1F511}'} {am.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {isOAuth && hasDeviceFlow ? (
+                  <div className="wiz-field">
+                    <label className="wiz-field-label">{credLabel}</label>
+                    <div className="wiz-oauth-device-flow">
+                      {state.oauthStatus === 'idle' && (
+                        <button
+                          type="button"
+                          className="wiz-oauth-connect-btn"
+                          onClick={() => onStartOAuth(authMethod.value)}
+                        >
+                          {t('wizard.confirm.oauthConnect', { provider: selectedByokProviderInfo.displayName })}
+                        </button>
+                      )}
+                      {state.oauthStatus === 'pending' && (
+                        <div className="wiz-oauth-pending">
+                          <div className="wiz-oauth-pending__title">{t('wizard.confirm.oauthPendingTitle')}</div>
+                          <div className="wiz-oauth-pending__desc">{t('wizard.confirm.oauthPendingDesc')}</div>
+                          <div className="wiz-oauth-user-code">{state.oauthUserCode}</div>
+                          <a
+                            href={state.oauthVerificationUri}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="wiz-oauth-verify-link"
+                          >
+                            {t('wizard.confirm.oauthOpenVerification', { url: state.oauthVerificationUri })}
+                          </a>
+                          <div className="wiz-oauth-spinner" />
+                          <button
+                            type="button"
+                            className="wiz-oauth-cancel-btn"
+                            onClick={() => {
+                              stopOAuthPolling();
+                              setState(prev => ({ ...prev, oauthStatus: 'idle', oauthUserCode: '', oauthVerificationUri: '' }));
+                            }}
+                          >
+                            {t('wizard.confirm.oauthCancel')}
+                          </button>
+                        </div>
+                      )}
+                      {state.oauthStatus === 'success' && (
+                        <div className="wiz-oauth-success">
+                          <span className="wiz-oauth-success__icon">&#x2714;</span>
+                          {t('wizard.confirm.oauthSuccess')}
+                        </div>
+                      )}
+                      {state.oauthStatus === 'error' && (
+                        <div className="wiz-oauth-error">
+                          <div className="wiz-oauth-error__msg">{state.oauthError || t('wizard.confirm.oauthError')}</div>
+                          <button
+                            type="button"
+                            className="wiz-oauth-connect-btn"
+                            onClick={() => onStartOAuth(authMethod.value)}
+                          >
+                            {t('wizard.confirm.oauthRetry')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : isOAuth ? (
                   <div className="wiz-field">
                     <label className="wiz-field-label">{credLabel}</label>
                     <div className="wiz-oauth-info">{credPlaceholder}</div>
@@ -665,6 +781,79 @@ export function CreateWizardPage() {
   const providers = agentType?.wizard?.providers ?? [];
   const contextOptions = agentType?.wizard?.contextOptions ?? CONTEXT_OPTIONS_FALLBACK;
 
+  // ─── OAuth device flow ───────────────────────────────────────────────
+  const oauthPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const oauthExpireRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stopOAuthPolling = useCallback(() => {
+    if (oauthPollRef.current) { clearInterval(oauthPollRef.current); oauthPollRef.current = null; }
+    if (oauthExpireRef.current) { clearTimeout(oauthExpireRef.current); oauthExpireRef.current = null; }
+  }, []);
+
+  const startOAuthFlow = useCallback(async (authMethodValue: string) => {
+    stopOAuthPolling();
+    const endpoints = OAUTH_DEVICE_FLOW_ENDPOINTS[authMethodValue];
+    if (!endpoints) return;
+
+    setState(prev => ({ ...prev, oauthStatus: 'pending', oauthError: '', oauthUserCode: '', oauthVerificationUri: '' }));
+
+    try {
+      const data = await api.post<{
+        deviceCode?: string; deviceAuthId?: string;
+        userCode: string; verificationUri: string;
+        interval?: number; expiresIn?: number;
+      }>(endpoints.deviceCode);
+
+      const deviceId = data.deviceCode ?? data.deviceAuthId ?? '';
+      const userCode = data.userCode;
+
+      setState(prev => ({ ...prev, oauthUserCode: data.userCode, oauthVerificationUri: data.verificationUri }));
+
+      const intervalMs = (data.interval ?? 5) * 1000;
+
+      oauthPollRef.current = setInterval(async () => {
+        try {
+          const pollBody: Record<string, string> = { [endpoints.pollBodyKey]: deviceId };
+          if (endpoints.requiresUserCodeInPoll) pollBody.userCode = userCode;
+
+          const result = await api.post<{
+            status: string; accessToken?: string;
+            refreshToken?: string; expiresIn?: number; description?: string;
+          }>(endpoints.poll, pollBody);
+
+          if (result.status === 'success' && result.accessToken) {
+            stopOAuthPolling();
+            setState(prev => ({
+              ...prev,
+              oauthStatus: 'success',
+              oauthToken: result.accessToken!,
+              oauthRefreshToken: result.refreshToken ?? '',
+              oauthExpiresIn: result.expiresIn ?? null,
+            }));
+          } else if (result.status !== 'authorization_pending' && result.status !== 'slow_down') {
+            stopOAuthPolling();
+            setState(prev => ({ ...prev, oauthStatus: 'error', oauthError: result.description ?? result.status }));
+          }
+        } catch { /* network error during poll — keep trying */ }
+      }, intervalMs);
+
+      oauthExpireRef.current = setTimeout(() => {
+        stopOAuthPolling();
+        setState(prev => prev.oauthStatus === 'pending'
+          ? { ...prev, oauthStatus: 'error', oauthError: t('wizard.confirm.oauthExpired') }
+          : prev);
+      }, (data.expiresIn ?? 900) * 1000);
+    } catch (err) {
+      setState(prev => ({
+        ...prev, oauthStatus: 'error',
+        oauthError: err instanceof Error ? err.message : 'Failed to start OAuth flow',
+      }));
+    }
+  }, [stopOAuthPolling, t]);
+
+  // Clean up polling on provider/auth-method change or unmount
+  useEffect(() => { return () => stopOAuthPolling(); }, [state.byokProvider, state.selectedAuthMethodIndex, stopOAuthPolling]);
+
   function canProceed(): boolean {
     switch (currentStep) {
       case 'agentType': return agentType !== null;
@@ -675,8 +864,14 @@ export function CreateWizardPage() {
         if (state.credentialMode === 'platform') return true;
         if (!state.byokProvider) return false;
         const selectedProvider = providers.find(p => p.name === state.byokProvider);
-        const isOAuth = selectedProvider?.authMethods?.[0]?.type === 'oauth';
-        return isOAuth || state.byokApiKey.trim().length >= 1;
+        const authMethods = selectedProvider?.authMethods ?? [];
+        const authMethod = authMethods[state.selectedAuthMethodIndex] ?? authMethods[0];
+        if (authMethod?.type === 'oauth') {
+          return OAUTH_DEVICE_FLOW_ENDPOINTS[authMethod.value]
+            ? state.oauthStatus === 'success'
+            : true; // Non-device-flow OAuth (e.g. PKCE) — allow through
+        }
+        return state.byokApiKey.trim().length >= 1;
       }
       default: return true;
     }
@@ -776,13 +971,25 @@ _This file is yours to evolve. As you learn who you are, update it._
 
       const instance = await api.post<{ id: string }>('/instances', body);
 
-      if (state.credentialMode === 'byok' && state.byokApiKey && state.byokProvider) {
+      if (state.credentialMode === 'byok' && state.byokProvider) {
         try {
-          await api.post(`/instances/${instance.id}/credentials`, {
-            provider: state.byokProvider,
-            credentialType: 'api_key',
-            value: state.byokApiKey,
-          });
+          if (state.oauthStatus === 'success' && state.oauthToken) {
+            await api.post(`/instances/${instance.id}/credentials`, {
+              provider: state.byokProvider,
+              credentialType: 'oauth_token',
+              value: state.oauthToken,
+              metadata: {
+                ...(state.oauthRefreshToken ? { refreshToken: state.oauthRefreshToken } : {}),
+                ...(state.oauthExpiresIn ? { expiresIn: state.oauthExpiresIn } : {}),
+              },
+            });
+          } else if (state.byokApiKey) {
+            await api.post(`/instances/${instance.id}/credentials`, {
+              provider: state.byokProvider,
+              credentialType: 'api_key',
+              value: state.byokApiKey,
+            });
+          }
         } catch {
           // Best-effort credential save — instance already created
         }
@@ -929,6 +1136,8 @@ _This file is yours to evolve. As you learn who you are, update it._
             credentialsLoading={credentialsLoading}
             platformModels={platformModels}
             platformModelsLoading={platformModelsLoading}
+            onStartOAuth={startOAuthFlow}
+            stopOAuthPolling={stopOAuthPolling}
           />
         )}
 

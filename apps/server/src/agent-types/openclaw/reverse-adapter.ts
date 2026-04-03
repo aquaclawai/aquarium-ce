@@ -189,10 +189,11 @@ function inferCredentialRequirements(
   }
 
   for (const cred of existingCredentials) {
-    if (!requirements.some(r => r.provider === cred.provider && r.credentialType === cred.credentialType)) {
+    const credType = (cred.credentialType || (cred as unknown as Record<string, string>).credential_type || 'api_key') as 'api_key' | 'oauth_token';
+    if (!requirements.some(r => r.provider === cred.provider && r.credentialType === credType)) {
       requirements.push({
         provider: cred.provider,
-        credentialType: cred.credentialType as 'api_key' | 'oauth_token',
+        credentialType: credType,
         description: `${cred.provider} credential`,
         required: true,
       });

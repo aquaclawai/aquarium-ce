@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { createCipheriv, createDecipheriv, randomBytes, randomUUID } from 'crypto';
 import { db } from '../db/index.js';
 import { config } from '../config.js';
 import { logCredentialAudit, type CredentialAuditSource } from './credential-audit.js';
@@ -62,6 +62,7 @@ export async function addCredential(
 
   const [row] = await db('instance_credentials')
     .insert({
+      id: randomUUID(),
       instance_id: instanceId,
       provider,
       credential_type: credentialType,

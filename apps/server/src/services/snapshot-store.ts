@@ -1,4 +1,5 @@
 // apps/server/src/services/snapshot-store.ts
+import { randomUUID } from 'crypto';
 import { db } from '../db/index.js';
 import { getAdapter } from '../db/adapter.js';
 import { getRuntimeEngine } from '../runtime/factory.js';
@@ -119,6 +120,7 @@ export async function createSnapshot(
   // 5. Insert snapshot
   const [row] = await db('snapshots')
     .insert({
+      id: randomUUID(),
       instance_id: instanceId,
       user_id: userId,
       config_snapshot: JSON.stringify(configSnapshot),

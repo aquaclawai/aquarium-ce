@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { db } from '../db/index.js';
 import { getAdapter } from '../db/adapter.js';
 import { broadcast, broadcastToGroupChat } from '../ws/index.js';
@@ -116,6 +117,7 @@ async function fetchMembers(groupChatId: string): Promise<Record<string, unknown
 export async function createGroupChat(userId: string, req: CreateGroupChatRequest): Promise<GroupChat> {
   const [row] = await db('group_chats')
     .insert({
+      id: randomUUID(),
       user_id: userId,
       name: req.name,
       default_mention_mode: req.defaultMentionMode || 'broadcast',
@@ -202,6 +204,7 @@ export async function addMember(groupChatId: string, userId: string, req: AddGro
 
     const [member] = await db('group_chat_members')
       .insert({
+        id: randomUUID(),
         group_chat_id: groupChatId,
         instance_id: null,
         user_id: req.userId,
@@ -222,6 +225,7 @@ export async function addMember(groupChatId: string, userId: string, req: AddGro
 
   const [member] = await db('group_chat_members')
     .insert({
+      id: randomUUID(),
       group_chat_id: groupChatId,
       instance_id: req.instanceId,
       display_name: req.displayName,
@@ -459,6 +463,7 @@ async function fanOutToBot(
     const _adapter = getAdapter();
     const [replyRow] = await db('group_chat_messages')
       .insert({
+        id: randomUUID(),
         group_chat_id: groupChatId,
         sender_type: 'bot',
         sender_instance_id: targetInstanceId,
@@ -608,6 +613,7 @@ export async function sendMessage(groupChatId: string, userId: string, content: 
   const adapter = getAdapter();
   const [msgRow] = await db('group_chat_messages')
     .insert({
+      id: randomUUID(),
       group_chat_id: groupChatId,
       sender_type: 'user',
       sender_instance_id: null,

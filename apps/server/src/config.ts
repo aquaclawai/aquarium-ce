@@ -74,7 +74,7 @@ export const config = {
     /** Container name/ID of the LiteLLM proxy — connected to per-instance networks
      *  so platform-mode instances can reach it via Docker DNS.
      *  Leave empty to skip (e.g. when LiteLLM is not used or is externally routable). */
-    litellmContainerName: process.env.LITELLM_CONTAINER_NAME || 'openclaw-litellm',
+    litellmContainerName: process.env.LITELLM_CONTAINER_NAME || '',
   },
   kubernetes: {
     namespace: process.env.K8S_NAMESPACE || 'aquarium',

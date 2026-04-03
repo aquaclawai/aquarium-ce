@@ -145,6 +145,7 @@ export async function createInstance(userId: string, req: CreateInstanceRequest)
 
   const [row] = await db('instances')
     .insert({
+      id: randomUUID(),
       user_id: userId,
       name: req.name,
       agent_type: req.agentType,
@@ -340,6 +341,7 @@ export async function cloneInstance(sourceId: string, userId: string): Promise<I
 
   const [row] = await db('instances')
     .insert({
+      id: randomUUID(),
       user_id: userId,
       name: `Clone of ${source.name}`,
       agent_type: source.agentType,
@@ -841,7 +843,7 @@ export async function getInstanceEvents(id: string, userId: string, eventType?: 
     instanceId: row.instance_id as string,
     eventType: row.event_type as string,
     metadata: (typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata ?? {}) as Record<string, unknown>,
-    createdAt: (row.created_at as Date).toISOString(),
+    createdAt: String(row.created_at),
   }));
 }
 

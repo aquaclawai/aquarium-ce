@@ -14,7 +14,7 @@
   },
   "scripts": {
     "dev": "NODE_OPTIONS=--no-experimental-require-module tsx watch src/index.ce.ts",
-    "build": "tsc",
+    "build": "tsc && cp -r src/data dist/data",
     "start": "NODE_OPTIONS=--no-experimental-require-module node dist/index.ce.js",
     "typecheck": "tsc --noEmit",
     "migrate": "NODE_OPTIONS=--no-experimental-require-module tsx src/db/run-migrations.ts",

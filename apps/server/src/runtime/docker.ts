@@ -68,7 +68,7 @@ export class DockerEngine implements RuntimeEngine {
     const initName = `${containerId.slice(0, 12)}-vol-init`;
     const initContainer = await this.docker.createContainer({
       name: initName,
-      Image: 'busybox:latest',
+      Image: 'alpine:3.19',
       Cmd: ['chown', '-R', '1000:1000', ...mountPaths],
       User: 'root',
       HostConfig: { Binds: binds },

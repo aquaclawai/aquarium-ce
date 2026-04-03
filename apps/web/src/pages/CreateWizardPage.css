@@ -604,6 +604,131 @@
   line-height: 1.5;
 }
 
+/* ─── Auth method toggle ─── */
+.wiz-auth-method-toggle {
+  display: flex;
+  gap: var(--space-2);
+}
+.wiz-auth-method-btn {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.wiz-auth-method-btn:hover {
+  border-color: var(--color-primary);
+}
+.wiz-auth-method-btn--active {
+  border-color: var(--color-primary);
+  background: rgba(59,130,246,0.08);
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+/* ─── OAuth device flow widget ─── */
+.wiz-oauth-device-flow {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  background: var(--color-bg-secondary);
+  text-align: center;
+}
+.wiz-oauth-connect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.wiz-oauth-connect-btn:hover { opacity: 0.9; }
+.wiz-oauth-pending {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+.wiz-oauth-pending__title {
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+.wiz-oauth-pending__desc {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+.wiz-oauth-user-code {
+  font-family: monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  user-select: all;
+}
+.wiz-oauth-verify-link {
+  font-size: var(--text-sm);
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+.wiz-oauth-cancel-btn {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  margin-top: var(--space-1);
+}
+.wiz-oauth-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: wiz-spin 0.8s linear infinite;
+}
+@keyframes wiz-spin {
+  to { transform: rotate(360deg); }
+}
+.wiz-oauth-success {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  color: var(--color-success, #22c55e);
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+.wiz-oauth-success__icon {
+  font-size: 1.25rem;
+}
+.wiz-oauth-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+.wiz-oauth-error__msg {
+  color: var(--color-danger, #ef4444);
+  font-size: var(--text-sm);
+}
+
 .wiz-param-row {
   display: flex;
   align-items: center;

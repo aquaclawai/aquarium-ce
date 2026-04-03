@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { db } from '../db/index.js';
 import { encrypt, decrypt } from './credential-store.js';
 import { logCredentialAudit, type CredentialAuditSource } from './credential-audit.js';
@@ -76,6 +77,7 @@ export async function addUserCredential(
 
   const [row]: StoredUserCredential[] = await db('user_credentials')
     .insert({
+      id: randomUUID(),
       user_id: userId,
       provider,
       credential_type: credentialType,

@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { db } from '../db/index.js';
 import { createInstance } from './instance-manager.js';
 import { addCredential } from './credential-store.js';
@@ -282,6 +283,7 @@ export async function createTemplate(
   return db.transaction(async (trx) => {
     const [templateRow]: TemplateRow[] = await trx('templates')
       .insert({
+        id: randomUUID(),
         slug: req.slug,
         name: req.name,
         description: req.description ?? null,
@@ -343,6 +345,7 @@ export async function updateTemplate(
     await trx('templates').where({ slug: existing.slug, is_latest: true }).update({ is_latest: false });
 
     const patch: Record<string, unknown> = {
+      id: randomUUID(),
       slug: existing.slug,
       version: newVersion,
       is_latest: true,
@@ -419,6 +422,7 @@ export async function forkTemplate(templateId: string, userId: string, authorNam
 
     const [forked]: TemplateRow[] = await trx('templates')
       .insert({
+        id: randomUUID(),
         slug,
         name: `${original.name} (Fork)`,
         description: original.description,
