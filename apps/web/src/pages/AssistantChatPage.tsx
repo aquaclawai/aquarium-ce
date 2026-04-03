@@ -278,7 +278,7 @@ export function AssistantChatPage() {
         const historyMsgs = res.messages
           .filter(m => {
             if (m.role === 'user') return true;
-            if (m.role === 'tool') return false;
+            if (m.role === 'tool' || m.role === 'toolResult') return false;
             return extractText(m.content).length > 0;
           })
           .map(m => ({

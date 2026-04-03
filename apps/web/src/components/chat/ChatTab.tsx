@@ -260,8 +260,8 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
         const historyMsgs = res.messages
           .filter(m => {
             if (m.role === 'user') return true;
-            if (m.role === 'tool') return false;
-            // Hide agent messages with no visible text (thinking-only, tool-only, empty)
+            if (m.role === 'tool' || m.role === 'toolResult') return false;
+            // Hide agent messages with no visible text (thinking-only, toolCall-only, empty)
             return extractText(m.content).length > 0;
           })
           .map(m => ({
