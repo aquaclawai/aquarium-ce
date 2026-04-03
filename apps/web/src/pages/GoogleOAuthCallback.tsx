@@ -12,6 +12,14 @@ export function GoogleOAuthCallback() {
     (async () => {
       const code = searchParams.get('code');
       const state = searchParams.get('state');
+
+      // Popup mode: opened by the wizard — send code back via postMessage and close
+      if (window.opener && code && state) {
+        window.opener.postMessage({ type: 'oauth_callback', code, state }, window.location.origin);
+        setTimeout(() => window.close(), 500);
+        return;
+      }
+
       const pendingRaw = sessionStorage.getItem('google_oauth_pending');
 
       if (!code || !state || !pendingRaw) {

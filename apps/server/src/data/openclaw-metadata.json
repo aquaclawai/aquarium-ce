@@ -7,324 +7,908 @@
       "name": "Anthropic",
       "hint": "API key authentication",
       "authMethods": [
-        { "value": "apiKey", "label": "API Key", "hint": "Set ANTHROPIC_API_KEY", "type": "api-key" }
+        {
+          "value": "apiKey",
+          "label": "API Key",
+          "hint": "Set ANTHROPIC_API_KEY",
+          "type": "api-key"
+        }
       ],
       "models": [
-        { "id": "claude-opus-4-6", "name": "Claude Opus 4.6", "contextWindow": 200000, "recommended": true },
-        { "id": "claude-opus-4-5", "name": "Claude Opus 4.5", "contextWindow": 200000, "recommended": true },
-        { "id": "claude-sonnet-4-20250514", "name": "Claude Sonnet 4", "contextWindow": 200000, "recommended": true },
-        { "id": "claude-haiku-3-20250414", "name": "Claude Haiku 3", "contextWindow": 200000, "recommended": true }
+        {
+          "id": "claude-opus-4-6",
+          "name": "Claude Opus 4.6",
+          "contextWindow": 200000,
+          "recommended": true
+        },
+        {
+          "id": "claude-opus-4-5",
+          "name": "Claude Opus 4.5",
+          "contextWindow": 200000,
+          "recommended": true
+        },
+        {
+          "id": "claude-sonnet-4-20250514",
+          "name": "Claude Sonnet 4",
+          "contextWindow": 200000,
+          "recommended": true
+        },
+        {
+          "id": "claude-haiku-3-20250414",
+          "name": "Claude Haiku 3",
+          "contextWindow": 200000,
+          "recommended": true
+        }
       ],
-      "envVars": ["ANTHROPIC_API_KEY"]
+      "envVars": [
+        "ANTHROPIC_API_KEY"
+      ]
     },
     {
       "id": "openai",
       "name": "OpenAI",
       "hint": "API key or OAuth authentication",
       "authMethods": [
-        { "value": "apiKey", "label": "API Key", "hint": "Set OPENAI_API_KEY", "type": "api-key" },
-        { "value": "openai-codex", "label": "OpenAI Codex (ChatGPT OAuth)", "hint": "Uses ChatGPT device flow", "type": "oauth" }
+        {
+          "value": "apiKey",
+          "label": "API Key",
+          "hint": "Set OPENAI_API_KEY",
+          "type": "api-key"
+        },
+        {
+          "value": "openai-codex",
+          "label": "OpenAI Codex (ChatGPT OAuth)",
+          "hint": "Uses ChatGPT device flow",
+          "type": "oauth"
+        }
       ],
       "models": [
-        { "id": "gpt-5", "name": "GPT-5", "contextWindow": 200000, "recommended": true },
-        { "id": "gpt-5-mini", "name": "GPT-5 Mini", "contextWindow": 200000, "recommended": true },
-        { "id": "gpt-4.1", "name": "GPT-4.1", "contextWindow": 1047576, "recommended": true },
-        { "id": "gpt-4.1-mini", "name": "GPT-4.1 Mini", "contextWindow": 1047576, "recommended": true },
-        { "id": "gpt-4.1-nano", "name": "GPT-4.1 Nano", "contextWindow": 1047576, "recommended": true },
-        { "id": "gpt-4o", "name": "GPT-4o", "contextWindow": 128000, "recommended": true },
-        { "id": "gpt-4o-mini", "name": "GPT-4o Mini", "contextWindow": 128000, "recommended": true },
-        { "id": "o3", "name": "o3", "contextWindow": 200000, "reasoning": true, "recommended": true },
-        { "id": "o3-mini", "name": "o3 Mini", "contextWindow": 200000, "reasoning": true, "recommended": true },
-        { "id": "o3-pro", "name": "o3 Pro", "contextWindow": 200000, "reasoning": true, "recommended": true },
-        { "id": "o1", "name": "o1", "contextWindow": 200000, "reasoning": true, "recommended": true },
-        { "id": "o1-mini", "name": "o1 Mini", "contextWindow": 128000, "reasoning": true, "recommended": true },
-        { "id": "codex-mini", "name": "Codex Mini", "contextWindow": 200000, "recommended": true }
+        {
+          "id": "gpt-5",
+          "name": "GPT-5",
+          "contextWindow": 200000,
+          "recommended": true
+        },
+        {
+          "id": "gpt-5-mini",
+          "name": "GPT-5 Mini",
+          "contextWindow": 200000,
+          "recommended": true
+        },
+        {
+          "id": "gpt-4.1",
+          "name": "GPT-4.1",
+          "contextWindow": 1047576,
+          "recommended": true
+        },
+        {
+          "id": "gpt-4.1-mini",
+          "name": "GPT-4.1 Mini",
+          "contextWindow": 1047576,
+          "recommended": true
+        },
+        {
+          "id": "gpt-4.1-nano",
+          "name": "GPT-4.1 Nano",
+          "contextWindow": 1047576,
+          "recommended": true
+        },
+        {
+          "id": "gpt-4o",
+          "name": "GPT-4o",
+          "contextWindow": 128000,
+          "recommended": true
+        },
+        {
+          "id": "gpt-4o-mini",
+          "name": "GPT-4o Mini",
+          "contextWindow": 128000,
+          "recommended": true
+        },
+        {
+          "id": "o3",
+          "name": "o3",
+          "contextWindow": 200000,
+          "reasoning": true,
+          "recommended": true
+        },
+        {
+          "id": "o3-mini",
+          "name": "o3 Mini",
+          "contextWindow": 200000,
+          "reasoning": true,
+          "recommended": true
+        },
+        {
+          "id": "o3-pro",
+          "name": "o3 Pro",
+          "contextWindow": 200000,
+          "reasoning": true,
+          "recommended": true
+        },
+        {
+          "id": "o1",
+          "name": "o1",
+          "contextWindow": 200000,
+          "reasoning": true,
+          "recommended": true
+        },
+        {
+          "id": "o1-mini",
+          "name": "o1 Mini",
+          "contextWindow": 128000,
+          "reasoning": true,
+          "recommended": true
+        },
+        {
+          "id": "codex-mini",
+          "name": "Codex Mini",
+          "contextWindow": 200000,
+          "recommended": true
+        }
       ],
-      "envVars": ["OPENAI_API_KEY"]
+      "envVars": [
+        "OPENAI_API_KEY"
+      ]
     },
     {
       "id": "google",
       "name": "Google Gemini",
       "hint": "API key or OAuth authentication",
       "authMethods": [
-        { "value": "gemini-api-key", "label": "Gemini API Key", "hint": "Set GEMINI_API_KEY", "type": "api-key" },
-        { "value": "google-gemini-cli", "label": "Google Gemini CLI (OAuth)", "hint": "Uses Google OAuth PKCE flow", "type": "oauth" }
+        {
+          "value": "gemini-api-key",
+          "label": "Gemini API Key",
+          "hint": "Set GEMINI_API_KEY",
+          "type": "api-key"
+        },
+        {
+          "value": "google-gemini-cli",
+          "label": "Google Gemini CLI (OAuth)",
+          "hint": "Uses Google OAuth PKCE flow",
+          "type": "oauth"
+        }
       ],
       "models": [
-        { "id": "gemini-3-pro", "name": "Gemini 3 Pro", "contextWindow": 1000000, "recommended": true },
-        { "id": "gemini-3-flash", "name": "Gemini 3 Flash", "contextWindow": 1000000, "recommended": true },
-        { "id": "gemini-2.5-pro", "name": "Gemini 2.5 Pro", "contextWindow": 1000000, "recommended": true },
-        { "id": "gemini-2.5-flash", "name": "Gemini 2.5 Flash", "contextWindow": 1000000, "recommended": true }
+        {
+          "id": "gemini-3-pro",
+          "name": "Gemini 3 Pro",
+          "contextWindow": 1000000,
+          "recommended": true
+        },
+        {
+          "id": "gemini-3-flash",
+          "name": "Gemini 3 Flash",
+          "contextWindow": 1000000,
+          "recommended": true
+        },
+        {
+          "id": "gemini-2.5-pro",
+          "name": "Gemini 2.5 Pro",
+          "contextWindow": 1000000,
+          "recommended": true
+        },
+        {
+          "id": "gemini-2.5-flash",
+          "name": "Gemini 2.5 Flash",
+          "contextWindow": 1000000,
+          "recommended": true
+        }
       ],
-      "envVars": ["GEMINI_API_KEY"]
+      "envVars": [
+        "GEMINI_API_KEY"
+      ]
     },
     {
       "id": "openrouter",
       "name": "OpenRouter",
       "hint": "API key authentication — access 200+ models through one API",
       "authMethods": [
-        { "value": "apiKey", "label": "API Key", "hint": "Set OPENROUTER_API_KEY", "type": "api-key" }
+        {
+          "value": "apiKey",
+          "label": "API Key",
+          "hint": "Set OPENROUTER_API_KEY",
+          "type": "api-key"
+        }
       ],
       "models": [
-        { "id": "anthropic/claude-opus-4.6", "name": "Claude Opus 4.6", "contextWindow": 200000, "recommended": true },
-        { "id": "anthropic/claude-sonnet-4", "name": "Claude Sonnet 4", "contextWindow": 200000, "recommended": true },
-        { "id": "openai/gpt-5", "name": "GPT-5", "contextWindow": 200000, "recommended": true },
-        { "id": "openai/gpt-4.1", "name": "GPT-4.1", "contextWindow": 1047576, "recommended": true },
-        { "id": "google/gemini-2.5-pro", "name": "Gemini 2.5 Pro", "contextWindow": 1000000, "recommended": true },
-        { "id": "google/gemini-2.5-flash", "name": "Gemini 2.5 Flash", "contextWindow": 1000000, "recommended": true },
-        { "id": "auto", "name": "OpenRouter Auto", "contextWindow": 200000 }
+        {
+          "id": "anthropic/claude-opus-4.6",
+          "name": "Claude Opus 4.6",
+          "contextWindow": 200000,
+          "recommended": true
+        },
+        {
+          "id": "anthropic/claude-sonnet-4",
+          "name": "Claude Sonnet 4",
+          "contextWindow": 200000,
+          "recommended": true
+        },
+        {
+          "id": "openai/gpt-5",
+          "name": "GPT-5",
+          "contextWindow": 200000,
+          "recommended": true
+        },
+        {
+          "id": "openai/gpt-4.1",
+          "name": "GPT-4.1",
+          "contextWindow": 1047576,
+          "recommended": true
+        },
+        {
+          "id": "google/gemini-2.5-pro",
+          "name": "Gemini 2.5 Pro",
+          "contextWindow": 1000000,
+          "recommended": true
+        },
+        {
+          "id": "google/gemini-2.5-flash",
+          "name": "Gemini 2.5 Flash",
+          "contextWindow": 1000000,
+          "recommended": true
+        },
+        {
+          "id": "auto",
+          "name": "OpenRouter Auto",
+          "contextWindow": 200000
+        }
       ],
-      "envVars": ["OPENROUTER_API_KEY"]
+      "envVars": [
+        "OPENROUTER_API_KEY"
+      ]
     },
     {
       "id": "github-copilot",
       "name": "GitHub Copilot",
       "hint": "OAuth authentication via GitHub",
       "authMethods": [
-        { "value": "github-copilot", "label": "GitHub Copilot (OAuth)", "hint": "Uses GitHub device flow", "type": "oauth" }
+        {
+          "value": "github-copilot",
+          "label": "GitHub Copilot (OAuth)",
+          "hint": "Uses GitHub device flow",
+          "type": "oauth"
+        }
       ],
       "models": [
-        { "id": "claude-sonnet-4-20250514", "name": "Claude Sonnet 4", "contextWindow": 200000, "recommended": true },
-        { "id": "gpt-4o", "name": "GPT-4o", "contextWindow": 128000, "recommended": true },
-        { "id": "gpt-4.1", "name": "GPT-4.1", "contextWindow": 1047576, "recommended": true },
-        { "id": "gpt-4.1-mini", "name": "GPT-4.1 Mini", "contextWindow": 1047576, "recommended": true },
-        { "id": "gpt-4.1-nano", "name": "GPT-4.1 Nano", "contextWindow": 1047576, "recommended": true },
-        { "id": "gpt-5-mini", "name": "GPT-5 Mini", "contextWindow": 200000, "recommended": true },
-        { "id": "o3-mini", "name": "o3 Mini", "contextWindow": 200000, "reasoning": true, "recommended": true },
-        { "id": "o1", "name": "o1", "contextWindow": 200000, "reasoning": true, "recommended": true },
-        { "id": "o1-mini", "name": "o1 Mini", "contextWindow": 128000, "reasoning": true, "recommended": true }
+        {
+          "id": "claude-sonnet-4-20250514",
+          "name": "Claude Sonnet 4",
+          "contextWindow": 200000,
+          "recommended": true
+        },
+        {
+          "id": "gpt-4o",
+          "name": "GPT-4o",
+          "contextWindow": 128000,
+          "recommended": true
+        },
+        {
+          "id": "gpt-4.1",
+          "name": "GPT-4.1",
+          "contextWindow": 1047576,
+          "recommended": true
+        },
+        {
+          "id": "gpt-4.1-mini",
+          "name": "GPT-4.1 Mini",
+          "contextWindow": 1047576,
+          "recommended": true
+        },
+        {
+          "id": "gpt-4.1-nano",
+          "name": "GPT-4.1 Nano",
+          "contextWindow": 1047576,
+          "recommended": true
+        },
+        {
+          "id": "gpt-5-mini",
+          "name": "GPT-5 Mini",
+          "contextWindow": 200000,
+          "recommended": true
+        },
+        {
+          "id": "o3-mini",
+          "name": "o3 Mini",
+          "contextWindow": 200000,
+          "reasoning": true,
+          "recommended": true
+        },
+        {
+          "id": "o1",
+          "name": "o1",
+          "contextWindow": 200000,
+          "reasoning": true,
+          "recommended": true
+        },
+        {
+          "id": "o1-mini",
+          "name": "o1 Mini",
+          "contextWindow": 128000,
+          "reasoning": true,
+          "recommended": true
+        }
       ],
-      "envVars": ["COPILOT_GITHUB_TOKEN"]
+      "envVars": [
+        "COPILOT_GITHUB_TOKEN"
+      ]
     },
     {
       "id": "xai",
       "name": "xAI (Grok)",
       "hint": "API key authentication",
       "authMethods": [
-        { "value": "apiKey", "label": "API Key", "hint": "Set XAI_API_KEY", "type": "api-key" }
+        {
+          "value": "apiKey",
+          "label": "API Key",
+          "hint": "Set XAI_API_KEY",
+          "type": "api-key"
+        }
       ],
       "models": [
-        { "id": "grok-3", "name": "Grok 3", "contextWindow": 131072, "recommended": true },
-        { "id": "grok-3-mini", "name": "Grok 3 Mini", "contextWindow": 131072, "reasoning": true, "recommended": true },
-        { "id": "grok-2", "name": "Grok 2", "contextWindow": 131072, "recommended": true }
+        {
+          "id": "grok-3",
+          "name": "Grok 3",
+          "contextWindow": 131072,
+          "recommended": true
+        },
+        {
+          "id": "grok-3-mini",
+          "name": "Grok 3 Mini",
+          "contextWindow": 131072,
+          "reasoning": true,
+          "recommended": true
+        },
+        {
+          "id": "grok-2",
+          "name": "Grok 2",
+          "contextWindow": 131072,
+          "recommended": true
+        }
       ],
-      "envVars": ["XAI_API_KEY"]
+      "envVars": [
+        "XAI_API_KEY"
+      ]
     },
     {
       "id": "deepseek",
       "name": "DeepSeek",
       "hint": "API key authentication",
       "authMethods": [
-        { "value": "apiKey", "label": "API Key", "hint": "Set DEEPSEEK_API_KEY", "type": "api-key" }
+        {
+          "value": "apiKey",
+          "label": "API Key",
+          "hint": "Set DEEPSEEK_API_KEY",
+          "type": "api-key"
+        }
       ],
       "models": [
-        { "id": "deepseek-chat", "name": "DeepSeek V3", "contextWindow": 65536, "recommended": true },
-        { "id": "deepseek-reasoner", "name": "DeepSeek R1", "contextWindow": 65536, "reasoning": true, "recommended": true }
+        {
+          "id": "deepseek-chat",
+          "name": "DeepSeek V3",
+          "contextWindow": 65536,
+          "recommended": true
+        },
+        {
+          "id": "deepseek-reasoner",
+          "name": "DeepSeek R1",
+          "contextWindow": 65536,
+          "reasoning": true,
+          "recommended": true
+        }
       ],
-      "envVars": ["DEEPSEEK_API_KEY"]
+      "envVars": [
+        "DEEPSEEK_API_KEY"
+      ]
     },
     {
       "id": "mistral",
       "name": "Mistral",
       "hint": "API key authentication",
       "authMethods": [
-        { "value": "apiKey", "label": "API Key", "hint": "Set MISTRAL_API_KEY", "type": "api-key" }
+        {
+          "value": "apiKey",
+          "label": "API Key",
+          "hint": "Set MISTRAL_API_KEY",
+          "type": "api-key"
+        }
       ],
       "models": [
-        { "id": "mistral-large-latest", "name": "Mistral Large", "contextWindow": 128000, "recommended": true },
-        { "id": "mistral-medium-latest", "name": "Mistral Medium", "contextWindow": 128000, "recommended": true },
-        { "id": "mistral-small-latest", "name": "Mistral Small", "contextWindow": 128000, "recommended": true },
-        { "id": "codestral-latest", "name": "Codestral", "contextWindow": 32000, "recommended": true }
+        {
+          "id": "mistral-large-latest",
+          "name": "Mistral Large",
+          "contextWindow": 128000,
+          "recommended": true
+        },
+        {
+          "id": "mistral-medium-latest",
+          "name": "Mistral Medium",
+          "contextWindow": 128000,
+          "recommended": true
+        },
+        {
+          "id": "mistral-small-latest",
+          "name": "Mistral Small",
+          "contextWindow": 128000,
+          "recommended": true
+        },
+        {
+          "id": "codestral-latest",
+          "name": "Codestral",
+          "contextWindow": 32000,
+          "recommended": true
+        }
       ],
-      "envVars": ["MISTRAL_API_KEY"]
+      "envVars": [
+        "MISTRAL_API_KEY"
+      ]
     },
     {
       "id": "together",
       "name": "Together AI",
       "hint": "API key authentication — open-source models",
       "authMethods": [
-        { "value": "apiKey", "label": "API Key", "hint": "Set TOGETHER_API_KEY", "type": "api-key" }
+        {
+          "value": "apiKey",
+          "label": "API Key",
+          "hint": "Set TOGETHER_API_KEY",
+          "type": "api-key"
+        }
       ],
       "models": [
-        { "id": "meta-llama/Llama-3.3-70B-Instruct-Turbo", "name": "Llama 3.3 70B Turbo", "contextWindow": 128000, "recommended": true },
-        { "id": "deepseek-ai/DeepSeek-V3", "name": "DeepSeek V3", "contextWindow": 65536, "recommended": true },
-        { "id": "Qwen/Qwen2.5-72B-Instruct-Turbo", "name": "Qwen 2.5 72B Turbo", "contextWindow": 131072, "recommended": true }
+        {
+          "id": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+          "name": "Llama 3.3 70B Turbo",
+          "contextWindow": 128000,
+          "recommended": true
+        },
+        {
+          "id": "deepseek-ai/DeepSeek-V3",
+          "name": "DeepSeek V3",
+          "contextWindow": 65536,
+          "recommended": true
+        },
+        {
+          "id": "Qwen/Qwen2.5-72B-Instruct-Turbo",
+          "name": "Qwen 2.5 72B Turbo",
+          "contextWindow": 131072,
+          "recommended": true
+        }
       ],
-      "envVars": ["TOGETHER_API_KEY"]
+      "envVars": [
+        "TOGETHER_API_KEY"
+      ]
     },
     {
       "id": "venice",
       "name": "Venice AI",
       "hint": "API key authentication — private & uncensored",
       "authMethods": [
-        { "value": "apiKey", "label": "API Key", "hint": "Set VENICE_API_KEY", "type": "api-key" }
+        {
+          "value": "apiKey",
+          "label": "API Key",
+          "hint": "Set VENICE_API_KEY",
+          "type": "api-key"
+        }
       ],
       "models": [
-        { "id": "llama-3.3-70b", "name": "Llama 3.3 70B", "contextWindow": 128000, "recommended": true },
-        { "id": "deepseek-r1-671b", "name": "DeepSeek R1 671B", "contextWindow": 65536, "reasoning": true, "recommended": true }
+        {
+          "id": "llama-3.3-70b",
+          "name": "Llama 3.3 70B",
+          "contextWindow": 128000,
+          "recommended": true
+        },
+        {
+          "id": "deepseek-r1-671b",
+          "name": "DeepSeek R1 671B",
+          "contextWindow": 65536,
+          "reasoning": true,
+          "recommended": true
+        }
       ],
-      "envVars": ["VENICE_API_KEY"]
+      "envVars": [
+        "VENICE_API_KEY"
+      ]
     },
     {
       "id": "groq",
       "name": "Groq",
       "hint": "API key authentication — ultra-fast inference",
       "authMethods": [
-        { "value": "apiKey", "label": "API Key", "hint": "Set GROQ_API_KEY", "type": "api-key" }
+        {
+          "value": "apiKey",
+          "label": "API Key",
+          "hint": "Set GROQ_API_KEY",
+          "type": "api-key"
+        }
       ],
       "models": [
-        { "id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B", "contextWindow": 128000, "recommended": true },
-        { "id": "llama-3.1-8b-instant", "name": "Llama 3.1 8B Instant", "contextWindow": 128000, "recommended": true },
-        { "id": "mixtral-8x7b-32768", "name": "Mixtral 8x7B", "contextWindow": 32768, "recommended": true },
-        { "id": "gemma2-9b-it", "name": "Gemma 2 9B", "contextWindow": 8192, "recommended": true }
+        {
+          "id": "llama-3.3-70b-versatile",
+          "name": "Llama 3.3 70B",
+          "contextWindow": 128000,
+          "recommended": true
+        },
+        {
+          "id": "llama-3.1-8b-instant",
+          "name": "Llama 3.1 8B Instant",
+          "contextWindow": 128000,
+          "recommended": true
+        },
+        {
+          "id": "mixtral-8x7b-32768",
+          "name": "Mixtral 8x7B",
+          "contextWindow": 32768,
+          "recommended": true
+        },
+        {
+          "id": "gemma2-9b-it",
+          "name": "Gemma 2 9B",
+          "contextWindow": 8192,
+          "recommended": true
+        }
       ],
-      "envVars": ["GROQ_API_KEY"]
+      "envVars": [
+        "GROQ_API_KEY"
+      ]
     },
     {
       "id": "moonshot",
       "name": "Moonshot / Kimi",
       "hint": "API key authentication",
       "authMethods": [
-        { "value": "apiKey", "label": "API Key", "hint": "Set MOONSHOT_API_KEY", "type": "api-key" }
+        {
+          "value": "apiKey",
+          "label": "API Key",
+          "hint": "Set MOONSHOT_API_KEY",
+          "type": "api-key"
+        }
       ],
       "models": [
-        { "id": "kimi-k2.5", "name": "Kimi K2.5", "contextWindow": 262144, "recommended": true },
-        { "id": "moonshot-v1-128k", "name": "Moonshot V1 128K", "contextWindow": 128000, "recommended": true }
+        {
+          "id": "kimi-k2.5",
+          "name": "Kimi K2.5",
+          "contextWindow": 262144,
+          "recommended": true
+        },
+        {
+          "id": "moonshot-v1-128k",
+          "name": "Moonshot V1 128K",
+          "contextWindow": 128000,
+          "recommended": true
+        }
       ],
-      "envVars": ["MOONSHOT_API_KEY"]
+      "envVars": [
+        "MOONSHOT_API_KEY"
+      ]
     },
     {
       "id": "minimax",
       "name": "MiniMax",
       "hint": "API key or OAuth authentication",
       "authMethods": [
-        { "value": "apiKey", "label": "API Key", "hint": "Set MINIMAX_API_KEY", "type": "api-key" },
-        { "value": "minimax-portal", "label": "MiniMax Portal (OAuth)", "hint": "Uses MiniMax portal flow", "type": "oauth" }
+        {
+          "value": "apiKey",
+          "label": "API Key",
+          "hint": "Set MINIMAX_API_KEY",
+          "type": "api-key"
+        },
+        {
+          "value": "minimax-portal",
+          "label": "MiniMax Portal (OAuth)",
+          "hint": "Uses MiniMax portal flow",
+          "type": "oauth"
+        }
       ],
       "models": [
-        { "id": "MiniMax-M2.1", "name": "MiniMax M2.1", "contextWindow": 204800, "recommended": true },
-        { "id": "MiniMax-VL-01", "name": "MiniMax VL-01", "contextWindow": 204800, "recommended": true }
+        {
+          "id": "MiniMax-M2.1",
+          "name": "MiniMax M2.1",
+          "contextWindow": 204800,
+          "recommended": true
+        },
+        {
+          "id": "MiniMax-VL-01",
+          "name": "MiniMax VL-01",
+          "contextWindow": 204800,
+          "recommended": true
+        }
       ],
-      "envVars": ["MINIMAX_API_KEY"]
+      "envVars": [
+        "MINIMAX_API_KEY"
+      ]
     },
     {
       "id": "huggingface",
       "name": "Hugging Face",
       "hint": "API key authentication — open-source models",
       "authMethods": [
-        { "value": "apiKey", "label": "API Key", "hint": "Set HF_TOKEN", "type": "api-key" }
+        {
+          "value": "apiKey",
+          "label": "API Key",
+          "hint": "Set HF_TOKEN",
+          "type": "api-key"
+        }
       ],
       "models": [
-        { "id": "deepseek-chat", "name": "DeepSeek Chat", "contextWindow": 65536, "recommended": true },
-        { "id": "deepseek-reasoner", "name": "DeepSeek Reasoner", "contextWindow": 65536, "reasoning": true, "recommended": true }
+        {
+          "id": "deepseek-chat",
+          "name": "DeepSeek Chat",
+          "contextWindow": 65536,
+          "recommended": true
+        },
+        {
+          "id": "deepseek-reasoner",
+          "name": "DeepSeek Reasoner",
+          "contextWindow": 65536,
+          "reasoning": true,
+          "recommended": true
+        }
       ],
-      "envVars": ["HF_TOKEN"]
+      "envVars": [
+        "HF_TOKEN"
+      ]
     },
     {
       "id": "ollama",
       "name": "Ollama",
       "hint": "Local models — no API key required",
       "authMethods": [
-        { "value": "apiKey", "label": "Endpoint URL", "hint": "Set OLLAMA_BASE_URL (default: http://localhost:11434)", "type": "custom-endpoint" }
+        {
+          "value": "apiKey",
+          "label": "Endpoint URL",
+          "hint": "Set OLLAMA_BASE_URL (default: http://localhost:11434)",
+          "type": "custom-endpoint"
+        }
       ],
       "models": [
-        { "id": "llama3", "name": "Llama 3", "contextWindow": 128000, "recommended": true },
-        { "id": "llama3.1", "name": "Llama 3.1", "contextWindow": 128000, "recommended": true },
-        { "id": "mixtral", "name": "Mixtral", "contextWindow": 32768 },
-        { "id": "codellama", "name": "Code Llama", "contextWindow": 16384 },
-        { "id": "deepseek-coder-v2", "name": "DeepSeek Coder V2", "contextWindow": 128000 },
-        { "id": "qwen2.5-coder", "name": "Qwen 2.5 Coder", "contextWindow": 131072 }
+        {
+          "id": "llama3",
+          "name": "Llama 3",
+          "contextWindow": 128000,
+          "recommended": true
+        },
+        {
+          "id": "llama3.1",
+          "name": "Llama 3.1",
+          "contextWindow": 128000,
+          "recommended": true
+        },
+        {
+          "id": "mixtral",
+          "name": "Mixtral",
+          "contextWindow": 32768
+        },
+        {
+          "id": "codellama",
+          "name": "Code Llama",
+          "contextWindow": 16384
+        },
+        {
+          "id": "deepseek-coder-v2",
+          "name": "DeepSeek Coder V2",
+          "contextWindow": 128000
+        },
+        {
+          "id": "qwen2.5-coder",
+          "name": "Qwen 2.5 Coder",
+          "contextWindow": 131072
+        }
       ],
-      "envVars": ["OLLAMA_BASE_URL"]
+      "envVars": [
+        "OLLAMA_BASE_URL"
+      ]
     },
     {
       "id": "bedrock",
       "name": "AWS Bedrock",
       "hint": "AWS credentials authentication",
       "authMethods": [
-        { "value": "apiKey", "label": "AWS Access Key", "hint": "Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY", "type": "api-key" }
+        {
+          "value": "apiKey",
+          "label": "AWS Access Key",
+          "hint": "Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY",
+          "type": "api-key"
+        }
       ],
       "models": [
-        { "id": "anthropic.claude-sonnet-4-20250514-v2:0", "name": "Claude Sonnet 4 (Bedrock)", "contextWindow": 200000, "recommended": true },
-        { "id": "anthropic.claude-haiku-3-20250414-v1:0", "name": "Claude Haiku 3 (Bedrock)", "contextWindow": 200000, "recommended": true }
+        {
+          "id": "anthropic.claude-sonnet-4-20250514-v2:0",
+          "name": "Claude Sonnet 4 (Bedrock)",
+          "contextWindow": 200000,
+          "recommended": true
+        },
+        {
+          "id": "anthropic.claude-haiku-3-20250414-v1:0",
+          "name": "Claude Haiku 3 (Bedrock)",
+          "contextWindow": 200000,
+          "recommended": true
+        }
       ],
-      "envVars": ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION"]
+      "envVars": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_REGION"
+      ]
     },
     {
       "id": "nvidia",
       "name": "NVIDIA",
       "hint": "API key authentication",
       "authMethods": [
-        { "value": "apiKey", "label": "API Key", "hint": "Set NVIDIA_API_KEY", "type": "api-key" }
+        {
+          "value": "apiKey",
+          "label": "API Key",
+          "hint": "Set NVIDIA_API_KEY",
+          "type": "api-key"
+        }
       ],
       "models": [
-        { "id": "nvidia/llama-3.1-nemotron-70b-instruct", "name": "Llama 3.1 Nemotron 70B", "contextWindow": 131072, "recommended": true },
-        { "id": "meta/llama-3.3-70b-instruct", "name": "Llama 3.3 70B", "contextWindow": 131072 }
+        {
+          "id": "nvidia/llama-3.1-nemotron-70b-instruct",
+          "name": "Llama 3.1 Nemotron 70B",
+          "contextWindow": 131072,
+          "recommended": true
+        },
+        {
+          "id": "meta/llama-3.3-70b-instruct",
+          "name": "Llama 3.3 70B",
+          "contextWindow": 131072
+        }
       ],
-      "envVars": ["NVIDIA_API_KEY"]
+      "envVars": [
+        "NVIDIA_API_KEY"
+      ]
     },
     {
       "id": "chutes",
       "name": "Chutes",
       "hint": "API key or OAuth authentication",
       "authMethods": [
-        { "value": "apiKey", "label": "API Key", "hint": "Set CHUTES_API_KEY", "type": "api-key" },
-        { "value": "chutes", "label": "Chutes OAuth", "hint": "Uses Chutes OAuth flow", "type": "oauth" }
+        {
+          "value": "apiKey",
+          "label": "API Key",
+          "hint": "Set CHUTES_API_KEY",
+          "type": "api-key"
+        },
+        {
+          "value": "chutes",
+          "label": "Chutes OAuth",
+          "hint": "Uses Chutes OAuth flow",
+          "type": "oauth"
+        }
       ],
       "models": [
-        { "id": "deepseek-ai/DeepSeek-V3-0324", "name": "DeepSeek V3", "contextWindow": 65536, "recommended": true },
-        { "id": "deepseek-ai/DeepSeek-R1", "name": "DeepSeek R1", "contextWindow": 65536, "reasoning": true, "recommended": true }
+        {
+          "id": "deepseek-ai/DeepSeek-V3-0324",
+          "name": "DeepSeek V3",
+          "contextWindow": 65536,
+          "recommended": true
+        },
+        {
+          "id": "deepseek-ai/DeepSeek-R1",
+          "name": "DeepSeek R1",
+          "contextWindow": 65536,
+          "reasoning": true,
+          "recommended": true
+        }
       ],
-      "envVars": ["CHUTES_API_KEY"]
+      "envVars": [
+        "CHUTES_API_KEY"
+      ]
     },
     {
       "id": "qwen",
       "name": "Qwen (Alibaba)",
       "hint": "API key or OAuth authentication",
       "authMethods": [
-        { "value": "apiKey", "label": "API Key", "hint": "Set DASHSCOPE_API_KEY", "type": "api-key" },
-        { "value": "qwen-portal", "label": "Qwen Portal (OAuth)", "hint": "Uses Qwen portal flow", "type": "oauth" }
+        {
+          "value": "apiKey",
+          "label": "API Key",
+          "hint": "Set DASHSCOPE_API_KEY",
+          "type": "api-key"
+        }
       ],
       "models": [
-        { "id": "qwen-max", "name": "Qwen Max", "contextWindow": 131072, "recommended": true },
-        { "id": "qwen-plus", "name": "Qwen Plus", "contextWindow": 131072, "recommended": true },
-        { "id": "qwen-turbo", "name": "Qwen Turbo", "contextWindow": 131072 },
-        { "id": "qwen2.5-coder-32b-instruct", "name": "Qwen 2.5 Coder 32B", "contextWindow": 131072 }
+        {
+          "id": "qwen-max",
+          "name": "Qwen Max",
+          "contextWindow": 131072,
+          "recommended": true
+        },
+        {
+          "id": "qwen-plus",
+          "name": "Qwen Plus",
+          "contextWindow": 131072,
+          "recommended": true
+        },
+        {
+          "id": "qwen-turbo",
+          "name": "Qwen Turbo",
+          "contextWindow": 131072
+        },
+        {
+          "id": "qwen2.5-coder-32b-instruct",
+          "name": "Qwen 2.5 Coder 32B",
+          "contextWindow": 131072
+        }
       ],
-      "envVars": ["DASHSCOPE_API_KEY"]
+      "envVars": [
+        "DASHSCOPE_API_KEY"
+      ]
     },
     {
       "id": "volcengine",
       "name": "Volcengine / Doubao",
       "hint": "API key authentication — ByteDance models",
       "authMethods": [
-        { "value": "apiKey", "label": "API Key", "hint": "Set ARK_API_KEY", "type": "api-key" }
+        {
+          "value": "apiKey",
+          "label": "API Key",
+          "hint": "Set ARK_API_KEY",
+          "type": "api-key"
+        }
       ],
       "models": [
-        { "id": "doubao-1.5-pro-256k", "name": "Doubao 1.5 Pro 256K", "contextWindow": 262144, "recommended": true },
-        { "id": "doubao-1.5-thinking-pro", "name": "Doubao 1.5 Thinking Pro", "contextWindow": 65536, "reasoning": true, "recommended": true }
+        {
+          "id": "doubao-1.5-pro-256k",
+          "name": "Doubao 1.5 Pro 256K",
+          "contextWindow": 262144,
+          "recommended": true
+        },
+        {
+          "id": "doubao-1.5-thinking-pro",
+          "name": "Doubao 1.5 Thinking Pro",
+          "contextWindow": 65536,
+          "reasoning": true,
+          "recommended": true
+        }
       ],
-      "envVars": ["ARK_API_KEY"]
+      "envVars": [
+        "ARK_API_KEY"
+      ]
     },
     {
       "id": "litellm",
       "name": "LiteLLM",
       "hint": "Proxy authentication — unified model access",
       "authMethods": [
-        { "value": "apiKey", "label": "API Key", "hint": "Set LITELLM_API_KEY", "type": "api-key" }
+        {
+          "value": "apiKey",
+          "label": "API Key",
+          "hint": "Set LITELLM_API_KEY",
+          "type": "api-key"
+        }
       ],
       "models": [
-        { "id": "gpt-4o", "name": "GPT-4o (via LiteLLM)", "contextWindow": 128000, "recommended": true },
-        { "id": "claude-sonnet-4-20250514", "name": "Claude Sonnet 4 (via LiteLLM)", "contextWindow": 200000, "recommended": true }
+        {
+          "id": "gpt-4o",
+          "name": "GPT-4o (via LiteLLM)",
+          "contextWindow": 128000,
+          "recommended": true
+        },
+        {
+          "id": "claude-sonnet-4-20250514",
+          "name": "Claude Sonnet 4 (via LiteLLM)",
+          "contextWindow": 200000,
+          "recommended": true
+        }
       ],
-      "envVars": ["LITELLM_API_KEY"]
+      "envVars": [
+        "LITELLM_API_KEY"
+      ]
     },
     {
       "id": "custom",
       "name": "Custom Provider",
       "hint": "Any OpenAI-compatible API endpoint",
       "authMethods": [
-        { "value": "custom-api-key", "label": "API Key + Base URL", "hint": "Set API key and custom endpoint URL", "type": "custom-endpoint" }
+        {
+          "value": "custom-api-key",
+          "label": "API Key + Base URL",
+          "hint": "Set API key and custom endpoint URL",
+          "type": "custom-endpoint"
+        }
       ],
       "models": [],
       "envVars": []
@@ -334,22 +918,57 @@
       "name": "GEO Platform",
       "hint": "Personal Access Token — connect to GEO brand intelligence",
       "authMethods": [
-        { "value": "apiKey", "label": "Personal Access Token (geo_...)", "hint": "Generate in GEO Workspace Settings → Integrations", "type": "api-key" }
+        {
+          "value": "apiKey",
+          "label": "Personal Access Token (geo_...)",
+          "hint": "Generate in GEO Workspace Settings → Integrations",
+          "type": "api-key"
+        }
       ],
       "models": [],
       "envVars": []
     }
   ],
   "channels": [
-    { "id": "telegram", "name": "Telegram" },
-    { "id": "whatsapp", "name": "WhatsApp" },
-    { "id": "discord", "name": "Discord" },
-    { "id": "slack", "name": "Slack" },
-    { "id": "line", "name": "LINE" },
-    { "id": "matrix", "name": "Matrix" },
-    { "id": "signal", "name": "Signal" },
-    { "id": "irc", "name": "IRC" },
-    { "id": "googlechat", "name": "Google Chat" },
-    { "id": "msteams", "name": "Microsoft Teams" }
+    {
+      "id": "telegram",
+      "name": "Telegram"
+    },
+    {
+      "id": "whatsapp",
+      "name": "WhatsApp"
+    },
+    {
+      "id": "discord",
+      "name": "Discord"
+    },
+    {
+      "id": "slack",
+      "name": "Slack"
+    },
+    {
+      "id": "line",
+      "name": "LINE"
+    },
+    {
+      "id": "matrix",
+      "name": "Matrix"
+    },
+    {
+      "id": "signal",
+      "name": "Signal"
+    },
+    {
+      "id": "irc",
+      "name": "IRC"
+    },
+    {
+      "id": "googlechat",
+      "name": "Google Chat"
+    },
+    {
+      "id": "msteams",
+      "name": "Microsoft Teams"
+    }
   ]
 }

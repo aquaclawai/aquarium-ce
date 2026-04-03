@@ -95,7 +95,14 @@ const OAUTH_DEVICE_FLOW_ENDPOINTS: Record<string, {
 }> = {
   'github-copilot': { deviceCode: '/oauth/github/device-code', poll: '/oauth/github/poll', pollBodyKey: 'deviceCode' },
   'openai-codex': { deviceCode: '/oauth/openai/device-code', poll: '/oauth/openai/poll', pollBodyKey: 'deviceAuthId', requiresUserCodeInPoll: true },
-  'qwen-portal': { deviceCode: '/oauth/qwen/device-code', poll: '/oauth/qwen/poll', pollBodyKey: 'deviceCode' },
+};
+
+// Maps OAuth auth method values that use PKCE redirect (browser popup) flow
+const OAUTH_PKCE_ENDPOINTS: Record<string, {
+  authorize: string;
+  token: string;
+}> = {
+  'google-gemini-cli': { authorize: '/oauth/gemini-cli/authorize', token: '/oauth/gemini-cli/token' },
 };
 
 const CONTEXT_OPTIONS_FALLBACK = [
@@ -138,6 +145,7 @@ interface StepConfirmProps extends StepProps {
   platformModels: AvailableModel[];
   platformModelsLoading: boolean;
   onStartOAuth: (authMethodValue: string) => void;
+  onStartPkce: (authMethodValue: string) => void;
   stopOAuthPolling: () => void;
 }
 
@@ -345,7 +353,7 @@ function StepIdentity({ state, setState, identityTemplates }: StepIdentityProps)
   );
 }
 
-function StepConfirm({ state, setState, providers, temperaturePresets, contextOptions, userCredentials, credentialsLoading, platformModels, platformModelsLoading, onStartOAuth, stopOAuthPolling }: StepConfirmProps) {
+function StepConfirm({ state, setState, providers, temperaturePresets, contextOptions, userCredentials, credentialsLoading, platformModels, platformModelsLoading, onStartOAuth, onStartPkce, stopOAuthPolling }: StepConfirmProps) {
   const { t } = useTranslation();
   const [modelSearchQuery, setModelSearchQuery] = useState('');
 
@@ -546,6 +554,7 @@ function StepConfirm({ state, setState, providers, temperaturePresets, contextOp
             const credPlaceholder = authMethod?.hint ?? t('wizard.confirm.byokApiKeyPlaceholder');
             const byokModels = selectedByokProviderInfo.models;
             const hasDeviceFlow = isOAuth && !!OAUTH_DEVICE_FLOW_ENDPOINTS[authMethod.value];
+            const hasPkceFlow = isOAuth && !!OAUTH_PKCE_ENDPOINTS[authMethod.value];
             return (
               <>
                 {authMethods.length > 1 && (
@@ -621,6 +630,46 @@ function StepConfirm({ state, setState, providers, temperaturePresets, contextOp
                             type="button"
                             className="wiz-oauth-connect-btn"
                             onClick={() => onStartOAuth(authMethod.value)}
+                          >
+                            {t('wizard.confirm.oauthRetry')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : isOAuth && hasPkceFlow ? (
+                  <div className="wiz-field">
+                    <label className="wiz-field-label">{credLabel}</label>
+                    <div className="wiz-oauth-device-flow">
+                      {state.oauthStatus === 'idle' && (
+                        <button
+                          type="button"
+                          className="wiz-oauth-connect-btn"
+                          onClick={() => onStartPkce(authMethod.value)}
+                        >
+                          {t('wizard.confirm.oauthConnect', { provider: selectedByokProviderInfo.displayName })}
+                        </button>
+                      )}
+                      {state.oauthStatus === 'pending' && (
+                        <div className="wiz-oauth-pending">
+                          <div className="wiz-oauth-pending__title">{t('wizard.confirm.oauthPendingTitle')}</div>
+                          <div className="wiz-oauth-pending__desc">{t('wizard.confirm.oauthPkceDesc')}</div>
+                          <div className="wiz-oauth-spinner" />
+                        </div>
+                      )}
+                      {state.oauthStatus === 'success' && (
+                        <div className="wiz-oauth-success">
+                          <span className="wiz-oauth-success__icon">&#x2714;</span>
+                          {t('wizard.confirm.oauthSuccess')}
+                        </div>
+                      )}
+                      {state.oauthStatus === 'error' && (
+                        <div className="wiz-oauth-error">
+                          <div className="wiz-oauth-error__msg">{state.oauthError || t('wizard.confirm.oauthError')}</div>
+                          <button
+                            type="button"
+                            className="wiz-oauth-connect-btn"
+                            onClick={() => onStartPkce(authMethod.value)}
                           >
                             {t('wizard.confirm.oauthRetry')}
                           </button>
@@ -883,6 +932,68 @@ export function CreateWizardPage() {
     }
   }, [stopOAuthPolling, t]);
 
+  const startPkceFlow = useCallback(async (authMethodValue: string) => {
+    const endpoints = OAUTH_PKCE_ENDPOINTS[authMethodValue];
+    if (!endpoints) return;
+
+    setState(prev => ({ ...prev, oauthStatus: 'pending', oauthError: '' }));
+
+    try {
+      const data = await api.post<{ authUrl: string; state: string }>(endpoints.authorize);
+      const popup = window.open(data.authUrl, 'oauth_popup', 'width=600,height=700,popup=yes');
+
+      // Listen for the callback message from the popup
+      const handler = async (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        if (event.data?.type !== 'oauth_callback') return;
+        window.removeEventListener('message', handler);
+
+        const { code, state: cbState } = event.data;
+        if (!code || !cbState) {
+          setState(prev => ({ ...prev, oauthStatus: 'error', oauthError: 'Missing code from callback' }));
+          return;
+        }
+
+        try {
+          const tokenData = await api.post<{
+            status: string; accessToken?: string; refreshToken?: string; expiresIn?: number;
+          }>(endpoints.token, { code, state: cbState });
+
+          if (tokenData.status === 'success' && tokenData.accessToken) {
+            setState(prev => ({
+              ...prev,
+              oauthStatus: 'success',
+              oauthToken: tokenData.accessToken!,
+              oauthRefreshToken: tokenData.refreshToken ?? '',
+              oauthExpiresIn: tokenData.expiresIn ?? null,
+            }));
+          } else {
+            setState(prev => ({ ...prev, oauthStatus: 'error', oauthError: 'Token exchange failed' }));
+          }
+        } catch (err) {
+          setState(prev => ({ ...prev, oauthStatus: 'error', oauthError: err instanceof Error ? err.message : 'Token exchange failed' }));
+        }
+      };
+      window.addEventListener('message', handler);
+
+      // Detect popup closed without completing
+      const checkClosed = setInterval(() => {
+        if (popup && popup.closed) {
+          clearInterval(checkClosed);
+          window.removeEventListener('message', handler);
+          setState(prev => prev.oauthStatus === 'pending'
+            ? { ...prev, oauthStatus: 'idle' }
+            : prev);
+        }
+      }, 1000);
+    } catch (err) {
+      setState(prev => ({
+        ...prev, oauthStatus: 'error',
+        oauthError: err instanceof Error ? err.message : 'Failed to start OAuth flow',
+      }));
+    }
+  }, []);
+
   // Clean up polling on provider/auth-method change or unmount
   useEffect(() => { return () => stopOAuthPolling(); }, [state.byokProvider, state.selectedAuthMethodIndex, stopOAuthPolling]);
 
@@ -899,9 +1010,10 @@ export function CreateWizardPage() {
         const authMethods = selectedProvider?.authMethods ?? [];
         const authMethod = authMethods[state.selectedAuthMethodIndex] ?? authMethods[0];
         if (authMethod?.type === 'oauth') {
-          return OAUTH_DEVICE_FLOW_ENDPOINTS[authMethod.value]
-            ? state.oauthStatus === 'success'
-            : true; // Non-device-flow OAuth (e.g. PKCE) — allow through
+          if (OAUTH_DEVICE_FLOW_ENDPOINTS[authMethod.value] || OAUTH_PKCE_ENDPOINTS[authMethod.value]) {
+            return state.oauthStatus === 'success';
+          }
+          return true; // Unsupported OAuth variant — allow through
         }
         return state.byokApiKey.trim().length >= 1;
       }
@@ -1169,6 +1281,7 @@ _This file is yours to evolve. As you learn who you are, update it._
             platformModels={platformModels}
             platformModelsLoading={platformModelsLoading}
             onStartOAuth={startOAuthFlow}
+            onStartPkce={startPkceFlow}
             stopOAuthPolling={stopOAuthPolling}
           />
         )}

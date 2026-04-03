@@ -607,6 +607,7 @@
       "oauthRetry": "Try again",
       "oauthCancel": "Cancel",
       "oauthExpired": "Device code expired. Please try again.",
+      "oauthPkceDesc": "Complete the sign-in in the popup window...",
       "byokModelLabel": "Model (optional)",
       "byokModelPlaceholder": "Auto-detect by provider",
       "modelLabel": "Model",
