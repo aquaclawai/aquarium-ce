@@ -661,9 +661,11 @@ export const openclawAdapter: AgentTypeAdapter = {
       files.set('workspace/TOOLS.md', existingTools + geoToolSection);
     }
 
-    // Seed empty memory directory so the agent doesn't error on first boot
-    // when BOOTSTRAP.md instructs it to read memory/YYYY-MM-DD.md
+    // Seed memory directory with today's empty daily file so the agent doesn't
+    // error on first boot when AGENTS.md instructs it to read memory/YYYY-MM-DD.md.
     files.set('workspace/memory/.gitkeep', '');
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    files.set(`workspace/memory/${today}.md`, `# ${today}\n`);
 
     return files;
   },

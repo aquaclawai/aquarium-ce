@@ -518,6 +518,19 @@ async function startInstanceAsync(id: string, userId: string, instance: Instance
           await engine.writeFiles(result.runtimeId, volumeMountPath, filesToWrite);
         }
 
+        // Create symlink so doubled workspace paths resolve correctly.
+        // The gateway creates .openclaw/ inside workspace for state tracking.
+        // The agent LLM sometimes constructs paths like ".openclaw/workspace/USER.md"
+        // instead of just "USER.md", doubling the workspace prefix. This symlink
+        // makes those paths resolve to the correct location.
+        if (engine.exec) {
+          const wsPath = `${volumeMountPath}/workspace`;
+          await engine.exec(result.runtimeId, [
+            'sh', '-c',
+            `mkdir -p '${wsPath}/.openclaw' && ln -sfn '${wsPath}' '${wsPath}/.openclaw/workspace' 2>/dev/null || true`,
+          ]).catch(() => { /* best-effort */ });
+        }
+
         // Store SHA-256 hash of openclaw.json for integrity verification
         const configHash = computeConfigHash(configFiles);
         if (configHash) {
