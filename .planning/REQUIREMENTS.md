@@ -9,10 +9,10 @@ Requirements for Plugin & Skill Marketplace. Each maps to roadmap phases.
 
 ### Lifecycle & Infrastructure
 
-- [ ] **INFRA-01**: System creates `instance_plugins` table with lifecycle status, version pinning, and session ownership columns
-- [ ] **INFRA-02**: System creates `instance_skills` table with same schema as plugins
-- [ ] **INFRA-03**: System creates `extension_operations` table with fencing tokens, cancel support, and partial unique index for one-active-per-instance
-- [ ] **INFRA-04**: System generates `server_session_id` (UUID) on each startup for orphan detection
+- [x] **INFRA-01**: System creates `instance_plugins` table with lifecycle status, version pinning, and session ownership columns
+- [x] **INFRA-02**: System creates `instance_skills` table with same schema as plugins
+- [x] **INFRA-03**: System creates `extension_operations` table with fencing tokens, cancel support, and partial unique index for one-active-per-instance
+- [x] **INFRA-04**: System generates `server_session_id` (UUID) on each startup for orphan detection
 - [ ] **INFRA-05**: System enforces per-instance extension mutation lock with fencing token verification on all DB/config writes
 - [ ] **INFRA-06**: System supports cooperative cancellation via `cancel_requested` flag checked at worker checkpoints
 - [ ] **INFRA-07**: System enforces per-subprocess execution deadlines (npm: 5min, skills: 3min, restart: 2min, config.patch: 30s)
@@ -108,10 +108,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | Phase 1 | Pending |
-| INFRA-02 | Phase 1 | Pending |
-| INFRA-03 | Phase 1 | Pending |
-| INFRA-04 | Phase 1 | Pending |
+| INFRA-01 | Phase 1 | Complete |
+| INFRA-02 | Phase 1 | Complete |
+| INFRA-03 | Phase 1 | Complete |
+| INFRA-04 | Phase 1 | Complete |
 | INFRA-05 | Phase 1 | Pending |
 | INFRA-06 | Phase 1 | Pending |
 | INFRA-07 | Phase 1 | Pending |

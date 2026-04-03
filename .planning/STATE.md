@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: Phase 1 context gathered
-last_updated: "2026-04-03T16:06:28.921Z"
+stopped_at: Completed 01-skill-management/01-01-PLAN.md
+last_updated: "2026-04-03T16:35:10.659Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 6
+  completed_plans: 1
   percent: 0
 ---
 
@@ -50,6 +50,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 01-skill-management P01 | 20 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -63,6 +64,9 @@ Recent decisions affecting current work:
 - Per-subprocess execution deadlines (not lock timeouts) — kill stuck process, then release lock cleanly
 - Server session UUID instead of PID — PID reuse unreliable in containers
 - All tiers use env-backed SecretRef (no plaintext) — config file never contains raw secrets
+- [Phase 01-skill-management]: ExtensionSkillSource and ExtensionCredentialRequirement named to avoid conflicts with existing template declaration types
+- [Phase 01-skill-management]: Partial unique index idx_one_active_op created via knex.raw() for one-active-op-per-instance enforcement
+- [Phase 01-skill-management]: serverSessionId uses randomUUID() at module load for container-safe orphan detection (PID reuse unreliable)
 
 ### Pending Todos
 
@@ -74,6 +78,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-03T16:06:28.915Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-skill-management/01-CONTEXT.md
+Last session: 2026-04-03T16:35:10.658Z
+Stopped at: Completed 01-skill-management/01-01-PLAN.md
+Resume file: None
