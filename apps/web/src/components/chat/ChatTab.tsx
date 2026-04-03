@@ -257,11 +257,18 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
         instanceId, 'chat.history', { sessionKey, limit: 50 },
       );
       if (res.messages) {
-        const historyMsgs = res.messages.map(m => ({
-          role: m.role === 'user' ? 'user' as const : 'agent' as const,
-          content: m.content,
-          timestamp: m.timestamp ? new Date(m.timestamp).toISOString() : undefined,
-        }));
+        const historyMsgs = res.messages
+          .filter(m => {
+            if (m.role === 'user') return true;
+            if (m.role === 'tool') return false;
+            // Hide agent messages with no visible text (thinking-only, tool-only, empty)
+            return extractText(m.content).length > 0;
+          })
+          .map(m => ({
+            role: m.role === 'user' ? 'user' as const : 'agent' as const,
+            content: m.content,
+            timestamp: m.timestamp ? new Date(m.timestamp).toISOString() : undefined,
+          }));
         setMessages(() => mergeHistoryPreservingImages(historyMsgs, imageStoreRef.current));
       }
     } catch { /* history may not exist yet */ }

@@ -643,6 +643,11 @@ export const openclawAdapter: AgentTypeAdapter = {
         }
       }
 
+      // Pre-fill agent name in IDENTITY.md if the template placeholder is still present
+      if (wf.key === 'identitymd' && content && instance.name) {
+        content = content.replace('_(pick something you like)_', instance.name);
+      }
+
       if (content) {
         files.set(wf.filename, content);
       }

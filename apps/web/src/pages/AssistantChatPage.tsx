@@ -275,11 +275,17 @@ export function AssistantChatPage() {
         id, 'chat.history', { sessionKey, limit: 50 },
       );
       if (res.messages) {
-        const historyMsgs = res.messages.map(m => ({
-          role: m.role === 'user' ? 'user' as const : 'agent' as const,
-          content: m.content,
-          timestamp: m.timestamp ? new Date(m.timestamp).toISOString() : undefined,
-        }));
+        const historyMsgs = res.messages
+          .filter(m => {
+            if (m.role === 'user') return true;
+            if (m.role === 'tool') return false;
+            return extractText(m.content).length > 0;
+          })
+          .map(m => ({
+            role: m.role === 'user' ? 'user' as const : 'agent' as const,
+            content: m.content,
+            timestamp: m.timestamp ? new Date(m.timestamp).toISOString() : undefined,
+          }));
         setMessages(() => mergeHistoryPreservingImages(historyMsgs, imageStoreRef.current));
       }
     } catch { /* history may not exist yet */ }
@@ -292,11 +298,17 @@ export function AssistantChatPage() {
       id, 'chat.history', { sessionKey, limit: 50 },
     ).then(res => {
       if (cancelled || !res.messages) return;
-      const historyMsgs = res.messages.map(m => ({
-        role: m.role === 'user' ? 'user' as const : 'agent' as const,
-        content: m.content,
-        timestamp: m.timestamp ? new Date(m.timestamp).toISOString() : undefined,
-      }));
+      const historyMsgs = res.messages
+        .filter(m => {
+          if (m.role === 'user') return true;
+          if (m.role === 'tool') return false;
+          return extractText(m.content).length > 0;
+        })
+        .map(m => ({
+          role: m.role === 'user' ? 'user' as const : 'agent' as const,
+          content: m.content,
+          timestamp: m.timestamp ? new Date(m.timestamp).toISOString() : undefined,
+        }));
       setMessages(() => mergeHistoryPreservingImages(historyMsgs, imageStoreRef.current));
     }).catch(() => {});
     return () => { cancelled = true; };
@@ -314,11 +326,17 @@ export function AssistantChatPage() {
       id, 'chat.history', { sessionKey, limit: 50 },
     ).then(res => {
       if (cancelled || !res.messages) return;
-      const historyMsgs = res.messages.map(m => ({
-        role: m.role === 'user' ? 'user' as const : 'agent' as const,
-        content: m.content,
-        timestamp: m.timestamp ? new Date(m.timestamp).toISOString() : undefined,
-      }));
+      const historyMsgs = res.messages
+        .filter(m => {
+          if (m.role === 'user') return true;
+          if (m.role === 'tool') return false;
+          return extractText(m.content).length > 0;
+        })
+        .map(m => ({
+          role: m.role === 'user' ? 'user' as const : 'agent' as const,
+          content: m.content,
+          timestamp: m.timestamp ? new Date(m.timestamp).toISOString() : undefined,
+        }));
       setMessages(() => mergeHistoryPreservingImages(historyMsgs, imageStoreRef.current));
     }).catch(() => {});
     return () => { cancelled = true; };
