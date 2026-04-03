@@ -2179,6 +2179,14 @@ select:focus {
   border-bottom-right-radius: var(--radius-sm);
 }
 
+.tool-activity {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
 .chat-message.user a {
   color: white;
   text-decoration: underline;
