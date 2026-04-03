@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: Completed 01-skill-management/01-01-PLAN.md
-last_updated: "2026-04-03T16:35:10.659Z"
+stopped_at: Completed 01-skill-management/01-03-PLAN.md
+last_updated: "2026-04-03T16:44:16.216Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 6
-  completed_plans: 1
+  completed_plans: 3
   percent: 0
 ---
 
@@ -51,6 +51,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01-skill-management P01 | 20 | 2 tasks | 3 files |
+| Phase 01-skill-management P03 | 160 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,9 @@ Recent decisions affecting current work:
 - [Phase 01-skill-management]: ExtensionSkillSource and ExtensionCredentialRequirement named to avoid conflicts with existing template declaration types
 - [Phase 01-skill-management]: Partial unique index idx_one_active_op created via knex.raw() for one-active-op-per-instance enforcement
 - [Phase 01-skill-management]: serverSessionId uses randomUUID() at module load for container-safe orphan detection (PID reuse unreliable)
+- [Phase 01-skill-management]: GET /skills returns empty gatewayBuiltins when instance not running — avoids 400 for list-only callers
+- [Phase 01-skill-management]: SecretRef env var ID uses 16-char SHA-256 hex truncation of kind_id_field — unique without being unwieldy
+- [Phase 01-skill-management]: config.patch failure is partial success (credential stored, configPatched: false) — lock still released
 
 ### Pending Todos
 
@@ -78,6 +82,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-03T16:35:10.658Z
-Stopped at: Completed 01-skill-management/01-01-PLAN.md
+Last session: 2026-04-03T16:44:16.214Z
+Stopped at: Completed 01-skill-management/01-03-PLAN.md
 Resume file: None

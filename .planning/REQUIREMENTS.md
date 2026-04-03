@@ -20,10 +20,10 @@ Requirements for Plugin & Skill Marketplace. Each maps to roadmap phases.
 
 ### Skill Management
 
-- [ ] **SKILL-01**: User can browse bundled skills catalog from the Extensions tab
+- [x] **SKILL-01**: User can browse bundled skills catalog from the Extensions tab
 - [ ] **SKILL-02**: User can install a skill with one click (acquires lock, sends `skills.install` RPC, releases lock)
 - [ ] **SKILL-03**: Skills with no required credentials promote directly to `active` after install
-- [ ] **SKILL-04**: User can configure extension-scoped credentials for a skill (extensionKind + extensionId binding)
+- [x] **SKILL-04**: User can configure extension-scoped credentials for a skill (extensionKind + extensionId binding)
 - [ ] **SKILL-05**: User can enable/disable an installed skill
 - [ ] **SKILL-06**: User can uninstall a skill
 - [ ] **SKILL-07**: System reconciles skill state on boot (Phase 2) — promotes crash-recovered skills already present in gateway
@@ -76,7 +76,7 @@ Requirements for Plugin & Skill Marketplace. Each maps to roadmap phases.
 - [ ] **UI-02**: Catalog browse with search, category filter, and trust signal display
 - [ ] **UI-03**: Install flow dialog with trust summary, credential input, and vault/instance scope choice
 - [ ] **UI-04**: Credential configuration panel (gear icon) with extension-scoped credential management
-- [ ] **UI-05**: Gateway built-ins shown in separate read-only section (not mixed with managed extensions)
+- [x] **UI-05**: Gateway built-ins shown in separate read-only section (not mixed with managed extensions)
 - [ ] **UI-06**: Dashboard alerts for failed/degraded extensions
 - [ ] **UI-07**: All new UI strings added to 6 locale files (en, zh, fr, de, es, it)
 
@@ -116,15 +116,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-06 | Phase 1 | Pending |
 | INFRA-07 | Phase 1 | Pending |
 | INFRA-08 | Phase 1 | Pending |
-| SKILL-01 | Phase 1 | Pending |
+| SKILL-01 | Phase 1 | Complete |
 | SKILL-02 | Phase 1 | Pending |
 | SKILL-03 | Phase 1 | Pending |
-| SKILL-04 | Phase 1 | Pending |
+| SKILL-04 | Phase 1 | Complete |
 | SKILL-05 | Phase 1 | Pending |
 | SKILL-06 | Phase 1 | Pending |
 | SKILL-07 | Phase 1 | Pending |
 | UI-01 | Phase 1 | Pending |
-| UI-05 | Phase 1 | Pending |
+| UI-05 | Phase 1 | Complete |
 | UI-06 | Phase 1 | Pending |
 | UI-07 | Phase 1 | Pending |
 | PLUG-01 | Phase 2 | Pending |
