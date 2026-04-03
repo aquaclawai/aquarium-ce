@@ -25,6 +25,7 @@ interface ProviderModel {
   id: string;
   displayName: string;
   isDefault?: boolean;
+  contextWindow?: number;
 }
 
 interface ProviderAuthMethod {
@@ -103,6 +104,10 @@ const CONTEXT_OPTIONS_FALLBACK = [
   { value: 16384, label: '16K Tokens' },
   { value: 32768, label: '32K Tokens' },
   { value: 131072, label: '128K Tokens' },
+  { value: 200000, label: '200K Tokens' },
+  { value: 262144, label: '256K Tokens' },
+  { value: 524288, label: '512K Tokens' },
+  { value: 1000000, label: '1M Tokens' },
 ];
 
 interface StepProps {
@@ -657,18 +662,33 @@ function StepConfirm({ state, setState, providers, temperaturePresets, contextOp
                       >
                         <span className="wiz-model-item__name">{t('wizard.confirm.byokModelPlaceholder')}</span>
                       </button>
-                      {byokModels.map(m => (
-                        <button
-                          key={m.id}
-                          type="button"
-                          className={`wiz-model-item${state.model === m.id ? ' wiz-model-item--active' : ''}`}
-                          onClick={() => setState(prev => ({ ...prev, model: m.id }))}
-                        >
-                          <span className="wiz-model-item__name">{m.displayName || formatModelDisplayName(m.id)}</span>
-                          <span className="wiz-model-item__id">{m.id}</span>
-                          {m.isDefault && <span className="wiz-model-item__badge">{t('wizard.confirm.modelRecommended')}</span>}
-                        </button>
-                      ))}
+                      {byokModels.map(m => {
+                        const ctxLabel = m.contextWindow
+                          ? m.contextWindow >= 1000000 ? `${(m.contextWindow / 1000000).toFixed(m.contextWindow % 1000000 === 0 ? 0 : 1)}M`
+                          : m.contextWindow >= 1000 ? `${Math.round(m.contextWindow / 1000)}K`
+                          : `${m.contextWindow}`
+                          : null;
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            className={`wiz-model-item${state.model === m.id ? ' wiz-model-item--active' : ''}`}
+                            onClick={() => {
+                              // Auto-set context to the highest option within model's limit
+                              const maxCtx = m.contextWindow ?? 0;
+                              const bestCtx = maxCtx > 0
+                                ? [...contextOptions].reverse().find(o => o.value <= maxCtx * 1.05)?.label ?? state.contextLength
+                                : state.contextLength;
+                              setState(prev => ({ ...prev, model: m.id, contextLength: bestCtx }));
+                            }}
+                          >
+                            <span className="wiz-model-item__name">{m.displayName || formatModelDisplayName(m.id)}</span>
+                            <span className="wiz-model-item__id">{m.id}</span>
+                            {ctxLabel && <span className="wiz-model-item__ctx">{ctxLabel}</span>}
+                            {m.isDefault && <span className="wiz-model-item__badge">{t('wizard.confirm.modelRecommended')}</span>}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -678,23 +698,35 @@ function StepConfirm({ state, setState, providers, temperaturePresets, contextOp
         </div>
       )}
 
-      <div className="wiz-field">
-        <div className="wiz-param-row">
-          <div className="wiz-param-row__left">
-            <span className="wiz-param-label">{t('wizard.confirm.contextLabel')}</span>
-            <span className="wiz-param-hint">{t('wizard.confirm.contextHint')}</span>
+      {(() => {
+        // Filter context options by the selected model's contextWindow
+        const selectedProvider = providers.find(p => p.name === state.byokProvider);
+        const selectedModel = selectedProvider?.models.find(m => m.id === state.model);
+        const maxCtx = selectedModel?.contextWindow ?? 0;
+        // Use 5% tolerance to handle 128000 vs 131072 style mismatches
+        const filtered = maxCtx > 0
+          ? contextOptions.filter(opt => opt.value <= maxCtx * 1.05)
+          : contextOptions;
+        return (
+          <div className="wiz-field">
+            <div className="wiz-param-row">
+              <div className="wiz-param-row__left">
+                <span className="wiz-param-label">{t('wizard.confirm.contextLabel')}</span>
+                <span className="wiz-param-hint">{t('wizard.confirm.contextHint')}</span>
+              </div>
+              <select
+                className="wiz-select wiz-select--compact"
+                value={state.contextLength}
+                onChange={e => setState(prev => ({ ...prev, contextLength: e.target.value }))}
+              >
+                {filtered.map(opt => (
+                  <option key={opt.value} value={opt.label}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          <select
-            className="wiz-select wiz-select--compact"
-            value={state.contextLength}
-            onChange={e => setState(prev => ({ ...prev, contextLength: e.target.value }))}
-          >
-            {contextOptions.map(opt => (
-              <option key={opt.value} value={opt.label}>{opt.label}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+        );
+      })()}
 
       {temperaturePresets.length > 0 && (
         <div className="wiz-temp-section">

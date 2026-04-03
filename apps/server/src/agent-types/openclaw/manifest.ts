@@ -10,7 +10,7 @@ function populateWizardConfig(): WizardConfig {
       authMethods: pg.authMethods.map(a => ({ value: a.value, label: a.label, hint: a.hint, type: a.type })),
       models: pg.models
         .filter(m => m.recommended !== false)
-        .map(m => ({ id: m.id, displayName: m.name, isDefault: m.recommended })),
+        .map(m => ({ id: m.id, displayName: m.name, isDefault: m.recommended, contextWindow: m.contextWindow })),
     })),
     defaultProvider: 'openrouter',
     defaultModel: 'anthropic/claude-sonnet-4',

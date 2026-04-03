@@ -180,7 +180,7 @@ export async function listNotifications(
     severity: row.severity as NotificationSeverity,
     title: row.title as string,
     isRead: row.read_at !== null,
-    createdAt: (row.created_at as Date).toISOString(),
+    createdAt: String(row.created_at),
   }));
 
   return {
@@ -261,6 +261,6 @@ function mapRowToNotification(row: Record<string, unknown>): Notification {
     metadata: (row.metadata as Record<string, unknown>) || {},
     isRead: row.read_at !== null,
     isDismissed: row.dismissed_at !== null,
-    createdAt: (row.created_at as Date).toISOString(),
+    createdAt: String(row.created_at),
   };
 }

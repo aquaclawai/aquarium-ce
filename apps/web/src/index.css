@@ -723,6 +723,17 @@ select:focus {
   white-space: nowrap;
 }
 
+.wiz-model-item__ctx {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 500;
+  padding: 0.1rem 0.4rem;
+  border-radius: 9999px;
+  background: var(--color-bg-secondary, rgba(0, 0, 0, 0.04));
+  color: var(--color-secondary);
+  font-family: var(--font-mono);
+}
+
 .wiz-model-item__badge {
   flex-shrink: 0;
   font-size: 0.65rem;

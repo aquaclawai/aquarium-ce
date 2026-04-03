@@ -174,7 +174,7 @@ export interface AgentTypeInfo {
       name: string;
       displayName: string;
       authMethods?: Array<{ value: string; label: string; hint: string; type: string }>;
-      models: Array<{ id: string; displayName: string; isDefault?: boolean }>;
+      models: Array<{ id: string; displayName: string; isDefault?: boolean; contextWindow?: number }>;
     }>;
     defaultProvider?: string;
     defaultModel?: string;
