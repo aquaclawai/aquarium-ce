@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: Completed 01-skill-management/01-05-PLAN.md
-last_updated: "2026-04-03T16:53:41.746Z"
+stopped_at: "Checkpoint: 01-skill-management/01-06 Task 2 visual verification"
+last_updated: "2026-04-03T16:58:54.410Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -54,6 +54,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-skill-management P03 | 160 | 2 tasks | 3 files |
 | Phase 01-skill-management P04 | 15 | 2 tasks | 3 files |
 | Phase 01-skill-management P05 | 6 | 2 tasks | 11 files |
+| Phase 01-skill-management P06 | 3 | 1 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,9 @@ Recent decisions affecting current work:
 - [Phase 01-skill-management]: reconcileExtensions is non-blocking — failure logs warning but never prevents instance reaching running state
 - [Phase 01-skill-management]: Gear icon in SkillRow sets configuringSkillId state in parent ExtensionsTab only — no modal, no API — CredentialConfigPanel consumes this state in Plan 01-06
 - [Phase 01-skill-management]: Extensions tab placed after Chat in main tab bar (not in ADVANCED_TABS dropdown); catalog hidden when instance not running
+- [Phase 01-skill-management]: Gear icon toggles credential panel (second click closes) — prevents orphaned open panels
+- [Phase 01-skill-management]: Alert banners placed above sub-tab header — visible regardless of active sub-tab
+- [Phase 01-skill-management]: color-mix() for alert tints — theme-aware, no hardcoded RGBA
 
 ### Pending Todos
 
@@ -88,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-03T16:53:41.744Z
-Stopped at: Completed 01-skill-management/01-05-PLAN.md
+Last session: 2026-04-03T16:58:48.332Z
+Stopped at: Checkpoint: 01-skill-management/01-06 Task 2 visual verification
 Resume file: None

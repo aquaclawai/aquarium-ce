@@ -11,7 +11,7 @@
 
 **Milestone Goal:** Full plugin/skill lifecycle management — browsing catalogs, installing with fenced concurrency, deny-by-default trust, template portability, OAuth proxy auth, and offline resilience.
 
-- [ ] **Phase 1: Skill Management** - DB schema, state machine, fenced locking, skill install/configure/enable/disable/uninstall, and Extensions tab UI
+- [x] **Phase 1: Skill Management** - DB schema, state machine, fenced locking, skill install/configure/enable/disable/uninstall, and Extensions tab UI (completed 2026-04-03)
 - [ ] **Phase 2: Plugin Management** - Plugin install/activate/enable/disable/uninstall with gateway restart flow and credential configuration UI
 - [ ] **Phase 3: ClawHub & Trust Policy** - ClawHub catalog search, trust signals, deny-by-default enforcement, admin overrides, version pinning
 - [ ] **Phase 4: Template Portability** - Export/import with new extension tables, config scrubbing, trust re-evaluation, 3-phase startup
@@ -30,7 +30,7 @@
   3. User can configure extension-scoped credentials for a skill that requires them
   4. User can enable, disable, and uninstall an installed skill
   5. After an instance restart, previously active skills are restored and dashboard alerts surface any failed or degraded extensions
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 - [ ] 01-01-PLAN.md — Shared types, DB migration (3 tables), serverSessionId
@@ -101,7 +101,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 1. Skill Management | 5/6 | In Progress|  | - |
+| 1. Skill Management | 6/6 | Complete   | 2026-04-03 | - |
 | 2. Plugin Management | v1.1 | 0/TBD | Not started | - |
 | 3. ClawHub & Trust Policy | v1.1 | 0/TBD | Not started | - |
 | 4. Template Portability | v1.1 | 0/TBD | Not started | - |

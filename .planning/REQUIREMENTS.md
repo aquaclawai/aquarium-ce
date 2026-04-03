@@ -72,13 +72,13 @@ Requirements for Plugin & Skill Marketplace. Each maps to roadmap phases.
 
 ### Frontend
 
-- [ ] **UI-01**: Extensions tab with Plugins and Skills sub-tabs on instance detail page
+- [x] **UI-01**: Extensions tab with Plugins and Skills sub-tabs on instance detail page
 - [ ] **UI-02**: Catalog browse with search, category filter, and trust signal display
 - [ ] **UI-03**: Install flow dialog with trust summary, credential input, and vault/instance scope choice
 - [ ] **UI-04**: Credential configuration panel (gear icon) with extension-scoped credential management
 - [x] **UI-05**: Gateway built-ins shown in separate read-only section (not mixed with managed extensions)
-- [ ] **UI-06**: Dashboard alerts for failed/degraded extensions
-- [ ] **UI-07**: All new UI strings added to 6 locale files (en, zh, fr, de, es, it)
+- [x] **UI-06**: Dashboard alerts for failed/degraded extensions
+- [x] **UI-07**: All new UI strings added to 6 locale files (en, zh, fr, de, es, it)
 
 ## v2 Requirements
 
@@ -123,10 +123,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SKILL-05 | Phase 1 | Pending |
 | SKILL-06 | Phase 1 | Pending |
 | SKILL-07 | Phase 1 | Complete |
-| UI-01 | Phase 1 | Pending |
+| UI-01 | Phase 1 | Complete |
 | UI-05 | Phase 1 | Complete |
-| UI-06 | Phase 1 | Pending |
-| UI-07 | Phase 1 | Pending |
+| UI-06 | Phase 1 | Complete |
+| UI-07 | Phase 1 | Complete |
 | PLUG-01 | Phase 2 | Pending |
 | PLUG-02 | Phase 2 | Pending |
 | PLUG-03 | Phase 2 | Pending |
