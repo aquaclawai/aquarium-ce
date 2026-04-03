@@ -11,6 +11,7 @@ import { config } from './config.js';
 import { db } from './db/index.js';
 import { setupWebSocket } from './ws/index.js';
 import { reconcileInstances } from './services/instance-manager.js';
+import { recoverOrphanedOperations } from './services/extension-lifecycle.js';
 import { getRuntimeEngine } from './runtime/factory.js';
 import { startHealthMonitor } from './services/health-monitor.js';
 import { startGatewayEventRelay } from './services/gateway-event-relay.js';
@@ -234,6 +235,9 @@ export async function startServer(server: HttpServer, options: StartServerOption
     }
 
     await reloadDynamicMiddleware();
+
+    await recoverOrphanedOperations();
+    console.log('[startup] Extension orphan recovery complete');
 
     await reconcileInstances();
 

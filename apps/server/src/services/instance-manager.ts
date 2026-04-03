@@ -21,6 +21,7 @@ import { buildCredentialIndex, clearCredentialIndex, buildWorkspaceContentIndex,
 import { preloadDlpConfig, evictDlpConfig } from './gateway-event-relay.js';
 import { scanContent } from './dlp-scanner.js';
 import { createNotification } from './notification-store.js';
+import { reconcileExtensions } from './extension-lifecycle.js';
 
 // ── helpers ──
 
@@ -579,6 +580,17 @@ async function startInstanceAsync(id: string, userId: string, instance: Instance
     // Eagerly establish persistent gateway connection (don't wait for 10s poll)
     if (controlEndpoint && instance.authToken) {
       connectGateway(id, controlEndpoint, instance.authToken);
+    }
+
+    // Phase 2: reconcile extension state with gateway reality (non-blocking)
+    if (controlEndpoint && instance.authToken) {
+      try {
+        const result = await reconcileExtensions(id, controlEndpoint, instance.authToken);
+        console.log(`[extensions] Reconciliation for ${id}: promoted=${result.promoted.length}, demoted=${result.demoted.length}`);
+      } catch (err) {
+        console.warn(`[extensions] Reconciliation failed for ${id}:`, err);
+        // Non-fatal — instance continues booting
+      }
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
