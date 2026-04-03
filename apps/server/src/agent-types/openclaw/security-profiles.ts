@@ -76,7 +76,7 @@ const PROFILE_MATRIX: Record<SecurityProfile, ProfileMatrixEntry> = {
     dlp: { credentialLeakProtection: true, apiKeyPatternDetection: true, systemPromptLeakProtection: true, envLeakProtection: true, internalPathProtection: true, mode: 'block' },
   },
   standard: {
-    toolsProfile: 'full',
+    toolsProfile: 'messaging',
     toolsDenyExtra: ['group:automation', 'group:runtime'],
     toolsExecSecurity: 'allowlist',
     toolsExecAsk: 'always',

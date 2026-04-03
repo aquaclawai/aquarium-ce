@@ -152,7 +152,7 @@ export async function createInstance(userId: string, req: CreateInstanceRequest)
       image_tag: imageTag,
       deployment_target: deploymentTarget,
       billing_mode: req.billingMode === 'byok' ? 'byok' : 'platform',
-      security_profile: req.securityProfile || 'standard',
+      security_profile: req.securityProfile || (config.isCE ? 'unrestricted' : 'standard'),
       auth_token: authToken,
       config: JSON.stringify(req.config || {}),
       avatar: req.avatar || null,
@@ -348,7 +348,7 @@ export async function cloneInstance(sourceId: string, userId: string): Promise<I
       image_tag: source.imageTag,
       deployment_target: source.deploymentTarget,
       billing_mode: source.billingMode || 'platform',
-      security_profile: source.securityProfile || 'standard',
+      security_profile: source.securityProfile || (config.isCE ? 'unrestricted' : 'standard'),
       auth_token: authToken,
       config: JSON.stringify(sourceConfig),
     })
