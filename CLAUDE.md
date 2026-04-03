@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Guidance for AI coding agents working in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
@@ -11,9 +11,9 @@ Aquarium CE (Community Edition) -- a self-hosted AI agent management platform. T
 ## Monorepo Structure
 
 ```
-apps/server/     -> @aquarium/server  (Express backend, port 3001)
-apps/web/        -> @aquarium/web     (React + Vite frontend, port 5173)
-packages/shared/ -> @aquarium/shared  (Shared TypeScript types)
+apps/server/     -> @aquaclawai/aquarium  (Express backend + CLI, port 3001)
+apps/web/        -> @aquarium/web         (React + Vite frontend, port 5173)
+packages/shared/ -> @aquarium/shared      (Shared TypeScript types)
 tests/e2e/       -> Playwright E2E tests
 openclaw/        -> Gateway Docker image build (Makefile + templates)
 ```
@@ -25,34 +25,48 @@ Sub-module guidance: `apps/server/src/AGENTS.md`, `apps/web/src/AGENTS.md`, and 
 ```bash
 # Setup & dev
 npm install                                    # From root (npm workspaces)
-npm run dev -w @aquarium/server       # Backend (port 3001, tsx watch)
-npm run dev -w @aquarium/web          # Frontend (port 5173, Vite)
+npm run dev                                    # Backend only (port 3001, tsx watch)
+npm run dev:web                                # Frontend only (port 5173, Vite)
 
 # IMPORTANT: Build shared FIRST -- server and web depend on it
 npm run build -w @aquarium/shared     # tsc -> packages/shared/dist/
 
 # Database
-npm run migrate -w @aquarium/server   # Run pending migrations
-npm run migrate:make -w @aquarium/server -- migration_name
+npm run migrate -w @aquaclawai/aquarium   # Run pending migrations
+npm run migrate:make -w @aquaclawai/aquarium -- migration_name
 
 # Type checking & builds
-npm run typecheck -w @aquarium/server # tsc --noEmit (server only)
-npm run build -w @aquarium/web        # tsc -b && vite build
-npm run build -w @aquarium/server     # tsc -> apps/server/dist/
+npm run typecheck                     # Build shared + typecheck server (tsc --noEmit)
+npm run lint                          # Lint web (ESLint 9 flat config, no linter for server)
+npm run build                         # Full build: shared -> server -> web (CE)
 
-# Lint (web only -- no linter configured for server)
-npm run lint -w @aquarium/web         # ESLint 9 flat config
+# Workspace-specific builds
+npm run build -w @aquarium/web        # tsc -b && vite build (standard)
+npm run build:ce -w @aquarium/web     # tsc -b && vite build --config vite.config.ce.ts (CE-specific)
+npm run build -w @aquaclawai/aquarium # tsc -> apps/server/dist/
 
 # CLI (run locally)
 npx .                                 # Runs CLI from local build
 ```
 
+Note: Server dev command requires `NODE_OPTIONS=--no-experimental-require-module` (set automatically by the `dev` script).
+
 ### Pre-push Checks
 
-Run the same checks as CI before pushing:
+Run the same checks as CI (`.github/workflows/ci.yml` runs on push/PR to main):
 ```bash
-npm run build -w @aquarium/shared && npm run typecheck -w @aquarium/server & npm run lint -w @aquarium/web & wait
+npm run build -w @aquarium/shared && npm run typecheck -w @aquaclawai/aquarium & npm run lint -w @aquarium/web & wait
 ```
+
+### Releasing
+
+Releases are published via GitHub Actions CI/CD (`.github/workflows/release.yml`), **not** via local `npm publish`. To release:
+
+1. Bump version in `apps/server/package.json`
+2. Commit: `git commit -m "chore: bump version to X.Y.Z"`
+3. Tag and push: `git tag vX.Y.Z && git push origin main --tags`
+
+The `v*` tag triggers the release workflow which publishes to npm (`@aquaclawai/aquarium`) and pushes a Docker image to `ghcr.io/aquaclawai/aquarium`.
 
 ## Testing
 
@@ -65,6 +79,8 @@ npx playwright test -g "should create instance" # By test name grep
 npx playwright test --headed                    # Watch in browser
 npx playwright test --debug                     # Step-through debugger
 ```
+
+**CI mode** (`CI=true`): retries=2, workers=1, skips tests requiring Docker or external services (instance-lifecycle, litellm-lifecycle, credential-secretref, oauth-smoke, etc.).
 
 ## Code Style
 
@@ -114,7 +130,7 @@ import { api } from './api';           // Vite handles this
 - **Config**: `config` object from `apps/server/src/config.ts` -- never `process.env` directly
 - **Database**: Knex query builder via DbAdapter, always parameterized -- never string-concat SQL. CE uses SQLite.
 - **Instance lifecycle**: Only through `InstanceManager` -- never update `instances.status` directly.
-- **Routes**: 18 files in `src/routes/`, thin controllers calling service functions. Each exports a default router.
+- **Routes**: 23 files in `src/routes/`, thin controllers calling service functions. Each exports a default router.
 
 ### Frontend Patterns
 
@@ -141,6 +157,7 @@ import { api } from './api';           // Vite handles this
 - **Request flow**: Routes (HTTP parsing) -> Services (business logic) -> Runtime/DB
 - **Instance states**: `created` -> `starting` -> `running` -> `stopping` -> `stopped`; any -> `error`
 - **Runtime abstraction**: `RuntimeEngine` interface -> Docker or K8s via `RuntimeEngineFactory.getEngine()`. Never import engines directly.
+- **Docker network**: Requires pre-created `openclaw-net` bridge network. Port range 19000-19999 for instance containers.
 - **WebSocket events**: Service emits -> WS server broadcasts -> Frontend `WebSocketContext` receives
 
 ### Key Files
@@ -162,5 +179,5 @@ import { api } from './api';           // Vite handles this
 - **Build artifacts in src/**: `tsc -b` from root generates `.js`/`.d.ts` in `src/` dirs, breaking Vite and Knex. Clean with: `find apps/web/src apps/server/src -name "*.js" -o -name "*.d.ts" -o -name "*.js.map" | xargs rm`
 - **Gateway schema strictness**: `additionalProperties: false` -- do NOT add unknown fields to gateway configs. `client.id` for event relay MUST be `'gateway-client'`.
 - **Credential placeholders**: `${CREDENTIAL:provider:type}` in MCP configs -> resolved at startup via `adapter.ts`. 3-layer resolution: instance creds -> user vault -> error.
-- **Migration numbering**: 30+ migrations with some duplicate numbers from merge conflicts. Always check existing migration files before creating new ones.
+- **Migration numbering**: 35 migrations with duplicate numbers at 021 and 027 from merge conflicts. Always check existing migration files before creating new ones.
 - **Stub agent types**: `opencode` and `claude-code` have manifests but NO adapters. Code calling adapter methods must null-check: `agentType.adapter?.seedConfig?.(...)`.
