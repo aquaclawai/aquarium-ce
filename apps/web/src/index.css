@@ -2179,6 +2179,11 @@ select:focus {
   border-bottom-right-radius: var(--radius-sm);
 }
 
+.chat-message.user a {
+  color: white;
+  text-decoration: underline;
+}
+
 .chat-message.agent {
   align-self: flex-start;
   background-color: var(--color-card-bg);
