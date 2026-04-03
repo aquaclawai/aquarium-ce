@@ -33,12 +33,12 @@
 **Plans:** 6/6 plans complete
 
 Plans:
-- [ ] 01-01-PLAN.md — Shared types, DB migration (3 tables), serverSessionId
-- [ ] 01-02-PLAN.md — Extension lock service, skill store service (lifecycle CRUD)
-- [ ] 01-03-PLAN.md — Skills REST API routes, extension credentials route
-- [ ] 01-04-PLAN.md — Boot reconciliation, orphan recovery, adapter integration
-- [ ] 01-05-PLAN.md — Extensions tab UI, sub-tabs, skill list/catalog, i18n
-- [ ] 01-06-PLAN.md — Credential config panel, alert banners, visual checkpoint
+- [x] 01-01-PLAN.md — Shared types, DB migration (3 tables), serverSessionId
+- [x] 01-02-PLAN.md — Extension lock service, skill store service (lifecycle CRUD)
+- [x] 01-03-PLAN.md — Skills REST API routes, extension credentials route
+- [x] 01-04-PLAN.md — Boot reconciliation, orphan recovery, adapter integration
+- [x] 01-05-PLAN.md — Extensions tab UI, sub-tabs, skill list/catalog, i18n
+- [x] 01-06-PLAN.md — Credential config panel, alert banners, visual checkpoint
 
 ### Phase 2: Plugin Management
 **Goal**: Users can install, activate, configure credentials for, enable/disable, and uninstall plugins from the bundled catalog, with gateway restart handled automatically and rollback on failure
