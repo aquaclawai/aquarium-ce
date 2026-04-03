@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: Completed 01-skill-management/01-04-PLAN.md
-last_updated: "2026-04-03T16:45:24.806Z"
+stopped_at: Completed 01-skill-management/01-05-PLAN.md
+last_updated: "2026-04-03T16:53:41.746Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-skill-management P01 | 20 | 2 tasks | 3 files |
 | Phase 01-skill-management P03 | 160 | 2 tasks | 3 files |
 | Phase 01-skill-management P04 | 15 | 2 tasks | 3 files |
+| Phase 01-skill-management P05 | 6 | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,8 @@ Recent decisions affecting current work:
 - [Phase 01-skill-management]: config.patch failure is partial success (credential stored, configPatched: false) — lock still released
 - [Phase 01-skill-management]: reconcileExtensions integrated into startInstanceAsync (instance-manager.ts) — adapter.ts has no post-boot hook, instance-manager owns the boot flow
 - [Phase 01-skill-management]: reconcileExtensions is non-blocking — failure logs warning but never prevents instance reaching running state
+- [Phase 01-skill-management]: Gear icon in SkillRow sets configuringSkillId state in parent ExtensionsTab only — no modal, no API — CredentialConfigPanel consumes this state in Plan 01-06
+- [Phase 01-skill-management]: Extensions tab placed after Chat in main tab bar (not in ADVANCED_TABS dropdown); catalog hidden when instance not running
 
 ### Pending Todos
 
@@ -85,6 +88,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-03T16:45:24.805Z
-Stopped at: Completed 01-skill-management/01-04-PLAN.md
+Last session: 2026-04-03T16:53:41.744Z
+Stopped at: Completed 01-skill-management/01-05-PLAN.md
 Resume file: None
