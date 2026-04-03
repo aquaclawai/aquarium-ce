@@ -16,7 +16,7 @@ Requirements for Plugin & Skill Marketplace. Each maps to roadmap phases.
 - [ ] **INFRA-05**: System enforces per-instance extension mutation lock with fencing token verification on all DB/config writes
 - [ ] **INFRA-06**: System supports cooperative cancellation via `cancel_requested` flag checked at worker checkpoints
 - [ ] **INFRA-07**: System enforces per-subprocess execution deadlines (npm: 5min, skills: 3min, restart: 2min, config.patch: 30s)
-- [ ] **INFRA-08**: System recovers orphaned operations on startup by marking stale-session ops as crashed and extensions as `pending`
+- [x] **INFRA-08**: System recovers orphaned operations on startup by marking stale-session ops as crashed and extensions as `pending`
 
 ### Skill Management
 
@@ -26,7 +26,7 @@ Requirements for Plugin & Skill Marketplace. Each maps to roadmap phases.
 - [x] **SKILL-04**: User can configure extension-scoped credentials for a skill (extensionKind + extensionId binding)
 - [ ] **SKILL-05**: User can enable/disable an installed skill
 - [ ] **SKILL-06**: User can uninstall a skill
-- [ ] **SKILL-07**: System reconciles skill state on boot (Phase 2) — promotes crash-recovered skills already present in gateway
+- [x] **SKILL-07**: System reconciles skill state on boot (Phase 2) — promotes crash-recovered skills already present in gateway
 
 ### Plugin Management
 
@@ -115,14 +115,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-05 | Phase 1 | Pending |
 | INFRA-06 | Phase 1 | Pending |
 | INFRA-07 | Phase 1 | Pending |
-| INFRA-08 | Phase 1 | Pending |
+| INFRA-08 | Phase 1 | Complete |
 | SKILL-01 | Phase 1 | Complete |
 | SKILL-02 | Phase 1 | Pending |
 | SKILL-03 | Phase 1 | Pending |
 | SKILL-04 | Phase 1 | Complete |
 | SKILL-05 | Phase 1 | Pending |
 | SKILL-06 | Phase 1 | Pending |
-| SKILL-07 | Phase 1 | Pending |
+| SKILL-07 | Phase 1 | Complete |
 | UI-01 | Phase 1 | Pending |
 | UI-05 | Phase 1 | Complete |
 | UI-06 | Phase 1 | Pending |

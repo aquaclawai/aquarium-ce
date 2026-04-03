@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: Completed 01-skill-management/01-03-PLAN.md
-last_updated: "2026-04-03T16:44:16.216Z"
+stopped_at: Completed 01-skill-management/01-04-PLAN.md
+last_updated: "2026-04-03T16:45:24.806Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -52,6 +52,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 01-skill-management P01 | 20 | 2 tasks | 3 files |
 | Phase 01-skill-management P03 | 160 | 2 tasks | 3 files |
+| Phase 01-skill-management P04 | 15 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,8 @@ Recent decisions affecting current work:
 - [Phase 01-skill-management]: GET /skills returns empty gatewayBuiltins when instance not running — avoids 400 for list-only callers
 - [Phase 01-skill-management]: SecretRef env var ID uses 16-char SHA-256 hex truncation of kind_id_field — unique without being unwieldy
 - [Phase 01-skill-management]: config.patch failure is partial success (credential stored, configPatched: false) — lock still released
+- [Phase 01-skill-management]: reconcileExtensions integrated into startInstanceAsync (instance-manager.ts) — adapter.ts has no post-boot hook, instance-manager owns the boot flow
+- [Phase 01-skill-management]: reconcileExtensions is non-blocking — failure logs warning but never prevents instance reaching running state
 
 ### Pending Todos
 
@@ -82,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-03T16:44:16.214Z
-Stopped at: Completed 01-skill-management/01-03-PLAN.md
+Last session: 2026-04-03T16:45:24.805Z
+Stopped at: Completed 01-skill-management/01-04-PLAN.md
 Resume file: None
