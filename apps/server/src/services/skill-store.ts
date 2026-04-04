@@ -338,6 +338,12 @@ export async function uninstallSkill(
       throw new Error(`Skill "${skillId}" not found on instance ${instanceId}`);
     }
 
+    // Check cancel before making the 3-min network call
+    if (await checkCancelRequested(operationId)) {
+      await releaseLock(operationId, fencingToken, 'cancelled');
+      return;
+    }
+
     // Call RPC: skills.uninstall (3-min deadline per INFRA-07)
     const rpc = new GatewayRPCClient(controlEndpoint, authToken);
     try {
