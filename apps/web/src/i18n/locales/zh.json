@@ -1799,7 +1799,10 @@
       "requiresCredentials": "需要 API 密钥",
       "bundled": "内置",
       "clawhub": "ClawHub",
-      "requires": "需要"
+      "requires": "需要",
+      "searchPlaceholder": "搜索扩展...",
+      "allCategories": "所有分类",
+      "capabilities": "功能"
     },
     "empty": {
       "noInstalled": "未安装任何技能",
@@ -1821,11 +1824,47 @@
       "pluginInstallFailed": "安装插件失败",
       "pluginToggleFailed": "更新插件失败",
       "pluginUninstallFailed": "卸载插件失败",
-      "pluginActivateFailed": "激活插件失败"
+      "pluginActivateFailed": "激活插件失败",
+      "installPluginFailed": "安装插件失败",
+      "activateFailed": "激活插件失败",
+      "togglePluginFailed": "更新插件失败",
+      "uninstallPluginFailed": "卸载插件失败"
     },
     "plugins": {
       "comingSoon": "插件管理将在第二阶段推出",
-      "requiresRestart": "需要重启网关"
+      "requiresRestart": "安装此插件需要重启网关。",
+      "activating": "激活中...",
+      "activate": "激活",
+      "retryActivation": "重试激活"
+    },
+    "confirmRestart": {
+      "title": "确认激活",
+      "message": "此操作将重启网关。活跃的对话可能会中断。是否继续？",
+      "cancel": "取消",
+      "confirm": "激活"
+    },
+    "installDialog": {
+      "title": "安装 {{name}}",
+      "source": "来源",
+      "version": "版本",
+      "requiredCredentials": "所需凭证",
+      "noCredentials": "无需凭证",
+      "restartWarning": "此操作将重启网关。活跃的对话可能会中断。",
+      "cancel": "取消",
+      "install": "安装",
+      "installing": "安装中..."
+    },
+    "restart": {
+      "banner": "正在为 {{name}} 重启网关...",
+      "actionsDisabled": "重启期间所有插件操作均已禁用。"
+    },
+    "rollback": {
+      "title": "激活失败",
+      "message": "网关启动插件 \"{{name}}\" 失败，已回滚到之前的配置。",
+      "showDetails": "显示技术详情",
+      "hideDetails": "隐藏技术详情",
+      "close": "关闭",
+      "retry": "重试激活"
     },
     "credentials": {
       "title": "配置凭证",

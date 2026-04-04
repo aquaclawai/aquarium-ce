@@ -1118,7 +1118,10 @@
       "requiresCredentials": "Richiede chiave API",
       "bundled": "Incluso",
       "clawhub": "ClawHub",
-      "requires": "Richiede"
+      "requires": "Richiede",
+      "searchPlaceholder": "Cerca estensioni...",
+      "allCategories": "Tutte le categorie",
+      "capabilities": "Funzionalità"
     },
     "empty": {
       "noInstalled": "Nessuna competenza installata",
@@ -1140,11 +1143,47 @@
       "pluginInstallFailed": "Impossibile installare il plugin",
       "pluginToggleFailed": "Impossibile aggiornare il plugin",
       "pluginUninstallFailed": "Impossibile disinstallare il plugin",
-      "pluginActivateFailed": "Impossibile attivare il plugin"
+      "pluginActivateFailed": "Impossibile attivare il plugin",
+      "installPluginFailed": "Impossibile installare il plugin",
+      "activateFailed": "Impossibile attivare il plugin",
+      "togglePluginFailed": "Impossibile aggiornare il plugin",
+      "uninstallPluginFailed": "Impossibile disinstallare il plugin"
     },
     "plugins": {
       "comingSoon": "La gestione dei plugin arriverà nella fase 2",
-      "requiresRestart": "Richiede il riavvio del gateway"
+      "requiresRestart": "L'installazione di questo plugin richiederà il riavvio del gateway.",
+      "activating": "Attivazione...",
+      "activate": "Attiva",
+      "retryActivation": "Riprova attivazione"
+    },
+    "confirmRestart": {
+      "title": "Conferma attivazione",
+      "message": "Questo riavvierà il gateway. Le conversazioni attive potrebbero essere interrotte. Continuare?",
+      "cancel": "Annulla",
+      "confirm": "Attiva"
+    },
+    "installDialog": {
+      "title": "Installa {{name}}",
+      "source": "Fonte",
+      "version": "Versione",
+      "requiredCredentials": "Credenziali richieste",
+      "noCredentials": "Nessuna credenziale richiesta",
+      "restartWarning": "Questo riavvierà il gateway. Le conversazioni attive potrebbero essere interrotte.",
+      "cancel": "Annulla",
+      "install": "Installa",
+      "installing": "Installazione..."
+    },
+    "restart": {
+      "banner": "Gateway in riavvio per {{name}}...",
+      "actionsDisabled": "Tutte le azioni plugin sono disabilitate durante il riavvio."
+    },
+    "rollback": {
+      "title": "Attivazione non riuscita",
+      "message": "Il gateway non è riuscito ad avviarsi con il plugin \"{{name}}\". È stato ripristinato alla configurazione precedente.",
+      "showDetails": "Mostra dettagli tecnici",
+      "hideDetails": "Nascondi dettagli tecnici",
+      "close": "Chiudi",
+      "retry": "Riprova attivazione"
     },
     "credentials": {
       "title": "Configura credenziali",

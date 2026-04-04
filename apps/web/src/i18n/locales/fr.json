@@ -1118,7 +1118,10 @@
       "requiresCredentials": "Nécessite une clé API",
       "bundled": "Inclus",
       "clawhub": "ClawHub",
-      "requires": "Nécessite"
+      "requires": "Nécessite",
+      "searchPlaceholder": "Rechercher des extensions...",
+      "allCategories": "Toutes les catégories",
+      "capabilities": "Fonctionnalités"
     },
     "empty": {
       "noInstalled": "Aucune compétence installée",
@@ -1140,11 +1143,47 @@
       "pluginInstallFailed": "Échec de l'installation du plugin",
       "pluginToggleFailed": "Échec de la mise à jour du plugin",
       "pluginUninstallFailed": "Échec de la désinstallation du plugin",
-      "pluginActivateFailed": "Échec de l'activation du plugin"
+      "pluginActivateFailed": "Échec de l'activation du plugin",
+      "installPluginFailed": "Échec de l'installation du plugin",
+      "activateFailed": "Échec de l'activation du plugin",
+      "togglePluginFailed": "Échec de la mise à jour du plugin",
+      "uninstallPluginFailed": "Échec de la désinstallation du plugin"
     },
     "plugins": {
       "comingSoon": "La gestion des plugins arrive en phase 2",
-      "requiresRestart": "Nécessite un redémarrage de la passerelle"
+      "requiresRestart": "L'installation de ce plugin nécessite un redémarrage de la passerelle.",
+      "activating": "Activation...",
+      "activate": "Activer",
+      "retryActivation": "Réessayer l'activation"
+    },
+    "confirmRestart": {
+      "title": "Confirmer l'activation",
+      "message": "Cela redémarrera la passerelle. Les conversations actives pourraient être interrompues. Continuer ?",
+      "cancel": "Annuler",
+      "confirm": "Activer"
+    },
+    "installDialog": {
+      "title": "Installer {{name}}",
+      "source": "Source",
+      "version": "Version",
+      "requiredCredentials": "Identifiants requis",
+      "noCredentials": "Aucun identifiant requis",
+      "restartWarning": "Cela redémarrera la passerelle. Les conversations actives pourraient être interrompues.",
+      "cancel": "Annuler",
+      "install": "Installer",
+      "installing": "Installation..."
+    },
+    "restart": {
+      "banner": "Redémarrage de la passerelle pour {{name}}...",
+      "actionsDisabled": "Toutes les actions de plugin sont désactivées pendant le redémarrage."
+    },
+    "rollback": {
+      "title": "Échec de l'activation",
+      "message": "La passerelle n'a pas pu démarrer avec le plugin \"{{name}}\". Elle a été restaurée à la configuration précédente.",
+      "showDetails": "Afficher les détails techniques",
+      "hideDetails": "Masquer les détails techniques",
+      "close": "Fermer",
+      "retry": "Réessayer l'activation"
     },
     "credentials": {
       "title": "Configurer les identifiants",

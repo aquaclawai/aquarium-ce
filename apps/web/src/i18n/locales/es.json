@@ -1118,7 +1118,10 @@
       "requiresCredentials": "Requiere clave API",
       "bundled": "Incluido",
       "clawhub": "ClawHub",
-      "requires": "Requiere"
+      "requires": "Requiere",
+      "searchPlaceholder": "Buscar extensiones...",
+      "allCategories": "Todas las categorías",
+      "capabilities": "Funcionalidades"
     },
     "empty": {
       "noInstalled": "No hay habilidades instaladas",
@@ -1140,11 +1143,47 @@
       "pluginInstallFailed": "Error al instalar el plugin",
       "pluginToggleFailed": "Error al actualizar el plugin",
       "pluginUninstallFailed": "Error al desinstalar el plugin",
-      "pluginActivateFailed": "Error al activar el plugin"
+      "pluginActivateFailed": "Error al activar el plugin",
+      "installPluginFailed": "Error al instalar el plugin",
+      "activateFailed": "Error al activar el plugin",
+      "togglePluginFailed": "Error al actualizar el plugin",
+      "uninstallPluginFailed": "Error al desinstalar el plugin"
     },
     "plugins": {
       "comingSoon": "La gestión de plugins llegará en la fase 2",
-      "requiresRestart": "Requiere reinicio de la puerta de enlace"
+      "requiresRestart": "La instalación de este plugin requerirá un reinicio de la puerta de enlace.",
+      "activating": "Activando...",
+      "activate": "Activar",
+      "retryActivation": "Reintentar activación"
+    },
+    "confirmRestart": {
+      "title": "Confirmar activación",
+      "message": "Esto reiniciará la puerta de enlace. Las conversaciones activas pueden interrumpirse. ¿Continuar?",
+      "cancel": "Cancelar",
+      "confirm": "Activar"
+    },
+    "installDialog": {
+      "title": "Instalar {{name}}",
+      "source": "Fuente",
+      "version": "Versión",
+      "requiredCredentials": "Credenciales requeridas",
+      "noCredentials": "No se requieren credenciales",
+      "restartWarning": "Esto reiniciará la puerta de enlace. Las conversaciones activas pueden interrumpirse.",
+      "cancel": "Cancelar",
+      "install": "Instalar",
+      "installing": "Instalando..."
+    },
+    "restart": {
+      "banner": "Reiniciando puerta de enlace para {{name}}...",
+      "actionsDisabled": "Todas las acciones de plugin están deshabilitadas durante el reinicio."
+    },
+    "rollback": {
+      "title": "Activación fallida",
+      "message": "La puerta de enlace no pudo iniciarse con el plugin \"{{name}}\". Se ha revertido a la configuración anterior.",
+      "showDetails": "Mostrar detalles técnicos",
+      "hideDetails": "Ocultar detalles técnicos",
+      "close": "Cerrar",
+      "retry": "Reintentar activación"
     },
     "credentials": {
       "title": "Configurar credenciales",

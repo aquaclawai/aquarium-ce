@@ -1118,7 +1118,10 @@
       "requiresCredentials": "Erfordert API-Schlüssel",
       "bundled": "Mitgeliefert",
       "clawhub": "ClawHub",
-      "requires": "Erfordert"
+      "requires": "Erfordert",
+      "searchPlaceholder": "Erweiterungen suchen...",
+      "allCategories": "Alle Kategorien",
+      "capabilities": "Funktionen"
     },
     "empty": {
       "noInstalled": "Keine Skills installiert",
@@ -1140,11 +1143,47 @@
       "pluginInstallFailed": "Plugin konnte nicht installiert werden",
       "pluginToggleFailed": "Plugin konnte nicht aktualisiert werden",
       "pluginUninstallFailed": "Plugin konnte nicht deinstalliert werden",
-      "pluginActivateFailed": "Plugin konnte nicht aktiviert werden"
+      "pluginActivateFailed": "Plugin konnte nicht aktiviert werden",
+      "installPluginFailed": "Plugin konnte nicht installiert werden",
+      "activateFailed": "Plugin konnte nicht aktiviert werden",
+      "togglePluginFailed": "Plugin konnte nicht aktualisiert werden",
+      "uninstallPluginFailed": "Plugin konnte nicht deinstalliert werden"
     },
     "plugins": {
       "comingSoon": "Plugin-Verwaltung kommt in Phase 2",
-      "requiresRestart": "Erfordert Gateway-Neustart"
+      "requiresRestart": "Die Installation dieses Plugins erfordert einen Gateway-Neustart.",
+      "activating": "Aktiviere...",
+      "activate": "Aktivieren",
+      "retryActivation": "Aktivierung wiederholen"
+    },
+    "confirmRestart": {
+      "title": "Aktivierung bestätigen",
+      "message": "Dadurch wird das Gateway neu gestartet. Aktive Gespräche können unterbrochen werden. Fortfahren?",
+      "cancel": "Abbrechen",
+      "confirm": "Aktivieren"
+    },
+    "installDialog": {
+      "title": "{{name}} installieren",
+      "source": "Quelle",
+      "version": "Version",
+      "requiredCredentials": "Erforderliche Anmeldedaten",
+      "noCredentials": "Keine Anmeldedaten erforderlich",
+      "restartWarning": "Dadurch wird das Gateway neu gestartet. Aktive Gespräche können unterbrochen werden.",
+      "cancel": "Abbrechen",
+      "install": "Installieren",
+      "installing": "Installiere..."
+    },
+    "restart": {
+      "banner": "Gateway wird für {{name}} neu gestartet...",
+      "actionsDisabled": "Alle Plugin-Aktionen sind während des Neustarts deaktiviert."
+    },
+    "rollback": {
+      "title": "Aktivierung fehlgeschlagen",
+      "message": "Das Gateway konnte mit dem Plugin \"{{name}}\" nicht starten. Es wurde auf die vorherige Konfiguration zurückgesetzt.",
+      "showDetails": "Technische Details anzeigen",
+      "hideDetails": "Technische Details ausblenden",
+      "close": "Schließen",
+      "retry": "Aktivierung wiederholen"
     },
     "credentials": {
       "title": "Anmeldedaten konfigurieren",

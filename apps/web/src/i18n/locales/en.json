@@ -1800,7 +1800,10 @@
       "requiresCredentials": "Requires API key",
       "bundled": "Bundled",
       "clawhub": "ClawHub",
-      "requires": "Requires"
+      "requires": "Requires",
+      "searchPlaceholder": "Search extensions...",
+      "allCategories": "All Categories",
+      "capabilities": "Capabilities"
     },
     "empty": {
       "noInstalled": "No skills installed",
@@ -1822,11 +1825,47 @@
       "pluginInstallFailed": "Failed to install plugin",
       "pluginToggleFailed": "Failed to update plugin",
       "pluginUninstallFailed": "Failed to uninstall plugin",
-      "pluginActivateFailed": "Failed to activate plugin"
+      "pluginActivateFailed": "Failed to activate plugin",
+      "installPluginFailed": "Failed to install plugin",
+      "activateFailed": "Failed to activate plugin",
+      "togglePluginFailed": "Failed to update plugin",
+      "uninstallPluginFailed": "Failed to uninstall plugin"
     },
     "plugins": {
       "comingSoon": "Plugin management coming in Phase 2",
-      "requiresRestart": "Requires gateway restart"
+      "requiresRestart": "Installing this plugin will require a gateway restart.",
+      "activating": "Activating...",
+      "activate": "Activate",
+      "retryActivation": "Retry Activation"
+    },
+    "confirmRestart": {
+      "title": "Confirm Activation",
+      "message": "This will restart the gateway. Active conversations may be interrupted. Continue?",
+      "cancel": "Cancel",
+      "confirm": "Activate"
+    },
+    "installDialog": {
+      "title": "Install {{name}}",
+      "source": "Source",
+      "version": "Version",
+      "requiredCredentials": "Required Credentials",
+      "noCredentials": "No credentials required",
+      "restartWarning": "This will restart the gateway. Active conversations may be interrupted.",
+      "cancel": "Cancel",
+      "install": "Install",
+      "installing": "Installing..."
+    },
+    "restart": {
+      "banner": "Gateway restarting for {{name}}...",
+      "actionsDisabled": "All plugin actions are disabled during restart."
+    },
+    "rollback": {
+      "title": "Activation Failed",
+      "message": "The gateway failed to start with plugin \"{{name}}\". It has been rolled back to the previous configuration.",
+      "showDetails": "Show technical details",
+      "hideDetails": "Hide technical details",
+      "close": "Close",
+      "retry": "Retry Activation"
     },
     "credentials": {
       "title": "Configure Credentials",
