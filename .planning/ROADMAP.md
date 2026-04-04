@@ -101,7 +101,12 @@ Plans:
   1. User can authenticate an OAuth-requiring plugin by clicking a link in the dashboard that opens a browser redirect flow and returns the token to the platform
   2. Exported templates do not contain OAuth tokens — those extensions are flagged with requiresReAuth so the importer knows re-authentication is needed
   3. User can configure a SecretRef vault integration (1Password or HashiCorp Vault) and have credentials resolve from the vault at activation time
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — OAuth proxy route (initiate/callback/status), requiresReAuth type + export/import logic
+- [ ] 05-02-PLAN.md — Vault config API (CRUD endpoints), exec SecretRef resolution in seedConfig
+- [ ] 05-03-PLAN.md — OAuth connect button, vault source toggle, VaultConfigSection, i18n, visual checkpoint
 
 ### Phase 6: Offline Resilience
 **Goal**: Plugin artifacts are cached locally so gateway restarts and air-gapped deployments can rebuild installed plugins without hitting the external registry
@@ -123,5 +128,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Plugin Management | v1.1 | 0/4 | Planning complete | - |
 | 3. ClawHub & Trust Policy | 5/5 | Complete   | 2026-04-04 | - |
 | 4. Template Portability | 3/3 | Complete   | 2026-04-04 | - |
-| 5. OAuth & Advanced Auth | v1.1 | 0/TBD | Not started | - |
+| 5. OAuth & Advanced Auth | v1.1 | 0/3 | Planning complete | - |
 | 6. Offline Resilience | v1.1 | 0/TBD | Not started | - |
