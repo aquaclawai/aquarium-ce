@@ -1369,6 +1369,7 @@ export interface AdminUserWithRole {
 // === Extension Lifecycle Types ===
 
 export type ExtensionStatus = 'pending' | 'installed' | 'active' | 'disabled' | 'degraded' | 'failed';
+
 export type ExtensionKind = 'plugin' | 'skill';
 
 export type PluginSource =
@@ -1415,6 +1416,7 @@ export interface InstancePlugin {
   retryCount: number;
   installedAt: string;
   updatedAt: string;
+  trustOverride?: TrustOverride | null;
 }
 
 export interface InstanceSkill {
@@ -1434,6 +1436,7 @@ export interface InstanceSkill {
   retryCount: number;
   installedAt: string;
   updatedAt: string;
+  trustOverride?: TrustOverride | null;
 }
 
 export interface SkillCatalogEntry {
@@ -1447,6 +1450,8 @@ export interface SkillCatalogEntry {
   requiredCredentials: ExtensionCredentialRequirement[];
   requiredBinaries: string[];
   requiredEnvVars: string[];
+  trustSignals?: TrustSignals;
+  trustTier?: TrustTier;
 }
 
 export interface PluginCatalogEntry {
@@ -1458,6 +1463,8 @@ export interface PluginCatalogEntry {
   version: string;
   requiredCredentials: ExtensionCredentialRequirement[];
   capabilities: string[];
+  trustSignals?: TrustSignals;
+  trustTier?: TrustTier;
 }
 
 export interface ExtensionOperation {
@@ -1473,4 +1480,53 @@ export interface ExtensionOperation {
   completedAt: string | null;
   result: string | null;
   errorMessage: string | null;
+}
+
+// === Trust Policy Types ===
+
+export type TrustTier = 'bundled' | 'verified' | 'community' | 'unscanned';
+
+export interface TrustSignals {
+  verifiedPublisher: boolean;
+  downloadCount: number;
+  ageInDays: number;
+  virusTotalPassed: boolean | null;  // null = not scanned
+}
+
+export interface TrustOverride {
+  id: string;
+  instanceId: string;
+  extensionId: string;
+  extensionKind: ExtensionKind;
+  action: 'allow';
+  reason: string;
+  userId: string;
+  credentialAccessAcknowledged: boolean;
+  createdAt: string;
+}
+
+export type TrustDecision = 'allow' | 'block';
+
+export interface TrustEvaluation {
+  tier: TrustTier;
+  decision: TrustDecision;
+  signals: TrustSignals | null;   // null for bundled (no ClawHub metadata)
+  override: TrustOverride | null; // non-null if admin overrode
+  blockReason: string | null;     // human-readable reason when blocked
+}
+
+// ClawHub catalog entry — extends base catalog entries with trust signals
+export interface ClawHubCatalogEntry {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  version: string;
+  kind: ExtensionKind;
+  publisher: string;
+  trustSignals: TrustSignals;
+  requiredCredentials: ExtensionCredentialRequirement[];
+  capabilities?: string[];        // plugins only
+  requiredBinaries?: string[];    // skills only
+  hasScripts?: boolean;           // skills only — true if contains scripts/ dir
 }
