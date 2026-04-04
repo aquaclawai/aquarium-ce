@@ -1,8 +1,8 @@
 import type { AgentTypeAdapter, ConfigFileCategories } from '../types.js';
 import type { ToolPermissions, TemplateSecurityConfig, PluginSource } from '@aquarium/shared';
 import { DEFAULT_TOOL_PERMISSIONS } from '@aquarium/shared';
-import { GatewayRPCClient } from './gateway-rpc.js';
-import { getGatewayClient, connectGateway } from '../../services/gateway-event-relay.js';
+import { gatewayCall } from './gateway-rpc.js';
+// gateway-event-relay imports removed — all RPC goes through gatewayCall
 import { db } from '../../db/index.js';
 import { getAdapter } from '../../db/adapter.js';
 
@@ -823,60 +823,15 @@ export const openclawAdapter: AgentTypeAdapter = {
   },
 
   async translateRPC({ method, params, endpoint, token, instanceId }) {
-    const timeoutMs = method === 'web.login.wait' ? 180_000 : method.startsWith('web.login.') ? 60_000 : 30_000;
+    const timeoutMs = method === 'web.login.wait' ? 180_000
+      : method.startsWith('web.login.') ? 60_000
+      : 30_000;
 
-    // Try persistent client first (if instanceId provided and client connected)
-    if (instanceId) {
-      const persistent = getGatewayClient(instanceId);
-      if (persistent) {
-        return await persistent.call(method, params, timeoutMs);
-      }
+    if (!instanceId) {
+      throw new Error('instanceId required for translateRPC');
     }
 
-    // Fallback to ephemeral connection with retry.
-    // The gateway WS server may not be ready yet (takes ~47-150s after container start),
-    // so transient connection failures (close code 1006, ECONNREFUSED) are retried.
-    const MAX_RETRIES = 2;
-    const RETRY_DELAY_MS = 2_000;
-    let lastError: Error | undefined;
-
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      if (attempt > 0) {
-        await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
-        // Re-check persistent client — it may have connected during the delay
-        if (instanceId) {
-          const persistent = getGatewayClient(instanceId);
-          if (persistent) {
-            return await persistent.call(method, params, timeoutMs);
-          }
-        }
-      }
-
-      const client = new GatewayRPCClient(endpoint, token);
-      try {
-        const result = await client.call(method, params, timeoutMs);
-
-        // If we reached the gateway via ephemeral but the persistent client isn't
-        // connected, force-reconnect it now.  Event-producing RPCs like chat.send
-        // need the persistent WebSocket to relay streaming events back to the browser.
-        if (instanceId && !getGatewayClient(instanceId)) {
-          connectGateway(instanceId, endpoint, token);
-        }
-
-        return result;
-      } catch (err) {
-        client.close();
-        lastError = err instanceof Error ? err : new Error(String(err));
-        // Only retry on transient connection errors, not on RPC-level errors
-        const msg = lastError.message;
-        const isTransient = msg.includes('closed unexpectedly') ||
-          msg.includes('ECONNREFUSED') ||
-          msg.includes('socket hang up') ||
-          msg.includes('connect failed');
-        if (!isTransient) throw lastError;
-      }
-    }
-    throw lastError;
+    return gatewayCall(instanceId, method, params, timeoutMs);
   },
 
   async resolveEnv({ instance, credentials, litellmKey }) {
@@ -955,15 +910,7 @@ export const openclawAdapter: AgentTypeAdapter = {
 
   async checkReady({ instance, endpoint }) {
     try {
-      const persistent = getGatewayClient(instance.id);
-      if (persistent) {
-        const result = await persistent.call('platform.ping', {}, 5_000);
-        return result !== null;
-      }
-      const client = new GatewayRPCClient(endpoint, instance.authToken);
-      const result = await client.call('platform.ping', {});
-      client.close();
-      return result !== null;
+      return await gatewayCall(instance.id, 'platform.ping', {}, 5_000) !== null;
     } catch {
       return false;
     }

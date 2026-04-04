@@ -10,7 +10,8 @@ import {
   disablePlugin,
   uninstallPlugin,
 } from '../services/plugin-store.js';
-import { GatewayRPCClient } from '../agent-types/openclaw/gateway-rpc.js';
+import { gatewayCall, extractPluginPresence, extractPluginConfigEntries } from '../agent-types/openclaw/gateway-rpc.js';
+import type { PluginConfigEntry } from '../agent-types/openclaw/gateway-rpc.js';
 import { LockConflictError } from '../services/extension-lock.js';
 import { evaluateTrustPolicy } from '../services/trust-store.js';
 import { searchClawHub, getClawHubExtensionInfo } from '../services/marketplace-client.js';
@@ -44,36 +45,42 @@ router.get('/:id/plugins', async (req, res) => {
     let gatewayBuiltins: GatewayExtensionInfo[] = [];
 
     if (instance.status === 'running' && instance.controlEndpoint) {
-      // Fetch all plugins known by gateway, separate out built-ins (not in DB)
+      // Fetch all plugins known by gateway via tools.catalog + config.get,
+      // separate out built-ins (not in DB)
       const managedIds = new Set(managed.map(p => p.pluginId));
-      const rpc = new GatewayRPCClient(instance.controlEndpoint, instance.authToken);
       try {
-        const rawList = await rpc.call('plugins.list', {}, 30_000);
-        if (Array.isArray(rawList)) {
-          for (const item of rawList) {
-            if (typeof item !== 'object' || item === null) continue;
-            const entry = item as Record<string, unknown>;
-            // Gateway built-ins have source='bundled' and are not tracked in our DB
-            if (entry.source === 'bundled' && typeof entry.id === 'string' && !managedIds.has(entry.id)) {
-              gatewayBuiltins.push({
-                id: entry.id as string,
-                name: (entry.name as string) ?? entry.id as string,
-                description: (entry.description as string) ?? '',
-                version: (entry.version as string) ?? '0.0.0',
-                source: 'bundled',
-                enabled: Boolean(entry.enabled),
-              });
-            }
-          }
+        const [catalogResult, configResult] = await Promise.all([
+          gatewayCall(instance.id, 'tools.catalog', {}, 30_000),
+          gatewayCall(instance.id, 'config.get', {}, 30_000),
+        ]);
+        const pluginPresence = extractPluginPresence(catalogResult);
+        const pluginConfig = extractPluginConfigEntries(configResult);
+
+        // Gateway builtins = plugins in tools.catalog OR config.get but NOT in our DB
+        const allPluginIds = new Set([
+          ...pluginPresence.keys(),
+          ...pluginConfig.keys(),
+        ]);
+
+        for (const pluginId of allPluginIds) {
+          if (managedIds.has(pluginId)) continue;
+          const presence = pluginPresence.get(pluginId);
+          const cfg = pluginConfig.get(pluginId);
+          gatewayBuiltins.push({
+            id: pluginId,
+            name: pluginId,
+            description: '',
+            version: '0.0.0',
+            source: 'bundled',
+            enabled: cfg ? cfg.enabled : (presence?.loaded ?? false),
+          });
         }
       } catch (rpcErr: unknown) {
-        // Soft-log: older gateway versions may not support plugins.list
         console.warn(
-          '[plugins] plugins.list RPC failed (older gateway?):',
+          '[plugins] tools.catalog/config.get RPC failed:',
           rpcErr instanceof Error ? rpcErr.message : String(rpcErr),
         );
-      } finally {
-        rpc.close();
+        // Graceful degradation: no builtins shown
       }
     }
 
@@ -115,45 +122,47 @@ router.get('/:id/plugins/catalog', async (req, res) => {
     const page = parseInt(pageStr ?? '0', 10) || 0;
     const limit = parseInt(limitStr ?? '20', 10) || 20;
 
-    // 1. Fetch bundled catalog from gateway RPC
-    const rpc = new GatewayRPCClient(instance.controlEndpoint, instance.authToken);
-    let rawList: unknown;
+    // 1. Fetch bundled catalog from gateway RPC via tools.catalog + config.get
+    let pluginPresence = new Map<string, { pluginId: string; loaded: boolean; toolCount: number }>();
+    let pluginConfig = new Map<string, PluginConfigEntry>();
     try {
-      rawList = await rpc.call('plugins.list', {}, 30_000);
+      const [catalogResult, configResult] = await Promise.all([
+        gatewayCall(instance.id, 'tools.catalog', {}, 30_000),
+        gatewayCall(instance.id, 'config.get', {}, 30_000),
+      ]);
+      pluginPresence = extractPluginPresence(catalogResult);
+      pluginConfig = extractPluginConfigEntries(configResult);
     } catch (rpcErr: unknown) {
-      // Soft-log: older gateway versions may not support plugins.list
       console.warn(
-        '[plugins] plugins.list RPC failed in catalog (older gateway?):',
+        '[plugins] tools.catalog/config.get RPC failed in catalog:',
         rpcErr instanceof Error ? rpcErr.message : String(rpcErr),
       );
-      rawList = undefined;
-    } finally {
-      rpc.close();
     }
 
     // 2. Build bundled catalog entries — bundled plugins are always allowed
     const bundledById = new Map<string, PluginCatalogEntry>();
-    if (Array.isArray(rawList)) {
-      for (const item of rawList) {
-        if (typeof item !== 'object' || item === null) continue;
-        const entry = item as Record<string, unknown>;
-        const entryId = (entry.id as string) ?? '';
-        if (!entryId) continue;
-        bundledById.set(entryId, {
-          id: entryId,
-          name: (entry.name as string) ?? entryId,
-          description: (entry.description as string) ?? '',
-          category: (entry.category as string) ?? 'general',
-          source: (entry.source as 'bundled' | 'clawhub') ?? 'bundled',
-          version: (entry.version as string) ?? '0.0.0',
-          requiredCredentials: Array.isArray(entry.requiredCredentials) ? entry.requiredCredentials : [],
-          capabilities: Array.isArray(entry.capabilities) ? entry.capabilities : [],
-          trustTier: 'bundled' as TrustTier,
-          trustDecision: 'allow' as TrustDecision,
-          blockReason: undefined,
-          trustSignals: undefined,
-        });
-      }
+    const allPluginIds = new Set([
+      ...pluginPresence.keys(),
+      ...pluginConfig.keys(),
+    ]);
+    for (const entryId of allPluginIds) {
+      if (!entryId) continue;
+      const cfg = pluginConfig.get(entryId);
+      const presence = pluginPresence.get(entryId);
+      bundledById.set(entryId, {
+        id: entryId,
+        name: entryId,
+        description: '',
+        category: 'general',
+        source: 'bundled',
+        version: '0.0.0',
+        requiredCredentials: [],
+        capabilities: [],
+        trustTier: 'bundled' as TrustTier,
+        trustDecision: 'allow' as TrustDecision,
+        blockReason: undefined,
+        trustSignals: undefined,
+      });
     }
 
     // 3. Fetch ClawHub results and evaluate trust per entry
@@ -437,17 +446,12 @@ router.put('/:id/plugins/:pluginId/upgrade', async (req, res) => {
     let upgradedPlugin: InstancePlugin | null = null;
 
     try {
-      const rpc = new GatewayRPCClient(instance.controlEndpoint, instance.authToken);
-      let installResult: unknown;
-      try {
-        installResult = await rpc.call(
-          'plugins.install',
-          { pluginId, source: plugin.source, version: clawHubInfo.version },
-          300_000,
-        );
-      } finally {
-        rpc.close();
-      }
+      const installResult = await gatewayCall(
+        instance.id,
+        'plugins.install',
+        { pluginId, source: plugin.source, version: clawHubInfo.version },
+        300_000,
+      );
 
       // Update locked_version and integrity_hash
       const resultObj = (typeof installResult === 'object' && installResult !== null)

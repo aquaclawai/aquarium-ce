@@ -4,7 +4,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { getInstance } from '../services/instance-manager.js';
 import { addCredential } from '../services/credential-store.js';
 import { acquireLock, releaseLock, LockConflictError } from '../services/extension-lock.js';
-import { GatewayRPCClient } from '../agent-types/openclaw/gateway-rpc.js';
+import { gatewayCall } from '../agent-types/openclaw/gateway-rpc.js';
 import { db } from '../db/index.js';
 import { createHash } from 'node:crypto';
 import type { ApiResponse, ExtensionKind } from '@aquarium/shared';
@@ -146,9 +146,8 @@ router.post('/:id/extension-credentials', async (req, res) => {
     }
 
     // 3. Inject credential into extension's scoped namespace via config.patch RPC (30s timeout)
-    const rpc = new GatewayRPCClient(instance.controlEndpoint!, instance.authToken);
     try {
-      await rpc.call('config.patch', { path: configPath, value: secretRef }, 30_000);
+      await gatewayCall(instanceId, 'config.patch', { path: configPath, value: secretRef }, 30_000);
       configPatched = true;
     } catch (rpcErr: unknown) {
       const rpcMessage = rpcErr instanceof Error ? rpcErr.message : String(rpcErr);
@@ -157,8 +156,6 @@ router.post('/:id/extension-credentials', async (req, res) => {
         `Credential stored but extension remains in 'installed' status.`
       );
       // Leave status as-is; return partial success below
-    } finally {
-      rpc.close();
     }
 
     // 4. If config.patch succeeded and this is a skill, promote from 'installed' → 'active'

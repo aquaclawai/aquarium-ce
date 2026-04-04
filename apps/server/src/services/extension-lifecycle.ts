@@ -1,5 +1,10 @@
 import { db } from '../db/index.js';
-import { GatewayRPCClient } from '../agent-types/openclaw/gateway-rpc.js';
+import {
+  gatewayCall,
+  extractPluginPresence,
+  extractPluginConfigEntries,
+} from '../agent-types/openclaw/gateway-rpc.js';
+import type { PluginPresenceInfo, PluginConfigEntry } from '../agent-types/openclaw/gateway-rpc.js';
 import { cleanupOrphanedOperations } from './extension-lock.js';
 import { getSkillsForInstance, updateSkillStatus, installSkill } from './skill-store.js';
 import { getPluginsForInstance, updatePluginStatus, installPlugin } from './plugin-store.js';
@@ -139,31 +144,28 @@ export async function reconcileExtensions(
   const demoted: string[] = [];
   const unchanged: string[] = [];
 
-  // Fetch current gateway skill state
-  const rpc = new GatewayRPCClient(controlEndpoint, authToken);
-  let rpcResult: unknown;
+  // Fetch current gateway skill state via skills.list
+  let skillsRpcResult: unknown;
   try {
-    rpcResult = await rpc.call('skills.list', {}, 15_000);
+    skillsRpcResult = await gatewayCall(instanceId, 'skills.list', {}, 15_000);
   } catch (skillListErr: unknown) {
     // skills.list may not exist in older gateway versions — log and skip
     console.warn(
       `[extension-lifecycle] skills.list RPC failed for ${instanceId} (gateway may not support it):`,
       skillListErr,
     );
-    rpcResult = undefined;
-  } finally {
-    rpc.close();
+    skillsRpcResult = undefined;
   }
 
-  if (rpcResult !== undefined) {
-    if (!isSkillsListResult(rpcResult)) {
+  if (skillsRpcResult !== undefined) {
+    if (!isSkillsListResult(skillsRpcResult)) {
       console.warn(
-        `[extension-lifecycle] Unexpected skills.list RPC response for ${instanceId}: ${JSON.stringify(rpcResult)}`
+        `[extension-lifecycle] Unexpected skills.list RPC response for ${instanceId}: ${JSON.stringify(skillsRpcResult)}`
       );
     } else {
       // Build gateway skills map: skillId -> gatewaySkillInfo
       const gatewaySkills = new Map<string, GatewaySkillInfo>();
-      for (const skill of rpcResult.skills ?? []) {
+      for (const skill of skillsRpcResult.skills ?? []) {
         if (skill.skillId) {
           gatewaySkills.set(skill.skillId, skill);
         }
@@ -223,87 +225,77 @@ export async function reconcileExtensions(
   }
 
   // ── Plugin reconciliation ──────────────────────────────────────────────────
-  // Fetch current gateway plugin state
-  const pluginRpc = new GatewayRPCClient(controlEndpoint, authToken);
-  let pluginRpcResult: unknown;
+  // Fetch current gateway plugin state via tools.catalog + config.get
+  let pluginPresenceMap = new Map<string, PluginPresenceInfo>();
+  let pluginConfigMap = new Map<string, PluginConfigEntry>();
   try {
-    pluginRpcResult = await pluginRpc.call('plugins.list', {}, 30_000);
-  } catch (pluginListErr: unknown) {
-    // plugins.list may not exist in older gateway versions — log and skip
+    const [catalogResult, configResult] = await Promise.all([
+      gatewayCall(instanceId, 'tools.catalog', {}, 30_000),
+      gatewayCall(instanceId, 'config.get', {}, 30_000),
+    ]);
+    pluginPresenceMap = extractPluginPresence(catalogResult);
+    pluginConfigMap = extractPluginConfigEntries(configResult);
+  } catch (err) {
     console.warn(
-      `[extension-lifecycle] plugins.list RPC failed for ${instanceId} (gateway may not support it):`,
-      pluginListErr,
+      `[extension-lifecycle] tools.catalog/config.get RPC failed for ${instanceId}:`,
+      (err as Error).message,
     );
-    pluginRpcResult = undefined;
-  } finally {
-    pluginRpc.close();
+    // Continue with empty maps — graceful degradation
   }
 
-  if (pluginRpcResult !== undefined) {
-    if (!isPluginsListResult(pluginRpcResult)) {
-      console.warn(
-        `[extension-lifecycle] Unexpected plugins.list RPC response for ${instanceId}: ${JSON.stringify(pluginRpcResult)}`
-      );
-    } else {
-      // Build gateway plugins map: pluginId -> gatewayPluginInfo
-      const gatewayPlugins = new Map<string, GatewayPluginInfo>();
-      for (const plugin of pluginRpcResult.plugins ?? []) {
-        // Gateway may return 'id' or 'pluginId'
-        const id = plugin.pluginId ?? plugin.id;
-        if (id) {
-          gatewayPlugins.set(id as string, plugin);
-        }
-      }
+  // Only reconcile if we got data from at least one source
+  if (pluginPresenceMap.size > 0 || pluginConfigMap.size > 0) {
+    // Fetch DB plugin state
+    const dbPlugins = await getPluginsForInstance(instanceId);
 
-      // Fetch DB plugin state
-      const dbPlugins = await getPluginsForInstance(instanceId);
+    for (const dbPlugin of dbPlugins) {
+      const { pluginId, status } = dbPlugin;
+      const inPresence = pluginPresenceMap.has(pluginId);
+      const configEntry = pluginConfigMap.get(pluginId);
+      // A plugin is "in gateway" if it has loaded tools OR appears in config
+      const inGateway = inPresence || configEntry !== undefined;
 
-      for (const dbPlugin of dbPlugins) {
-        const { pluginId, status } = dbPlugin;
-        const inGateway = gatewayPlugins.has(pluginId);
-
-        if (status === 'active' && inGateway) {
-          // Confirmed healthy — no change
-          unchanged.push(pluginId);
-        } else if (status === 'degraded' && inGateway) {
-          // Was degraded but recovered — promote to active
-          await updatePluginStatus(instanceId, pluginId, 'active');
-          promoted.push(pluginId);
-        } else if (status === 'active' && !inGateway) {
-          // Active in DB but missing from gateway — mark failed
-          await updatePluginStatus(
-            instanceId,
-            pluginId,
-            'failed',
-            'Plugin not found in gateway after restart',
-          );
-          demoted.push(pluginId);
-        } else if (status === 'degraded' && !inGateway) {
-          // Degraded in DB and still absent — mark failed
-          await updatePluginStatus(
-            instanceId,
-            pluginId,
-            'failed',
-            'Plugin not recovered after restart',
-          );
-          demoted.push(pluginId);
-        } else if (status === 'pending' && inGateway) {
-          // Install completed before the crash — promote to active and clear pending_owner
-          await db('instance_plugins')
-            .where({ instance_id: instanceId, plugin_id: pluginId })
-            .update({
-              status: 'active',
-              pending_owner: null,
-              updated_at: db.fn.now(),
-            });
-          promoted.push(pluginId);
-        } else if (status === 'pending' && !inGateway) {
-          // Install was in-flight when server crashed — leave pending for Phase 3 replay
-          unchanged.push(pluginId);
-        } else {
-          // installed / disabled / failed — no reconciliation needed
-          unchanged.push(pluginId);
-        }
+      if (status === 'active' && inGateway) {
+        // Confirmed healthy — no change
+        unchanged.push(pluginId);
+      } else if (status === 'degraded' && inGateway) {
+        // Was degraded but recovered — promote to active
+        await updatePluginStatus(instanceId, pluginId, 'active');
+        promoted.push(pluginId);
+      } else if (status === 'active' && !inGateway) {
+        // Active in DB but missing from gateway — mark failed
+        await updatePluginStatus(
+          instanceId,
+          pluginId,
+          'failed',
+          'Plugin not found in gateway after restart',
+        );
+        demoted.push(pluginId);
+      } else if (status === 'degraded' && !inGateway) {
+        // Degraded in DB and still absent — mark failed
+        await updatePluginStatus(
+          instanceId,
+          pluginId,
+          'failed',
+          'Plugin not recovered after restart',
+        );
+        demoted.push(pluginId);
+      } else if (status === 'pending' && inGateway) {
+        // Install completed before the crash — promote to active and clear pending_owner
+        await db('instance_plugins')
+          .where({ instance_id: instanceId, plugin_id: pluginId })
+          .update({
+            status: 'active',
+            pending_owner: null,
+            updated_at: db.fn.now(),
+          });
+        promoted.push(pluginId);
+      } else if (status === 'pending' && !inGateway) {
+        // Install was in-flight when server crashed — leave pending for Phase 3 replay
+        unchanged.push(pluginId);
+      } else {
+        // installed / disabled / failed — no reconciliation needed
+        unchanged.push(pluginId);
       }
     }
   }

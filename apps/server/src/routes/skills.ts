@@ -9,7 +9,7 @@ import {
   disableSkill,
   uninstallSkill,
 } from '../services/skill-store.js';
-import { GatewayRPCClient } from '../agent-types/openclaw/gateway-rpc.js';
+import { gatewayCall } from '../agent-types/openclaw/gateway-rpc.js';
 import { LockConflictError } from '../services/extension-lock.js';
 import { evaluateTrustPolicy } from '../services/trust-store.js';
 import { searchClawHub, getClawHubExtensionInfo } from '../services/marketplace-client.js';
@@ -45,9 +45,8 @@ router.get('/:id/skills', async (req, res) => {
     if (instance.status === 'running' && instance.controlEndpoint) {
       // Fetch gateway's native bundled skills via skills.status RPC
       const managedIds = new Set(managed.map(s => s.skillId));
-      const rpc = new GatewayRPCClient(instance.controlEndpoint, instance.authToken);
       try {
-        const rawResult = await rpc.call('skills.status', {}, 30_000) as Record<string, unknown> | null;
+        const rawResult = await gatewayCall(instance.id, 'skills.status', {}, 30_000) as Record<string, unknown> | null;
         const rawSkills = rawResult && Array.isArray(rawResult.skills) ? rawResult.skills : [];
         for (const item of rawSkills) {
           if (typeof item !== 'object' || item === null) continue;
@@ -68,8 +67,6 @@ router.get('/:id/skills', async (req, res) => {
           '[skills] skills.status RPC failed:',
           rpcErr instanceof Error ? rpcErr.message : String(rpcErr),
         );
-      } finally {
-        rpc.close();
       }
     }
 
@@ -112,10 +109,9 @@ router.get('/:id/skills/catalog', async (req, res) => {
     const limit = parseInt(limitStr ?? '20', 10) || 20;
 
     // 1. Fetch bundled catalog from gateway RPC
-    const rpc = new GatewayRPCClient(instance.controlEndpoint, instance.authToken);
     let rawList: unknown;
     try {
-      rawList = await rpc.call('skills.list', {}, 30_000);
+      rawList = await gatewayCall(instance.id, 'skills.list', {}, 30_000);
     } catch (rpcErr: unknown) {
       // Soft-log: older gateway versions may not support skills.list
       console.warn(
@@ -123,8 +119,6 @@ router.get('/:id/skills/catalog', async (req, res) => {
         rpcErr instanceof Error ? rpcErr.message : String(rpcErr),
       );
       rawList = undefined;
-    } finally {
-      rpc.close();
     }
 
     // 2. Build bundled catalog entries — bundled skills are always allowed
@@ -380,17 +374,12 @@ router.put('/:id/skills/:skillId/upgrade', async (req, res) => {
     let upgradedSkill: InstanceSkill | null = null;
 
     try {
-      const rpc = new GatewayRPCClient(instance.controlEndpoint, instance.authToken);
-      let installResult: unknown;
-      try {
-        installResult = await rpc.call(
-          'skills.install',
-          { source: 'clawhub', slug: skillId, version: clawHubInfo.version },
-          300_000,
-        );
-      } finally {
-        rpc.close();
-      }
+      const installResult = await gatewayCall(
+        instance.id,
+        'skills.install',
+        { source: 'clawhub', slug: skillId, version: clawHubInfo.version },
+        300_000,
+      );
 
       // Update locked_version and integrity_hash
       const resultObj = (typeof installResult === 'object' && installResult !== null)

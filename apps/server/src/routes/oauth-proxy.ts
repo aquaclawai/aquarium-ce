@@ -7,7 +7,7 @@ import { randomBytes } from 'node:crypto';
 import { requireAuth } from '../middleware/auth.js';
 import { getInstance } from '../services/instance-manager.js';
 import { addCredential } from '../services/credential-store.js';
-import { GatewayRPCClient } from '../agent-types/openclaw/gateway-rpc.js';
+import { gatewayCall } from '../agent-types/openclaw/gateway-rpc.js';
 import { config } from '../config.js';
 import { db } from '../db/index.js';
 import type { ApiResponse, ExtensionKind } from '@aquarium/shared';
@@ -94,9 +94,8 @@ router.post('/:id/oauth-proxy/initiate', async (req, res) => {
   // Attempt to get the OAuth authorization URL from the gateway via RPC.
   // Older gateway versions may not support auth.getOAuthUrl — fall back gracefully.
   let authUrl: string;
-  const rpc = new GatewayRPCClient(instance.controlEndpoint!, instance.authToken);
   try {
-    const result = await rpc.call('auth.getOAuthUrl', { provider, callbackUrl }, 15_000) as { url?: string } | null;
+    const result = await gatewayCall(instanceId, 'auth.getOAuthUrl', { provider, callbackUrl }, 15_000) as { url?: string } | null;
     if (result && typeof result === 'object' && typeof result.url === 'string') {
       authUrl = result.url;
     } else {
@@ -107,8 +106,6 @@ router.post('/:id/oauth-proxy/initiate', async (req, res) => {
     // RPC not supported or failed — fall back to callback URL directly
     // (Older gateways / gateways without OAuth support)
     authUrl = callbackUrl;
-  } finally {
-    rpc.close();
   }
 
   res.json({ ok: true, data: { authUrl, state } } satisfies ApiResponse<{ authUrl: string; state: string }>);
@@ -186,11 +183,10 @@ router.get('/:id/oauth-proxy/callback', async (req, res) => {
 
   const callbackUrl = `${config.corsOrigin}/api/instances/${instanceId}/oauth-proxy/callback?state=${state}`;
 
-  const rpc = new GatewayRPCClient(instance.controlEndpoint, instance.authToken);
   try {
     // Relay auth code to gateway for token exchange. Gateway stores the token
     // in auth-profiles.json internally.
-    await rpc.call('auth.exchangeToken', { provider: session.provider, code, callbackUrl }, 30_000);
+    await gatewayCall(instanceId, 'auth.exchangeToken', { provider: session.provider, code, callbackUrl }, 30_000);
 
     // CRITICAL: Write an oauth_token sentinel credential row so template export
     // can detect OAuth-backed extensions and set requiresReAuth=true.
@@ -229,8 +225,6 @@ router.get('/:id/oauth-proxy/callback', async (req, res) => {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     sendHtmlPage('error', session.extensionId, `Token exchange failed: ${message}`);
-  } finally {
-    rpc.close();
   }
 });
 
