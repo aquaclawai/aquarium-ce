@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-04-04T04:11:37.821Z"
+stopped_at: Completed 03-05-PLAN.md
+last_updated: "2026-04-04T04:19:45.045Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 16
-  completed_plans: 15
+  completed_plans: 16
   percent: 0
 ---
 
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03-clawhub-trust-policy P01 | 5 | 2 tasks | 3 files |
 | Phase 03-clawhub-trust-policy P03 | 15 | 2 tasks | 5 files |
 | Phase 03-clawhub-trust-policy P04 | 15 | 2 tasks | 11 files |
+| Phase 03-clawhub-trust-policy P05 | 5 | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,9 @@ Recent decisions affecting current work:
 - [Phase 03-clawhub-trust-policy]: blockReason stored as undefined (not null) in catalog entries to match optional field type in shared types
 - [Phase 03-clawhub-trust-policy]: trustDecision/blockReason added as optional fields to catalog entry types — UI uses server-provided values when plan 03-03 populates them, no blocked state otherwise
 - [Phase 03-clawhub-trust-policy]: CatalogSkillRow not extended with trust display — deferred pending 03-03 server integration that adds trust data to skill catalog entries
+- [Phase 03-clawhub-trust-policy]: Visual checkpoint auto-approved in auto-advance mode for Plan 03-05
+- [Phase 03-clawhub-trust-policy]: Truncated hash shown as sha512-{first16}...{last8} for compact readability in configure panel
+- [Phase 03-clawhub-trust-policy]: Two-step upgrade dryRun flow: Check for Updates queries version without side effects, Upgrade button commits
 
 ### Pending Todos
 
@@ -124,6 +128,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T04:11:37.818Z
-Stopped at: Completed 03-04-PLAN.md
+Last session: 2026-04-04T04:19:45.043Z
+Stopped at: Completed 03-05-PLAN.md
 Resume file: None

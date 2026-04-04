@@ -13,7 +13,7 @@
 
 - [x] **Phase 1: Skill Management** - DB schema, state machine, fenced locking, skill install/configure/enable/disable/uninstall, and Extensions tab UI (completed 2026-04-03)
 - [ ] **Phase 2: Plugin Management** - Plugin install/activate/enable/disable/uninstall with gateway restart flow and credential configuration UI
-- [ ] **Phase 3: ClawHub & Trust Policy** - ClawHub catalog search, trust signals, deny-by-default enforcement, admin overrides, version pinning
+- [x] **Phase 3: ClawHub & Trust Policy** - ClawHub catalog search, trust signals, deny-by-default enforcement, admin overrides, version pinning (completed 2026-04-04)
 - [ ] **Phase 4: Template Portability** - Export/import with new extension tables, config scrubbing, trust re-evaluation, 3-phase startup
 - [ ] **Phase 5: OAuth & Advanced Auth** - OAuth proxy flow, token export exclusion, SecretRef vault integration
 - [ ] **Phase 6: Offline Resilience** - Plugin artifact caching for air-gapped and restart rebuild recovery
@@ -68,7 +68,7 @@ Plans:
   3. An admin can override a community extension after reviewing the credential-access consent dialog, and the override is recorded in the audit trail
   4. An installed extension's version and SHA-512 hash are pinned in the DB, and a reinstall attempt that returns a different hash for the same version is rejected
   5. User can explicitly upgrade an extension to the latest version with re-pinning and re-hashing
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [ ] 03-01-PLAN.md — Shared trust types, DB migration (trust_overrides table), trust-store service
@@ -116,7 +116,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|-----------|----------------|--------|-----------|
 | 1. Skill Management | 7/7 | Complete   | 2026-04-04 | - |
 | 2. Plugin Management | v1.1 | 0/4 | Planning complete | - |
-| 3. ClawHub & Trust Policy | 4/5 | In Progress|  | - |
+| 3. ClawHub & Trust Policy | 5/5 | Complete   | 2026-04-04 | - |
 | 4. Template Portability | v1.1 | 0/TBD | Not started | - |
 | 5. OAuth & Advanced Auth | v1.1 | 0/TBD | Not started | - |
 | 6. Offline Resilience | v1.1 | 0/TBD | Not started | - |
