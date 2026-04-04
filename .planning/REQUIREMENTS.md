@@ -86,9 +86,9 @@ Requirements for v1.2 Gateway Simplification & Plugin Fixes.
 
 ### Gateway Simplification
 
-- [ ] **SIMP-01**: Remove TCP proxy injection from Docker runtime -- use native `gateway.bind: lan`
+- [x] **SIMP-01**: Remove TCP proxy injection from Docker runtime -- use native `gateway.bind: lan`
 - [x] **SIMP-02**: Remove conflicting RPC methods from platform-bridge plugin (`skills.install`, `skills.uninstall`) that duplicate native gateway handlers
-- [ ] **SIMP-03**: Simplify custom Docker entrypoint to only inject platform-bridge plugin path, deferring directory/permission/config logic to official entrypoint
+- [x] **SIMP-03**: Simplify custom Docker entrypoint to only inject platform-bridge plugin path, deferring directory/permission/config logic to official entrypoint
 
 ### Plugin Bug Fixes
 
@@ -189,8 +189,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FRONT-01 | Phase 7 | Complete |
 | FRONT-02 | Phase 7 | Complete |
 | FRONT-03 | Phase 7 | Complete |
-| SIMP-01 | Phase 8 | Pending |
-| SIMP-03 | Phase 8 | Pending |
+| SIMP-01 | Phase 8 | Complete |
+| SIMP-03 | Phase 8 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 52 total, 52 mapped (Complete)
