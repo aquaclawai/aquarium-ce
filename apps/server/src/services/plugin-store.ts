@@ -43,6 +43,7 @@ function mapPluginRow(row: Record<string, unknown>): InstancePlugin {
 
 interface InstallPluginRPCResult {
   version?: string;
+  integrityHash?: string;
   requiredCredentials?: ExtensionCredentialRequirement[];
 }
 
@@ -50,9 +51,11 @@ function isInstallPluginRPCResult(val: unknown): val is InstallPluginRPCResult {
   if (typeof val !== 'object' || val === null) return false;
   const obj = val as Record<string, unknown>;
   if ('requiredCredentials' in obj) {
-    return Array.isArray(obj.requiredCredentials);
+    if (!Array.isArray(obj.requiredCredentials)) return false;
   }
-  return true; // no requiredCredentials key = no credentials needed
+  if ('version' in obj && obj.version !== undefined && typeof obj.version !== 'string') return false;
+  if ('integrityHash' in obj && obj.integrityHash !== undefined && typeof obj.integrityHash !== 'string') return false;
+  return true;
 }
 
 // ─── Exported Functions ───────────────────────────────────────────────────────
@@ -125,8 +128,9 @@ async function _activatePluginWithLock(
       // Try a quick ping-style check. If plugins.install is needed, do it.
       // We reinstall proactively when lockedVersion is set, to ensure artifact is present.
       const reinstallRpc = new GatewayRPCClient(instance.controlEndpoint, instance.authToken);
+      let reinstallResult: unknown;
       try {
-        await reinstallRpc.call(
+        reinstallResult = await reinstallRpc.call(
           'plugins.install',
           { pluginId, source: existing.source, version: existing.lockedVersion },
           300_000,
@@ -144,6 +148,28 @@ async function _activatePluginWithLock(
         throw reinstallErr;
       } finally {
         reinstallRpc.close();
+      }
+
+      // TRUST-06: Integrity verification on reinstall
+      // If existing row has an integrity_hash, verify the reinstalled artifact matches.
+      if (existing.integrityHash !== null && isInstallPluginRPCResult(reinstallResult)) {
+        const newHash = reinstallResult.integrityHash;
+        if (
+          newHash !== undefined &&
+          newHash !== existing.integrityHash
+        ) {
+          const lockedVersion = existing.lockedVersion;
+          const integrityError = `Integrity mismatch -- registry returned different artifact for v${lockedVersion}. Possible supply-chain tampering. Contact the extension publisher.`;
+          await db('instance_plugins')
+            .where({ instance_id: instanceId, plugin_id: pluginId })
+            .update({
+              status: 'failed',
+              error_message: integrityError,
+              failed_at: db.fn.now(),
+              updated_at: db.fn.now(),
+            });
+          throw new Error(integrityError);
+        }
       }
     }
   }
@@ -314,16 +340,21 @@ export async function installPlugin(
     const requiredCredentials: ExtensionCredentialRequirement[] =
       result?.requiredCredentials ?? [];
     const version = result?.version ?? null;
+    const integrityHash = result?.integrityHash ?? null;
 
-    // Update version and lockedVersion from RPC response
+    // TRUST-05: Pin locked_version and integrity_hash from RPC response
     if (version) {
+      const versionUpdate: Record<string, unknown> = {
+        version,
+        locked_version: version,
+        updated_at: db.fn.now(),
+      };
+      if (integrityHash !== null) {
+        versionUpdate.integrity_hash = integrityHash;
+      }
       await db('instance_plugins')
         .where({ instance_id: instanceId, plugin_id: pluginId })
-        .update({
-          version,
-          locked_version: version,
-          updated_at: db.fn.now(),
-        });
+        .update(versionUpdate);
     }
 
     // 5. PLUG-03: No credentials needed → auto-activate within same lock hold

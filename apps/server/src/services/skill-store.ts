@@ -42,15 +42,19 @@ function mapSkillRow(row: Record<string, unknown>): InstanceSkill {
 
 interface InstallRPCResult {
   requiredCredentials?: ExtensionCredentialRequirement[];
+  version?: string;
+  integrityHash?: string;
 }
 
 function isInstallRPCResult(val: unknown): val is InstallRPCResult {
   if (typeof val !== 'object' || val === null) return false;
   const obj = val as Record<string, unknown>;
   if ('requiredCredentials' in obj) {
-    return Array.isArray(obj.requiredCredentials);
+    if (!Array.isArray(obj.requiredCredentials)) return false;
   }
-  return true; // no requiredCredentials key = empty array
+  if ('version' in obj && obj.version !== undefined && typeof obj.version !== 'string') return false;
+  if ('integrityHash' in obj && obj.integrityHash !== undefined && typeof obj.integrityHash !== 'string') return false;
+  return true;
 }
 
 // ─── Exported Functions ───────────────────────────────────────────────────────
@@ -111,6 +115,9 @@ export async function installSkill(
 
   const rowId = adapter.generateId();
 
+  // Read existing skill row before acquiring state — used for reinstall integrity check
+  const existingSkill = await getSkillById(instanceId, skillId);
+
   try {
     // 1. Insert pending record
     await db('instance_skills').insert({
@@ -169,16 +176,44 @@ export async function installSkill(
     const requiredCredentials: ExtensionCredentialRequirement[] =
       rpcResult.requiredCredentials ?? [];
 
+    // TRUST-06: Integrity verification on same-version reinstall
+    // If the existing row has both a locked_version and integrity_hash, and the RPC
+    // returns the same version with a different hash, reject as supply-chain tampering.
+    if (
+      existingSkill !== null &&
+      existingSkill.lockedVersion !== null &&
+      existingSkill.integrityHash !== null &&
+      rpcResult.version !== undefined &&
+      rpcResult.version === existingSkill.lockedVersion &&
+      rpcResult.integrityHash !== undefined &&
+      rpcResult.integrityHash !== existingSkill.integrityHash
+    ) {
+      const lockedVersion = existingSkill.lockedVersion;
+      throw new Error(
+        `Integrity mismatch -- registry returned different artifact for v${lockedVersion}. Possible supply-chain tampering. Contact the extension publisher.`
+      );
+    }
+
     const newStatus: ExtensionStatus =
       requiredCredentials.length === 0 ? 'active' : 'installed';
 
+    // TRUST-05: Pin locked_version and integrity_hash from RPC response
+    const versionUpdate: Record<string, unknown> = {
+      status: newStatus,
+      pending_owner: null,
+      updated_at: db.fn.now(),
+    };
+    if (rpcResult.version !== undefined) {
+      versionUpdate.version = rpcResult.version;
+      versionUpdate.locked_version = rpcResult.version;
+    }
+    if (rpcResult.integrityHash !== undefined) {
+      versionUpdate.integrity_hash = rpcResult.integrityHash;
+    }
+
     await db('instance_skills')
       .where({ instance_id: instanceId, skill_id: skillId })
-      .update({
-        status: newStatus,
-        pending_owner: null,
-        updated_at: db.fn.now(),
-      });
+      .update(versionUpdate);
 
     await releaseLock(operationId, fencingToken, 'success');
 
