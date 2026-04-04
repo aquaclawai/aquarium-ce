@@ -1,7 +1,7 @@
 import { db } from '../db/index.js';
 import { getAdapter } from '../db/adapter.js';
 import { config } from '../config.js';
-import { GatewayRPCClient } from '../agent-types/openclaw/gateway-rpc.js';
+import { gatewayCall } from '../agent-types/openclaw/gateway-rpc.js';
 import {
   acquireLock,
   releaseLock,
@@ -104,8 +104,6 @@ export async function installSkill(
   instanceId: string,
   skillId: string,
   source: ExtensionSkillSource,
-  controlEndpoint: string,
-  authToken: string,
 ): Promise<{ skill: InstanceSkill; requiredCredentials: ExtensionCredentialRequirement[] }> {
   const adapter = getAdapter();
   const { fencingToken, operationId } = await acquireLock(
@@ -159,17 +157,7 @@ export async function installSkill(
         ? { source: 'clawhub', slug: source.spec }
         : { name: skillId, installId: skillId };
 
-    const rpc = new GatewayRPCClient(controlEndpoint, authToken);
-    let rpcResult: unknown;
-    try {
-      rpcResult = await rpc.call(
-        'skills.install',
-        rpcParams,
-        180_000,
-      );
-    } finally {
-      rpc.close();
-    }
+    const rpcResult = await gatewayCall(instanceId, 'skills.install', rpcParams, 180_000);
 
     // 4. Parse response
     if (!isInstallRPCResult(rpcResult)) {
@@ -265,8 +253,6 @@ export async function installSkill(
 export async function enableSkill(
   instanceId: string,
   skillId: string,
-  controlEndpoint: string,
-  authToken: string,
 ): Promise<InstanceSkill> {
   const { fencingToken, operationId } = await acquireLock(
     instanceId,
@@ -285,12 +271,7 @@ export async function enableSkill(
     }
 
     // Call RPC: skills.update (30s deadline per INFRA-07)
-    const rpc = new GatewayRPCClient(controlEndpoint, authToken);
-    try {
-      await rpc.call('skills.update', { skillId, enabled: true }, 30_000);
-    } finally {
-      rpc.close();
-    }
+    await gatewayCall(instanceId, 'skills.update', { skillId, enabled: true }, 30_000);
 
     await db('instance_skills')
       .where({ instance_id: instanceId, skill_id: skillId })
@@ -318,8 +299,6 @@ export async function enableSkill(
 export async function disableSkill(
   instanceId: string,
   skillId: string,
-  controlEndpoint: string,
-  authToken: string,
 ): Promise<InstanceSkill> {
   const { fencingToken, operationId } = await acquireLock(
     instanceId,
@@ -340,12 +319,7 @@ export async function disableSkill(
     }
 
     // Call RPC: skills.update (30s deadline per INFRA-07)
-    const rpc = new GatewayRPCClient(controlEndpoint, authToken);
-    try {
-      await rpc.call('skills.update', { skillId, enabled: false }, 30_000);
-    } finally {
-      rpc.close();
-    }
+    await gatewayCall(instanceId, 'skills.update', { skillId, enabled: false }, 30_000);
 
     await db('instance_skills')
       .where({ instance_id: instanceId, skill_id: skillId })
@@ -373,8 +347,6 @@ export async function disableSkill(
 export async function uninstallSkill(
   instanceId: string,
   skillId: string,
-  controlEndpoint: string,
-  authToken: string,
 ): Promise<void> {
   const { fencingToken, operationId } = await acquireLock(
     instanceId,
@@ -396,12 +368,7 @@ export async function uninstallSkill(
     }
 
     // Call RPC: skills.uninstall (3-min deadline per INFRA-07)
-    const rpc = new GatewayRPCClient(controlEndpoint, authToken);
-    try {
-      await rpc.call('skills.uninstall', { skillId }, 180_000);
-    } finally {
-      rpc.close();
-    }
+    await gatewayCall(instanceId, 'skills.uninstall', { skillId }, 180_000);
 
     await db('instance_skills')
       .where({ instance_id: instanceId, skill_id: skillId })

@@ -1,4 +1,4 @@
-import { GatewayRPCClient } from '../agent-types/openclaw/gateway-rpc.js';
+import { gatewayCall } from '../agent-types/openclaw/gateway-rpc.js';
 import type { ClawHubCatalogEntry, TrustSignals, ExtensionKind, ExtensionCredentialRequirement } from '@aquarium/shared';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -111,8 +111,7 @@ function parseClawHubEntry(raw: unknown): ClawHubCatalogEntry | null {
  * Default limit: 20 (per CONTEXT.md "load first 20 results").
  */
 export async function searchClawHub(
-  controlEndpoint: string,
-  authToken: string,
+  instanceId: string,
   params: {
     query?: string;
     category?: string;
@@ -129,15 +128,12 @@ export async function searchClawHub(
   if (params.category !== undefined) rpcParams.category = params.category;
   if (params.kind !== undefined) rpcParams.kind = params.kind;
 
-  const client = new GatewayRPCClient(controlEndpoint, authToken);
   let raw: unknown;
   try {
-    raw = await client.call('clawhub.search', rpcParams, 30_000);
+    raw = await gatewayCall(instanceId, 'clawhub.search', rpcParams, 30_000);
   } catch (err: unknown) {
     console.warn('[marketplace-client] clawhub.search RPC failed:', err instanceof Error ? err.message : String(err));
     return { entries: [], total: 0, hasMore: false };
-  } finally {
-    client.close();
   }
 
   if (typeof raw !== 'object' || raw === null) {
@@ -168,20 +164,16 @@ export async function searchClawHub(
  * Soft-fails on RPC error — returns null instead of throwing.
  */
 export async function getClawHubExtensionInfo(
-  controlEndpoint: string,
-  authToken: string,
+  instanceId: string,
   extensionId: string,
   kind: ExtensionKind,
 ): Promise<ClawHubCatalogEntry | null> {
-  const client = new GatewayRPCClient(controlEndpoint, authToken);
   let raw: unknown;
   try {
-    raw = await client.call('clawhub.info', { extensionId, kind }, 15_000);
+    raw = await gatewayCall(instanceId, 'clawhub.info', { extensionId, kind }, 15_000);
   } catch (err: unknown) {
     console.warn('[marketplace-client] clawhub.info RPC failed:', err instanceof Error ? err.message : String(err));
     return null;
-  } finally {
-    client.close();
   }
 
   const parsed = parseClawHubEntry(raw);

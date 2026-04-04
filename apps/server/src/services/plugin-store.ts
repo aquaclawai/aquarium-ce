@@ -1,7 +1,7 @@
 import { db } from '../db/index.js';
 import { getAdapter } from '../db/adapter.js';
 import { config } from '../config.js';
-import { GatewayRPCClient } from '../agent-types/openclaw/gateway-rpc.js';
+import { gatewayCall } from '../agent-types/openclaw/gateway-rpc.js';
 import { getInstance, restartInstance } from './instance-manager.js';
 import {
   acquireLock,
@@ -128,10 +128,10 @@ async function _activatePluginWithLock(
     if (instance.controlEndpoint) {
       // Try a quick ping-style check. If plugins.install is needed, do it.
       // We reinstall proactively when lockedVersion is set, to ensure artifact is present.
-      const reinstallRpc = new GatewayRPCClient(instance.controlEndpoint, instance.authToken);
       let reinstallResult: unknown;
       try {
-        reinstallResult = await reinstallRpc.call(
+        reinstallResult = await gatewayCall(
+          instanceId,
           'plugins.install',
           { pluginId, source: existing.source, version: existing.lockedVersion },
           300_000,
@@ -147,8 +147,6 @@ async function _activatePluginWithLock(
             updated_at: db.fn.now(),
           });
         throw reinstallErr;
-      } finally {
-        reinstallRpc.close();
       }
 
       // TRUST-06: Integrity verification on reinstall
@@ -206,16 +204,10 @@ async function _activatePluginWithLock(
   let healthCheckError: string | null = null;
 
   if (instanceAfterRestart?.controlEndpoint) {
-    const pingRpc = new GatewayRPCClient(
-      instanceAfterRestart.controlEndpoint,
-      instanceAfterRestart.authToken,
-    );
     try {
-      await pingRpc.call('platform.ping', {}, 120_000);
+      await gatewayCall(instanceId, 'platform.ping', {}, 120_000);
     } catch (pingErr: unknown) {
       healthCheckError = pingErr instanceof Error ? pingErr.message : String(pingErr);
-    } finally {
-      pingRpc.close();
     }
   }
 
@@ -320,16 +312,12 @@ export async function installPlugin(
     // This stages the artifact on disk — does NOT touch gateway config
     let rpcResult: unknown;
     if (instance.controlEndpoint) {
-      const rpc = new GatewayRPCClient(instance.controlEndpoint, instance.authToken);
-      try {
-        rpcResult = await rpc.call(
-          'plugins.install',
-          { pluginId, source },
-          300_000,
-        );
-      } finally {
-        rpc.close();
-      }
+      rpcResult = await gatewayCall(
+        instance.id,
+        'plugins.install',
+        { pluginId, source },
+        300_000,
+      );
     }
 
     // 4. Parse response

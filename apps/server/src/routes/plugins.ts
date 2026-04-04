@@ -161,8 +161,7 @@ router.get('/:id/plugins/catalog', async (req, res) => {
     const clawHubEntries: PluginCatalogEntry[] = [];
     try {
       const clawHubResult = await searchClawHub(
-        instance.controlEndpoint,
-        instance.authToken,
+        instance.id,
         { query: search, category, kind: 'plugin', offset: page * limit, limit },
       );
       hasMore = clawHubResult.hasMore;
@@ -297,8 +296,7 @@ router.post('/:id/plugins/install', async (req, res) => {
       let clawHubInfo = null;
       if (instance.controlEndpoint) {
         clawHubInfo = await getClawHubExtensionInfo(
-          instance.controlEndpoint,
-          instance.authToken,
+          instance.id,
           pluginId,
           'plugin',
         );
@@ -401,8 +399,7 @@ router.put('/:id/plugins/:pluginId/upgrade', async (req, res) => {
 
     // Fetch latest version info from ClawHub
     const clawHubInfo = await getClawHubExtensionInfo(
-      instance.controlEndpoint,
-      instance.authToken,
+      instance.id,
       pluginId,
       'plugin',
     );

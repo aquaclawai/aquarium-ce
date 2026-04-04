@@ -434,8 +434,6 @@ export async function replayPendingExtensions(
         instanceId,
         skill.skillId,
         replaySkillSource,
-        controlEndpoint,
-        authToken,
       );
       if (requiredCredentials.length > 0) {
         needsCredentials.push(skill.skillId);

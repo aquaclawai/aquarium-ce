@@ -159,8 +159,7 @@ router.get('/:id/skills/catalog', async (req, res) => {
     const clawHubEntries: SkillCatalogEntry[] = [];
     try {
       const clawHubResult = await searchClawHub(
-        instance.controlEndpoint,
-        instance.authToken,
+        instance.id,
         { query: search, category, kind: 'skill', offset: page * limit, limit },
       );
       hasMore = clawHubResult.hasMore;
@@ -271,8 +270,7 @@ router.post('/:id/skills/install', async (req, res) => {
     if (skillSource.type !== 'bundled') {
       // Fetch ClawHub metadata for trust signals (soft-fails if unavailable)
       const clawHubInfo = await getClawHubExtensionInfo(
-        instance.controlEndpoint,
-        instance.authToken,
+        instance.id,
         skillId,
         'skill',
       );
@@ -291,8 +289,6 @@ router.post('/:id/skills/install', async (req, res) => {
       instance.id,
       skillId,
       skillSource,
-      instance.controlEndpoint,
-      instance.authToken,
     );
 
     res.json({
@@ -348,8 +344,7 @@ router.put('/:id/skills/:skillId/upgrade', async (req, res) => {
 
     // Fetch latest version info from ClawHub
     const clawHubInfo = await getClawHubExtensionInfo(
-      instance.controlEndpoint,
-      instance.authToken,
+      instance.id,
       skillId,
       'skill',
     );
@@ -467,8 +462,8 @@ router.put('/:id/skills/:skillId', async (req, res) => {
     const { skillId } = req.params;
 
     const skill = enabled
-      ? await enableSkill(instance.id, skillId, instance.controlEndpoint, instance.authToken)
-      : await disableSkill(instance.id, skillId, instance.controlEndpoint, instance.authToken);
+      ? await enableSkill(instance.id, skillId)
+      : await disableSkill(instance.id, skillId);
 
     res.json({ ok: true, data: skill } satisfies ApiResponse<InstanceSkill>);
   } catch (err: unknown) {
@@ -499,7 +494,7 @@ router.delete('/:id/skills/:skillId', async (req, res) => {
 
     const { skillId } = req.params;
 
-    await uninstallSkill(instance.id, skillId, instance.controlEndpoint, instance.authToken);
+    await uninstallSkill(instance.id, skillId);
 
     res.json({ ok: true } satisfies ApiResponse);
   } catch (err: unknown) {
