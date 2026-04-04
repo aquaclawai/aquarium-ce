@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: Phase 5 context gathered
-last_updated: "2026-04-04T06:04:20.181Z"
+stopped_at: Completed 05-02-PLAN.md (vault config API + exec SecretRef)
+last_updated: "2026-04-04T06:34:42.430Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 20
-  completed_plans: 20
+  total_plans: 23
+  completed_plans: 22
   percent: 0
 ---
 
@@ -69,6 +69,8 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04-template-portability P02 | 10 | 2 tasks | 3 files |
 | Phase 04-template-portability P01 | 15 | 2 tasks | 4 files |
 | Phase 04-template-portability P03 | 4 | 2 tasks | 2 files |
+| Phase 05-oauth-advanced-auth P02 | 181 | 2 tasks | 3 files |
+| Phase 05-oauth-advanced-auth P01 | 231 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -130,6 +132,9 @@ Recent decisions affecting current work:
 - [Phase 04-template-portability]: plugin_dependencies ContentRow column reused for TemplateExtensionDeclaration[] — discriminated by 'kind' field, no schema migration needed
 - [Phase 04-template-portability]: Trust re-evaluation uses null signals at import time — no gateway running during instantiation, non-bundled extensions default to unscanned and are blocked
 - [Phase 04-template-portability]: Community tier split at import: without override -> requiresTrustOverride[] (resolvable); unscanned/scan-failed -> blockedExtensions[] (permanent block)
+- [Phase 05-oauth-advanced-auth]: Vault config stored in instances.config JSON column under vaultConfig key — no schema migration needed
+- [Phase 05-oauth-advanced-auth]: exec SecretRef gated on supportsSecretRef(imageTag) — older gateways fall back gracefully without vault
+- [Phase 05-oauth-advanced-auth]: VAULT_ADDR/VAULT_NAMESPACE injected via resolveEnv; vault-backed credentials skip AQUARIUM_CRED_xxx env injection
 
 ### Pending Todos
 
@@ -141,6 +146,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T06:04:20.175Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-oauth-advanced-auth/05-CONTEXT.md
+Last session: 2026-04-04T06:34:27.024Z
+Stopped at: Completed 05-02-PLAN.md (vault config API + exec SecretRef)
+Resume file: None
