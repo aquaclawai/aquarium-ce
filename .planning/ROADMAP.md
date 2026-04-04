@@ -50,7 +50,13 @@ Plans:
   3. User can activate a plugin and the gateway restarts automatically with a health check
   4. When plugin activation fails, the gateway rolls back and the extension is marked failed rather than leaving the gateway broken
   5. User can enable, disable, and uninstall an installed plugin
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Plugin store service (install/activate/rollback/enable/disable/uninstall), seedConfig extension, reconciliation, PLUG-10
+- [ ] 02-02-PLAN.md — Plugin REST API routes (list, catalog, install, activate, toggle, uninstall)
+- [ ] 02-03-PLAN.md — Shared ExtensionRow/CatalogExtensionRow refactor, plugin list + catalog UI in Plugins sub-tab
+- [ ] 02-04-PLAN.md — Search/filter, install dialog, restart banner, rollback modal, i18n, visual checkpoint
 
 ### Phase 3: ClawHub & Trust Policy
 **Goal**: Users can search the live ClawHub marketplace with trust signals visible, with community extensions blocked by default and admins able to grant verified overrides
@@ -102,7 +108,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1. Skill Management | 7/7 | Complete   | 2026-04-04 | - |
-| 2. Plugin Management | v1.1 | 0/TBD | Not started | - |
+| 2. Plugin Management | v1.1 | 0/4 | Planning complete | - |
 | 3. ClawHub & Trust Policy | v1.1 | 0/TBD | Not started | - |
 | 4. Template Portability | v1.1 | 0/TBD | Not started | - |
 | 5. OAuth & Advanced Auth | v1.1 | 0/TBD | Not started | - |
