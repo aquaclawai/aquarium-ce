@@ -19,6 +19,7 @@ router.use(requireAuth);
 
 interface OAuthProxySession {
   instanceId: string;
+  userId: string;
   extensionId: string;
   extensionKind: ExtensionKind;
   provider: string;
@@ -83,6 +84,7 @@ router.post('/:id/oauth-proxy/initiate', async (req, res) => {
 
   oauthSessions.set(state, {
     instanceId,
+    userId: req.auth!.userId,
     extensionId,
     extensionKind: extensionKind as ExtensionKind,
     provider,
@@ -176,7 +178,7 @@ router.get('/:id/oauth-proxy/callback', async (req, res) => {
     return;
   }
 
-  const instance = await getInstance(instanceId, session.instanceId);
+  const instance = await getInstance(instanceId, session.userId);
   if (!instance || instance.status !== 'running' || !instance.controlEndpoint) {
     sendHtmlPage('error', session.extensionId, 'Instance is no longer running.');
     return;
