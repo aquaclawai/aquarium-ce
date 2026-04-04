@@ -112,6 +112,14 @@ export const openclawAdapter: AgentTypeAdapter = {
 
     const cfg: Record<string, unknown> = {};
 
+    // Extract vault config from instance config for exec SecretRef resolution
+    const vaultConfig = (userConfig as Record<string, unknown>).vaultConfig as {
+      type: 'onepassword' | 'hashicorp';
+      address?: string;
+      namespace?: string;
+      mountPath?: string;
+    } | undefined;
+
     const agentDefaults: Record<string, unknown> = {};
     {
       let provider = (userConfig.defaultProvider as string) || (userConfig.provider as string) || 'openrouter';
@@ -624,7 +632,76 @@ export const openclawAdapter: AgentTypeAdapter = {
     // so that keyRef/tokenRef entries in auth-profiles.json can resolve env vars.
     const useSecretRef = supportsSecretRef(instance.imageTag);
     if (useSecretRef) {
-      cfg.secrets = { providers: { default: { source: 'env' } } };
+      if (vaultConfig) {
+        // Vault configured: add vault exec provider alongside default env provider
+        cfg.secrets = {
+          providers: {
+            default: { source: 'env' },
+            vault: { source: 'exec' },
+          },
+        };
+      } else {
+        cfg.secrets = { providers: { default: { source: 'env' } } };
+      }
+    }
+
+    // Inject exec SecretRefs for vault-backed extension credentials (OAUTH-03)
+    // When a credential has metadata.source === 'vault' and vaultConfig is set, generate
+    // an exec SecretRef instead of env-backed. This is gated on SecretRef support.
+    if (useSecretRef && vaultConfig) {
+      const skillsObj = (cfg.skills ?? {}) as Record<string, unknown>;
+      const skillEntries = (skillsObj.entries ?? {}) as Record<string, unknown>;
+      const pluginsObj = (cfg.plugins ?? {}) as Record<string, unknown>;
+      const pluginEntries = (pluginsObj.entries ?? {}) as Record<string, unknown>;
+
+      for (const cred of credentials) {
+        const credMeta = cred.metadata as {
+          extensionKind?: string;
+          extensionId?: string;
+          targetField?: string;
+          source?: string;
+          vaultPath?: string;
+        } | undefined;
+
+        if (credMeta?.source === 'vault' && credMeta.vaultPath && credMeta.extensionKind && credMeta.extensionId && credMeta.targetField) {
+          // Build exec command based on vault type
+          let execCommand: string[];
+          if (vaultConfig.type === 'onepassword') {
+            execCommand = ['op', 'read', `op://${credMeta.vaultPath}`];
+          } else {
+            const mount = vaultConfig.mountPath ?? 'secret';
+            execCommand = ['vault', 'kv', 'get', '-field=value', `-mount=${mount}`, credMeta.vaultPath];
+          }
+          const execSecretRef = { source: 'exec', command: execCommand };
+
+          if (credMeta.extensionKind === 'skill') {
+            const entry = (skillEntries[credMeta.extensionId] ?? {}) as Record<string, unknown>;
+            const envSection = (entry.env ?? {}) as Record<string, unknown>;
+            envSection[credMeta.targetField] = execSecretRef;
+            entry.env = envSection;
+            skillEntries[credMeta.extensionId] = entry;
+          } else if (credMeta.extensionKind === 'plugin') {
+            const entry = (pluginEntries[credMeta.extensionId] ?? {}) as Record<string, unknown>;
+            const configSection = (entry.config ?? {}) as Record<string, unknown>;
+            configSection[credMeta.targetField] = execSecretRef;
+            entry.config = configSection;
+            pluginEntries[credMeta.extensionId] = entry;
+          }
+        }
+      }
+
+      // Write back if we added any vault exec SecretRefs
+      if (Object.keys(skillEntries).length > 0) {
+        skillsObj.entries = skillEntries;
+        cfg.skills = skillsObj;
+      }
+      if (Object.keys(pluginEntries).length > 0) {
+        pluginsObj.entries = pluginEntries;
+        cfg.plugins = pluginsObj;
+      }
+
+      // For HashiCorp Vault, inject VAULT_ADDR and optionally VAULT_NAMESPACE
+      // These are needed by the vault CLI exec commands at container startup
     }
 
     files.set('openclaw.json', JSON.stringify(cfg, null, 2));
@@ -808,6 +885,23 @@ export const openclawAdapter: AgentTypeAdapter = {
       NODE_OPTIONS: '--max-old-space-size=3072',
     };
 
+    // Extract vault config from instance config for env var injection
+    const instanceConfig = (instance.config ?? {}) as Record<string, unknown>;
+    const vaultConfig = instanceConfig.vaultConfig as {
+      type: 'onepassword' | 'hashicorp';
+      address?: string;
+      namespace?: string;
+    } | undefined;
+
+    // For HashiCorp Vault, inject VAULT_ADDR and optionally VAULT_NAMESPACE
+    // These env vars are consumed by the vault CLI exec commands at container startup
+    if (vaultConfig?.type === 'hashicorp' && vaultConfig.address) {
+      env['VAULT_ADDR'] = vaultConfig.address;
+      if (vaultConfig.namespace) {
+        env['VAULT_NAMESPACE'] = vaultConfig.namespace;
+      }
+    }
+
     // Dual-mode: platform mode injects LiteLLM proxy URL only, BYOK injects provider keys
     const registry = new ProviderRegistry();
     if (instance.billingMode === 'platform' && litellmKey) {
@@ -824,6 +918,14 @@ export const openclawAdapter: AgentTypeAdapter = {
           continue;
         }
 
+        // Skip vault-backed extension credentials — they are resolved by the gateway via exec,
+        // not via env vars. Injecting them as AQUARIUM_CRED_xxx would expose the raw secret
+        // in the container environment unnecessarily.
+        const credMeta = cred.metadata as { source?: string } | undefined;
+        if (credMeta?.source === 'vault') {
+          continue;
+        }
+
         const envVar = registry.getEnvVarName(cred.provider);
         if (envVar) {
           env[envVar] = cred.value;
@@ -835,6 +937,10 @@ export const openclawAdapter: AgentTypeAdapter = {
     // regardless of billing mode — these are tool/channel keys, not AI provider keys.
     for (const cred of credentials) {
       if (registry.isNonProviderCredential(cred.provider)) {
+        // Skip vault-backed credentials
+        const credMeta = cred.metadata as { source?: string } | undefined;
+        if (credMeta?.source === 'vault') continue;
+
         const envVar = registry.getEnvVarName(cred.provider);
         if (envVar && !(envVar in env)) {
           env[envVar] = cred.value;
