@@ -16,7 +16,7 @@
 - [x] **Phase 3: ClawHub & Trust Policy** - ClawHub catalog search, trust signals, deny-by-default enforcement, admin overrides, version pinning (completed 2026-04-04)
 - [x] **Phase 4: Template Portability** - Export/import with new extension tables, config scrubbing, trust re-evaluation, 3-phase startup (completed 2026-04-04)
 - [x] **Phase 5: OAuth & Advanced Auth** - OAuth proxy flow, token export exclusion, SecretRef vault integration (completed 2026-04-04)
-- [ ] **Phase 6: Offline Resilience** - Plugin artifact caching for air-gapped and restart rebuild recovery
+- [x] **Phase 6: Offline Resilience** - Plugin artifact caching for air-gapped and restart rebuild recovery (completed 2026-04-04)
 
 ## Phase Details
 
@@ -115,7 +115,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. After a plugin is successfully installed, its artifact is cached under ~/.openclaw/plugin-cache/
   2. When the gateway rebuilds after a restart, the platform prefers the cached artifact over the registry and only falls back to the registry if the cache is missing
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 06-01-PLAN.md — Artifact cache service, cache-after-install in plugin/skill stores, cache-preferred replay, UI cached indicator, i18n
@@ -132,4 +132,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. ClawHub & Trust Policy | 5/5 | Complete   | 2026-04-04 | - |
 | 4. Template Portability | 3/3 | Complete   | 2026-04-04 | - |
 | 5. OAuth & Advanced Auth | 4/4 | Complete   | 2026-04-04 | - |
-| 6. Offline Resilience | v1.1 | 0/1 | Planning complete | - |
+| 6. Offline Resilience | 1/1 | Complete   | 2026-04-04 | - |

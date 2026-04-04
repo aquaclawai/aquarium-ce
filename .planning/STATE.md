@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: Phase 6 context gathered
-last_updated: "2026-04-04T06:59:05.538Z"
+stopped_at: Completed 06-offline-resilience 06-01-PLAN.md — milestone v1.1 complete
+last_updated: "2026-04-04T07:22:06.682Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
-  completed_phases: 5
-  total_plans: 24
-  completed_plans: 24
+  completed_phases: 6
+  total_plans: 25
+  completed_plans: 25
   percent: 0
 ---
 
@@ -73,6 +73,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05-oauth-advanced-auth P01 | 231 | 2 tasks | 5 files |
 | Phase 05-oauth-advanced-auth P03 | 174 | 3 tasks | 11 files |
 | Phase 05-oauth-advanced-auth P04 | 1 | 1 tasks | 1 files |
+| Phase 06-offline-resilience P01 | 421 | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,10 @@ Recent decisions affecting current work:
 - [Phase 05-oauth-advanced-auth]: source/vaultPath vault metadata persisted in extension-credentials route so adapter.ts seedConfig can resolve vault credential references
 - [Phase 05-oauth-advanced-auth]: Visual checkpoint auto-approved in auto-advance mode for Plan 05-03
 - [Phase 05-oauth-advanced-auth]: userId stored in OAuthProxySession at POST /initiate time so the GET /callback (which carries no auth cookie) can pass the correct userId to getInstance
+- [Phase 06-offline-resilience]: Plugin cache uses npm pack + mv rename to canonical {version}.tgz — npm pack names output by package name not version
+- [Phase 06-offline-resilience]: exec optional guard in artifact-cache: if engine.exec undefined, warn-log and skip — Kubernetes engine may not support exec
+- [Phase 06-offline-resilience]: getInstanceRuntimeInfo uses lightweight DB query in extension-lifecycle to avoid circular dep with instance-manager
+- [Phase 06-offline-resilience]: isCachedLocally UI indicator is purely client-side derived (non-bundled + lockedVersion + active/installed/disabled) — no new API needed
 
 ### Pending Todos
 
@@ -153,6 +158,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T06:59:05.535Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-offline-resilience/06-CONTEXT.md
+Last session: 2026-04-04T07:22:06.680Z
+Stopped at: Completed 06-offline-resilience 06-01-PLAN.md — milestone v1.1 complete
+Resume file: None

@@ -67,8 +67,8 @@ Requirements for Plugin & Skill Marketplace. Each maps to roadmap phases.
 - [x] **OAUTH-01**: User can authenticate plugins requiring OAuth via browser redirect flow proxied by the platform
 - [x] **OAUTH-02**: OAuth tokens excluded from template export with `requiresReAuth` flag
 - [x] **OAUTH-03**: User can configure SecretRef vault integration (1Password, HashiCorp Vault)
-- [ ] **OFFLINE-01**: System caches plugin artifacts on first successful install to `~/.openclaw/plugin-cache/`
-- [ ] **OFFLINE-02**: System prefers cached artifacts on restart, falls back to registry
+- [x] **OFFLINE-01**: System caches plugin artifacts on first successful install to `~/.openclaw/plugin-cache/`
+- [x] **OFFLINE-02**: System prefers cached artifacts on restart, falls back to registry
 
 ### Frontend
 
@@ -158,8 +158,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OAUTH-01 | Phase 5 | Complete |
 | OAUTH-02 | Phase 5 | Complete |
 | OAUTH-03 | Phase 5 | Complete |
-| OFFLINE-01 | Phase 6 | Pending |
-| OFFLINE-02 | Phase 6 | Pending |
+| OFFLINE-01 | Phase 6 | Complete |
+| OFFLINE-02 | Phase 6 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 52 total
