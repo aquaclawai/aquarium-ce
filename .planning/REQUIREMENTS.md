@@ -87,13 +87,13 @@ Requirements for v1.2 Gateway Simplification & Plugin Fixes.
 ### Gateway Simplification
 
 - [ ] **SIMP-01**: Remove TCP proxy injection from Docker runtime -- use native `gateway.bind: lan`
-- [ ] **SIMP-02**: Remove conflicting RPC methods from platform-bridge plugin (`skills.install`, `skills.uninstall`) that duplicate native gateway handlers
+- [x] **SIMP-02**: Remove conflicting RPC methods from platform-bridge plugin (`skills.install`, `skills.uninstall`) that duplicate native gateway handlers
 - [ ] **SIMP-03**: Simplify custom Docker entrypoint to only inject platform-bridge plugin path, deferring directory/permission/config logic to official entrypoint
 
 ### Plugin Bug Fixes
 
-- [ ] **PLUGFIX-01**: Fix empty Available catalog after gateway restart -- resolve plugin loading failure caused by method name conflicts with native handlers
-- [ ] **PLUGFIX-02**: Fix `plugins.install` handler causing gateway config corruption (adding non-existent plugin paths)
+- [x] **PLUGFIX-01**: Fix empty Available catalog after gateway restart -- resolve plugin loading failure caused by method name conflicts with native handlers
+- [x] **PLUGFIX-02**: Fix `plugins.install` handler causing gateway config corruption (adding non-existent plugin paths)
 - [ ] **PLUGFIX-03**: Backend graceful degradation for `skills.list` and `plugins.list` RPC when gateway doesn't support them (return empty instead of 500)
 
 ### Frontend Fixes
@@ -182,9 +182,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OAUTH-03 | Phase 5 | Complete |
 | OFFLINE-01 | Phase 6 | Complete |
 | OFFLINE-02 | Phase 6 | Complete |
-| SIMP-02 | Phase 7 | Pending |
-| PLUGFIX-01 | Phase 7 | Pending |
-| PLUGFIX-02 | Phase 7 | Pending |
+| SIMP-02 | Phase 7 | Complete |
+| PLUGFIX-01 | Phase 7 | Complete |
+| PLUGFIX-02 | Phase 7 | Complete |
 | PLUGFIX-03 | Phase 7 | Pending |
 | FRONT-01 | Phase 7 | Pending |
 | FRONT-02 | Phase 7 | Pending |
