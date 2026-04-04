@@ -1121,7 +1121,27 @@
       "requires": "Nécessite",
       "searchPlaceholder": "Rechercher des extensions...",
       "allCategories": "Toutes les catégories",
-      "capabilities": "Fonctionnalités"
+      "capabilities": "Fonctionnalités",
+      "loadMore": "Charger plus",
+      "clawhubUnavailable": "Démarrez l'instance pour parcourir la marketplace"
+    },
+    "trust": {
+      "bundled": "Inclus",
+      "verified": "Vérifié",
+      "unverified": "Non vérifié",
+      "scanned": "Analysé",
+      "scanFailed": "Analyse échouée",
+      "downloads": "{{count}} téléchargements",
+      "age": "{{days}}j sur ClawHub",
+      "blockedCommunity": "Bloqué -- extension communautaire",
+      "blockedUnscanned": "Bloqué -- analyse de sécurité échouée",
+      "override": "Remplacer",
+      "credentialAccessWarning": "Cette extension communautaire s'exécute en cours avec la passerelle et aura accès à tous les identifiants de cette instance, y compris les clés API des autres extensions. N'approuvez que si vous faites confiance à l'éditeur et avez examiné le code source.",
+      "acknowledgeCheckbox": "Je reconnais le risque d'accès aux identifiants",
+      "reasonPlaceholder": "Pourquoi approuvez-vous cette extension ?",
+      "approveOverride": "Approuver",
+      "overrideSuccess": "Remplacement de confiance accordé",
+      "trustSummary": "Confiance"
     },
     "empty": {
       "noInstalled": "Aucune compétence installée",

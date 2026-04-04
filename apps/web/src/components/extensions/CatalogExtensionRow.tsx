@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import type { ExtensionCredentialRequirement, ExtensionKind } from '@aquarium/shared';
+import type { ExtensionCredentialRequirement, ExtensionKind, TrustTier, TrustSignals } from '@aquarium/shared';
+import { TrustBadgeRow } from './TrustBadges';
 
 interface CatalogExtensionRowProps {
   extensionKind: ExtensionKind;
@@ -13,6 +14,11 @@ interface CatalogExtensionRowProps {
   onInstall: (id: string, source: string) => void;
   installing: boolean;
   disabled: boolean;
+  trustTier?: TrustTier;
+  trustSignals?: TrustSignals;
+  blocked?: boolean;
+  blockReason?: string;
+  onRequestOverride?: (id: string) => void;
 }
 
 export function CatalogExtensionRow({
@@ -27,21 +33,19 @@ export function CatalogExtensionRow({
   onInstall,
   installing,
   disabled,
+  trustTier,
+  trustSignals,
+  blocked,
+  blockReason,
+  onRequestOverride,
 }: CatalogExtensionRowProps) {
   const { t } = useTranslation();
 
-  const sourceBadgeClass = source === 'bundled'
-    ? 'source-badge source-badge--bundled'
-    : 'source-badge source-badge--clawhub';
-
-  const sourceBadgeText = source === 'bundled'
-    ? t('extensions.catalog.bundled')
-    : t('extensions.catalog.clawhub');
-
   const requiresCredentials = requiredCredentials.length > 0;
+  const rowClassName = `skill-row catalog-skill-row${blocked ? ' catalog-skill-row--blocked' : ''}`;
 
   return (
-    <div className="skill-row catalog-skill-row">
+    <div className={rowClassName}>
       <div className="skill-row__icon">
         <span className="skill-icon">{name[0]?.toUpperCase() ?? '?'}</span>
       </div>
@@ -62,7 +66,7 @@ export function CatalogExtensionRow({
         )}
       </div>
       <div className="skill-row__meta">
-        <span className={sourceBadgeClass}>{sourceBadgeText}</span>
+        <TrustBadgeRow trustTier={trustTier} trustSignals={trustSignals} source={source} />
         {requiresCredentials && (
           <span className="credential-indicator" title={t('extensions.catalog.requiresCredentials')}>
             &#128273; {t('extensions.catalog.requiresCredentials')}
@@ -70,18 +74,35 @@ export function CatalogExtensionRow({
         )}
       </div>
       <div className="skill-row__actions">
-        <div className="catalog-install-block">
-          <button
-            className="btn btn--primary btn--sm"
-            onClick={() => onInstall(id, source)}
-            disabled={disabled || installing}
-          >
-            {installing ? t('extensions.actions.installing') : t('extensions.actions.install')}
-          </button>
-          {extensionKind === 'plugin' && (
-            <span className="catalog-restart-note">{t('extensions.plugins.requiresRestart')}</span>
-          )}
-        </div>
+        {blocked ? (
+          <div className="catalog-install-block">
+            <span className="blocked-label">
+              <span className="blocked-label__icon">&#128274;</span>
+              <span>{blockReason ?? t('extensions.trust.blockedCommunity')}</span>
+            </span>
+            {trustTier === 'community' && onRequestOverride && (
+              <button
+                className="override-link"
+                onClick={() => onRequestOverride(id)}
+              >
+                {t('extensions.trust.override')}
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="catalog-install-block">
+            <button
+              className="btn btn--primary btn--sm"
+              onClick={() => onInstall(id, source)}
+              disabled={disabled || installing}
+            >
+              {installing ? t('extensions.actions.installing') : t('extensions.actions.install')}
+            </button>
+            {extensionKind === 'plugin' && (
+              <span className="catalog-restart-note">{t('extensions.plugins.requiresRestart')}</span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1121,7 +1121,27 @@
       "requires": "Erfordert",
       "searchPlaceholder": "Erweiterungen suchen...",
       "allCategories": "Alle Kategorien",
-      "capabilities": "Funktionen"
+      "capabilities": "Funktionen",
+      "loadMore": "Mehr laden",
+      "clawhubUnavailable": "Instanz starten, um den Marketplace zu durchsuchen"
+    },
+    "trust": {
+      "bundled": "Mitgeliefert",
+      "verified": "Verifiziert",
+      "unverified": "Nicht verifiziert",
+      "scanned": "Gescannt",
+      "scanFailed": "Scan fehlgeschlagen",
+      "downloads": "{{count}} Downloads",
+      "age": "{{days}}T auf ClawHub",
+      "blockedCommunity": "Blockiert -- Community-Erweiterung",
+      "blockedUnscanned": "Blockiert -- Sicherheitsscan fehlgeschlagen",
+      "override": "Überschreiben",
+      "credentialAccessWarning": "Diese Community-Erweiterung läuft prozessintern mit dem Gateway und hat Zugriff auf alle Anmeldedaten dieser Instanz, einschließlich API-Schlüssel anderer Erweiterungen. Genehmigen Sie nur, wenn Sie dem Herausgeber vertrauen und den Quellcode überprüft haben.",
+      "acknowledgeCheckbox": "Ich anerkenne das Risiko des Anmeldedaten-Zugriffs",
+      "reasonPlaceholder": "Warum genehmigen Sie diese Erweiterung?",
+      "approveOverride": "Genehmigen",
+      "overrideSuccess": "Vertrauensüberschreibung gewährt",
+      "trustSummary": "Vertrauen"
     },
     "empty": {
       "noInstalled": "Keine Skills installiert",

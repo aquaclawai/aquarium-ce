@@ -1802,7 +1802,27 @@
       "requires": "需要",
       "searchPlaceholder": "搜索扩展...",
       "allCategories": "所有分类",
-      "capabilities": "功能"
+      "capabilities": "功能",
+      "loadMore": "加载更多",
+      "clawhubUnavailable": "启动实例以浏览市场"
+    },
+    "trust": {
+      "bundled": "内置",
+      "verified": "已验证",
+      "unverified": "未验证",
+      "scanned": "已扫描",
+      "scanFailed": "扫描失败",
+      "downloads": "{{count}} 次下载",
+      "age": "上线 {{days}} 天",
+      "blockedCommunity": "已屏蔽 -- 社区扩展",
+      "blockedUnscanned": "已屏蔽 -- 安全扫描失败",
+      "override": "覆盖",
+      "credentialAccessWarning": "此社区扩展在网关内部运行，将可访问此实例上的所有凭据，包括其他扩展的 API 密钥。仅在您信任发布者并已审查源代码后才可批准。",
+      "acknowledgeCheckbox": "我确认凭据访问风险",
+      "reasonPlaceholder": "为什么批准此扩展？",
+      "approveOverride": "批准",
+      "overrideSuccess": "已授予信任覆盖",
+      "trustSummary": "信任"
     },
     "empty": {
       "noInstalled": "未安装任何技能",

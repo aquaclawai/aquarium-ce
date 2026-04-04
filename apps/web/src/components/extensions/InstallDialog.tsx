@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import type { ExtensionKind, PluginCatalogEntry, SkillCatalogEntry } from '@aquarium/shared';
+import type { ExtensionKind, PluginCatalogEntry, SkillCatalogEntry, TrustTier, TrustSignals } from '@aquarium/shared';
+import { TrustBadgeRow } from './TrustBadges';
 
 interface InstallDialogProps {
   extensionKind: ExtensionKind;
@@ -7,9 +8,11 @@ interface InstallDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   installing: boolean;
+  trustTier?: TrustTier;
+  trustSignals?: TrustSignals;
 }
 
-export function InstallDialog({ extensionKind, entry, onConfirm, onCancel, installing }: InstallDialogProps) {
+export function InstallDialog({ extensionKind, entry, onConfirm, onCancel, installing, trustTier, trustSignals }: InstallDialogProps) {
   const { t } = useTranslation();
 
   const sourceBadgeClass = entry.source === 'bundled'
@@ -39,6 +42,13 @@ export function InstallDialog({ extensionKind, entry, onConfirm, onCancel, insta
             <span className="install-dialog__label">{t('extensions.installDialog.version')}</span>
             <span className="install-dialog__value">v{entry.version}</span>
           </div>
+
+          {trustTier !== undefined && (
+            <div className="install-dialog__row">
+              <span className="install-dialog__label">{t('extensions.trust.trustSummary')}</span>
+              <TrustBadgeRow trustTier={trustTier} trustSignals={trustSignals} source={entry.source} />
+            </div>
+          )}
 
           <div className="install-dialog__credentials">
             <span className="install-dialog__label">{t('extensions.installDialog.requiredCredentials')}</span>

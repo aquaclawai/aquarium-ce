@@ -1803,7 +1803,27 @@
       "requires": "Requires",
       "searchPlaceholder": "Search extensions...",
       "allCategories": "All Categories",
-      "capabilities": "Capabilities"
+      "capabilities": "Capabilities",
+      "loadMore": "Load more",
+      "clawhubUnavailable": "Start instance to browse marketplace"
+    },
+    "trust": {
+      "bundled": "Bundled",
+      "verified": "Verified",
+      "unverified": "Unverified",
+      "scanned": "Scanned",
+      "scanFailed": "Scan failed",
+      "downloads": "{{count}} downloads",
+      "age": "{{days}}d on ClawHub",
+      "blockedCommunity": "Blocked -- community extension",
+      "blockedUnscanned": "Blocked -- security scan failed",
+      "override": "Override",
+      "credentialAccessWarning": "This community extension runs in-process with the gateway and will have access to all credentials on this instance, including API keys for other extensions. Only approve if you trust the publisher and have reviewed the source code.",
+      "acknowledgeCheckbox": "I acknowledge the credential access risk",
+      "reasonPlaceholder": "Why are you approving this extension?",
+      "approveOverride": "Approve",
+      "overrideSuccess": "Trust override granted",
+      "trustSummary": "Trust"
     },
     "empty": {
       "noInstalled": "No skills installed",

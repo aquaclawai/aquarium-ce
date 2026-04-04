@@ -1121,7 +1121,27 @@
       "requires": "Richiede",
       "searchPlaceholder": "Cerca estensioni...",
       "allCategories": "Tutte le categorie",
-      "capabilities": "Funzionalità"
+      "capabilities": "Funzionalità",
+      "loadMore": "Carica altro",
+      "clawhubUnavailable": "Avvia l'istanza per sfogliare il marketplace"
+    },
+    "trust": {
+      "bundled": "Incluso",
+      "verified": "Verificato",
+      "unverified": "Non verificato",
+      "scanned": "Scansionato",
+      "scanFailed": "Scansione fallita",
+      "downloads": "{{count}} download",
+      "age": "{{days}}g su ClawHub",
+      "blockedCommunity": "Bloccato -- estensione community",
+      "blockedUnscanned": "Bloccato -- scansione di sicurezza fallita",
+      "override": "Ignora",
+      "credentialAccessWarning": "Questa estensione community viene eseguita nel processo del gateway e avrà accesso a tutte le credenziali di questa istanza, incluse le chiavi API delle altre estensioni. Approva solo se ti fidi dell'editore e hai esaminato il codice sorgente.",
+      "acknowledgeCheckbox": "Riconosco il rischio di accesso alle credenziali",
+      "reasonPlaceholder": "Perché stai approvando questa estensione?",
+      "approveOverride": "Approva",
+      "overrideSuccess": "Override di attendibilità concesso",
+      "trustSummary": "Attendibilità"
     },
     "empty": {
       "noInstalled": "Nessuna competenza installata",

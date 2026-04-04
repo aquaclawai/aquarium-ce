@@ -1121,7 +1121,27 @@
       "requires": "Requiere",
       "searchPlaceholder": "Buscar extensiones...",
       "allCategories": "Todas las categorías",
-      "capabilities": "Funcionalidades"
+      "capabilities": "Funcionalidades",
+      "loadMore": "Cargar más",
+      "clawhubUnavailable": "Inicia la instancia para explorar el marketplace"
+    },
+    "trust": {
+      "bundled": "Incluido",
+      "verified": "Verificado",
+      "unverified": "No verificado",
+      "scanned": "Analizado",
+      "scanFailed": "Análisis fallido",
+      "downloads": "{{count}} descargas",
+      "age": "{{days}}d en ClawHub",
+      "blockedCommunity": "Bloqueado -- extensión comunitaria",
+      "blockedUnscanned": "Bloqueado -- análisis de seguridad fallido",
+      "override": "Anular",
+      "credentialAccessWarning": "Esta extensión comunitaria se ejecuta en proceso con la puerta de enlace y tendrá acceso a todas las credenciales de esta instancia, incluidas las claves API de otras extensiones. Solo aprueba si confías en el editor y has revisado el código fuente.",
+      "acknowledgeCheckbox": "Reconozco el riesgo de acceso a credenciales",
+      "reasonPlaceholder": "¿Por qué apruebas esta extensión?",
+      "approveOverride": "Aprobar",
+      "overrideSuccess": "Anulación de confianza concedida",
+      "trustSummary": "Confianza"
     },
     "empty": {
       "noInstalled": "No hay habilidades instaladas",

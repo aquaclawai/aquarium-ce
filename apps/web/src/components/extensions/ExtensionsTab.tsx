@@ -7,6 +7,7 @@ import type {
   GatewayExtensionInfo,
   InstancePlugin,
   PluginCatalogEntry,
+  ExtensionKind,
 } from '@aquarium/shared';
 import { SkillRow } from './SkillRow';
 import { CatalogSkillRow } from './CatalogSkillRow';
@@ -17,6 +18,7 @@ import { ConfirmRestartDialog } from './ConfirmRestartDialog';
 import { InstallDialog } from './InstallDialog';
 import { RestartBanner } from './RestartBanner';
 import { RollbackModal } from './RollbackModal';
+import { TrustOverrideDialog } from './TrustOverrideDialog';
 import './ExtensionsTab.css';
 
 interface ExtensionsTabProps {
@@ -93,6 +95,17 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
+  // ClawHub pagination state
+  const [clawHubPluginPage, setClawHubPluginPage] = useState(0);
+  const [clawHubSkillPage, setClawHubSkillPage] = useState(0);
+  const [clawHubPluginHasMore, setClawHubPluginHasMore] = useState(false);
+  const [clawHubSkillHasMore, setClawHubSkillHasMore] = useState(false);
+  const [loadingMorePlugins, setLoadingMorePlugins] = useState(false);
+  const [loadingMoreSkills, setLoadingMoreSkills] = useState(false);
+
+  // Trust override dialog state
+  const [overrideTarget, setOverrideTarget] = useState<{ id: string; kind: ExtensionKind; name: string } | null>(null);
+
   // Shared state
   const [error, setError] = useState<string | null>(null);
   const [configuringExtension, setConfiguringExtension] = useState<ConfiguringExtension | null>(null);
@@ -100,6 +113,8 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
   const isRunning = instanceStatus === 'running';
   const isRestarting = restartingPlugin !== null;
   const mutationsDisabled = !isRunning || isRestarting;
+
+  const PAGE_LIMIT = 20;
 
   const fetchSkillData = useCallback(async () => {
     setSkillsLoading(true);
@@ -110,17 +125,26 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
       setGatewayBuiltins(skillsData.gatewayBuiltins);
 
       if (isRunning) {
-        const catalogData = await api.get<SkillCatalogEntry[]>(`/instances/${instanceId}/skills/catalog`);
+        const params = new URLSearchParams();
+        if (searchQuery) params.set('search', searchQuery);
+        if (categoryFilter !== 'all') params.set('category', categoryFilter);
+        params.set('page', '0');
+        params.set('limit', String(PAGE_LIMIT));
+        const query = params.toString();
+        const catalogData = await api.get<SkillCatalogEntry[]>(`/instances/${instanceId}/skills/catalog${query ? `?${query}` : ''}`);
         setCatalog(catalogData);
+        setClawHubSkillHasMore(catalogData.length === PAGE_LIMIT);
+        setClawHubSkillPage(0);
       } else {
         setCatalog([]);
+        setClawHubSkillHasMore(false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('extensions.errors.fetchFailed'));
     } finally {
       setSkillsLoading(false);
     }
-  }, [instanceId, isRunning, t]);
+  }, [instanceId, isRunning, searchQuery, categoryFilter, t]);
 
   const fetchPluginData = useCallback(async () => {
     setPluginsLoading(true);
@@ -131,17 +155,26 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
       setPluginBuiltins(pluginsData.gatewayBuiltins);
 
       if (isRunning) {
-        const catalogData = await api.get<PluginCatalogEntry[]>(`/instances/${instanceId}/plugins/catalog`);
+        const params = new URLSearchParams();
+        if (searchQuery) params.set('search', searchQuery);
+        if (categoryFilter !== 'all') params.set('category', categoryFilter);
+        params.set('page', '0');
+        params.set('limit', String(PAGE_LIMIT));
+        const query = params.toString();
+        const catalogData = await api.get<PluginCatalogEntry[]>(`/instances/${instanceId}/plugins/catalog${query ? `?${query}` : ''}`);
         setPluginCatalog(catalogData);
+        setClawHubPluginHasMore(catalogData.length === PAGE_LIMIT);
+        setClawHubPluginPage(0);
       } else {
         setPluginCatalog([]);
+        setClawHubPluginHasMore(false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('extensions.errors.fetchFailed'));
     } finally {
       setPluginsLoading(false);
     }
-  }, [instanceId, isRunning, t]);
+  }, [instanceId, isRunning, searchQuery, categoryFilter, t]);
 
   useEffect(() => {
     void fetchSkillData();
@@ -150,6 +183,49 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
   useEffect(() => {
     void fetchPluginData();
   }, [fetchPluginData]);
+
+  // Load more handlers for ClawHub pagination
+  const handleLoadMorePlugins = useCallback(async () => {
+    setLoadingMorePlugins(true);
+    try {
+      const nextPage = clawHubPluginPage + 1;
+      const params = new URLSearchParams();
+      if (searchQuery) params.set('search', searchQuery);
+      if (categoryFilter !== 'all') params.set('category', categoryFilter);
+      params.set('page', String(nextPage));
+      params.set('limit', String(PAGE_LIMIT));
+      const query = params.toString();
+      const moreData = await api.get<PluginCatalogEntry[]>(`/instances/${instanceId}/plugins/catalog?${query}`);
+      setPluginCatalog(prev => [...prev, ...moreData]);
+      setClawHubPluginHasMore(moreData.length === PAGE_LIMIT);
+      setClawHubPluginPage(nextPage);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('extensions.errors.fetchFailed'));
+    } finally {
+      setLoadingMorePlugins(false);
+    }
+  }, [instanceId, clawHubPluginPage, searchQuery, categoryFilter, t]);
+
+  const handleLoadMoreSkills = useCallback(async () => {
+    setLoadingMoreSkills(true);
+    try {
+      const nextPage = clawHubSkillPage + 1;
+      const params = new URLSearchParams();
+      if (searchQuery) params.set('search', searchQuery);
+      if (categoryFilter !== 'all') params.set('category', categoryFilter);
+      params.set('page', String(nextPage));
+      params.set('limit', String(PAGE_LIMIT));
+      const query = params.toString();
+      const moreData = await api.get<SkillCatalogEntry[]>(`/instances/${instanceId}/skills/catalog?${query}`);
+      setCatalog(prev => [...prev, ...moreData]);
+      setClawHubSkillHasMore(moreData.length === PAGE_LIMIT);
+      setClawHubSkillPage(nextPage);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('extensions.errors.fetchFailed'));
+    } finally {
+      setLoadingMoreSkills(false);
+    }
+  }, [instanceId, clawHubSkillPage, searchQuery, categoryFilter, t]);
 
   // Skills handlers
   const handleInstall = useCallback(async (skillId: string, source: string) => {
@@ -269,6 +345,35 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
     );
   }, []);
 
+  // Filter catalog to exclude already-installed skills
+  const installedSkillIds = new Set(managedSkills.map(s => s.skillId));
+  const availableCatalog = catalog.filter(entry => !installedSkillIds.has(entry.slug));
+
+  // Filter plugin catalog to exclude already-installed plugins
+  const installedPluginIds = new Set(managedPlugins.map(p => p.pluginId));
+  const availablePluginCatalog = pluginCatalog.filter(entry => !installedPluginIds.has(entry.id));
+
+  // Compute unique categories for the current sub-tab
+  const pluginCategories = [...new Set(availablePluginCatalog.map(e => e.category))].filter(Boolean);
+  const skillCategories = [...new Set(availableCatalog.map(e => e.category))].filter(Boolean);
+
+  // Apply client-side search + category filter (server-side for ClawHub; client-side for bundled fallback)
+  const filteredPluginCatalog = availablePluginCatalog.filter(entry => {
+    const matchesSearch = !searchQuery ||
+      entry.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      entry.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || entry.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  const filteredSkillCatalog = availableCatalog.filter(entry => {
+    const matchesSearch = !searchQuery ||
+      entry.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      entry.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || entry.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
   // Install dialog handlers — open dialog instead of immediately installing
   const handleCatalogPluginInstallClick = useCallback((pluginId: string) => {
     const entry = availablePluginCatalog.find(e => e.id === pluginId);
@@ -305,34 +410,22 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
     }
   }, [subTab, fetchSkillData, fetchPluginData]);
 
-  // Filter catalog to exclude already-installed skills
-  const installedSkillIds = new Set(managedSkills.map(s => s.skillId));
-  const availableCatalog = catalog.filter(entry => !installedSkillIds.has(entry.slug));
+  // Trust override handlers
+  const handleRequestOverride = useCallback((id: string, kind: ExtensionKind) => {
+    const name = kind === 'plugin'
+      ? (availablePluginCatalog.find(e => e.id === id)?.name ?? id)
+      : (availableCatalog.find(e => e.slug === id || e.id === id)?.name ?? id);
+    setOverrideTarget({ id, kind, name });
+  }, [availablePluginCatalog, availableCatalog]);
 
-  // Filter plugin catalog to exclude already-installed plugins
-  const installedPluginIds = new Set(managedPlugins.map(p => p.pluginId));
-  const availablePluginCatalog = pluginCatalog.filter(entry => !installedPluginIds.has(entry.id));
-
-  // Compute unique categories for the current sub-tab
-  const pluginCategories = [...new Set(availablePluginCatalog.map(e => e.category))].filter(Boolean);
-  const skillCategories = [...new Set(availableCatalog.map(e => e.category))].filter(Boolean);
-
-  // Apply search + category filter
-  const filteredPluginCatalog = availablePluginCatalog.filter(entry => {
-    const matchesSearch = !searchQuery ||
-      entry.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      entry.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || entry.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
-
-  const filteredSkillCatalog = availableCatalog.filter(entry => {
-    const matchesSearch = !searchQuery ||
-      entry.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      entry.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || entry.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
+  const handleOverrideComplete = useCallback(() => {
+    setOverrideTarget(null);
+    if (overrideTarget?.kind === 'plugin') {
+      void fetchPluginData();
+    } else {
+      void fetchSkillData();
+    }
+  }, [overrideTarget, fetchPluginData, fetchSkillData]);
 
   // Alert banners for failed/degraded skills
   const alertSkills = managedSkills.filter(
@@ -551,13 +644,13 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
                     className="catalog-search"
                     placeholder={t('extensions.catalog.searchPlaceholder')}
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => { setSearchQuery(e.target.value); setClawHubPluginPage(0); }}
                     disabled={isRestarting}
                   />
                   <select
                     className="catalog-category-filter"
                     value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    onChange={(e) => { setCategoryFilter(e.target.value); setClawHubPluginPage(0); }}
                     disabled={isRestarting}
                   >
                     <option value="all">{t('extensions.catalog.allCategories')}</option>
@@ -575,23 +668,39 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
                 ) : filteredPluginCatalog.length === 0 ? (
                   <p className="empty-state">{t('extensions.catalog.noResults')}</p>
                 ) : (
-                  <div className="skill-list">
-                    {filteredPluginCatalog.map(entry => (
-                      <CatalogExtensionRow
-                        key={entry.id}
-                        extensionKind="plugin"
-                        id={entry.id}
-                        name={entry.name}
-                        description={entry.description}
-                        source={entry.source}
-                        requiredCredentials={entry.requiredCredentials}
-                        capabilities={entry.capabilities}
-                        onInstall={(id) => handleCatalogPluginInstallClick(id)}
-                        installing={installingPlugin === entry.id}
-                        disabled={mutationsDisabled}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    <div className="skill-list">
+                      {filteredPluginCatalog.map(entry => (
+                        <CatalogExtensionRow
+                          key={entry.id}
+                          extensionKind="plugin"
+                          id={entry.id}
+                          name={entry.name}
+                          description={entry.description}
+                          source={entry.source}
+                          requiredCredentials={entry.requiredCredentials}
+                          capabilities={entry.capabilities}
+                          trustTier={entry.trustTier}
+                          trustSignals={entry.trustSignals}
+                          blocked={entry.trustDecision === 'block'}
+                          blockReason={entry.blockReason}
+                          onInstall={(id) => handleCatalogPluginInstallClick(id)}
+                          onRequestOverride={(id) => handleRequestOverride(id, 'plugin')}
+                          installing={installingPlugin === entry.id}
+                          disabled={mutationsDisabled}
+                        />
+                      ))}
+                    </div>
+                    {clawHubPluginHasMore && (
+                      <button
+                        className="load-more-btn"
+                        onClick={() => void handleLoadMorePlugins()}
+                        disabled={loadingMorePlugins || isRestarting}
+                      >
+                        {loadingMorePlugins ? t('extensions.actions.installing') : t('extensions.catalog.loadMore')}
+                      </button>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -687,12 +796,12 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
                     className="catalog-search"
                     placeholder={t('extensions.catalog.searchPlaceholder')}
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => { setSearchQuery(e.target.value); setClawHubSkillPage(0); }}
                   />
                   <select
                     className="catalog-category-filter"
                     value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    onChange={(e) => { setCategoryFilter(e.target.value); setClawHubSkillPage(0); }}
                   >
                     <option value="all">{t('extensions.catalog.allCategories')}</option>
                     {skillCategories.map(cat => (
@@ -709,17 +818,28 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
                 ) : filteredSkillCatalog.length === 0 ? (
                   <p className="empty-state">{t('extensions.catalog.noResults')}</p>
                 ) : (
-                  <div className="skill-list">
-                    {filteredSkillCatalog.map(entry => (
-                      <CatalogSkillRow
-                        key={entry.id}
-                        entry={entry}
-                        onInstall={(id) => handleCatalogSkillInstallClick(id)}
-                        installing={installing === entry.slug}
-                        disabled={mutationsDisabled}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    <div className="skill-list">
+                      {filteredSkillCatalog.map(entry => (
+                        <CatalogSkillRow
+                          key={entry.id}
+                          entry={entry}
+                          onInstall={(id) => handleCatalogSkillInstallClick(id)}
+                          installing={installing === entry.slug}
+                          disabled={mutationsDisabled}
+                        />
+                      ))}
+                    </div>
+                    {clawHubSkillHasMore && (
+                      <button
+                        className="load-more-btn"
+                        onClick={() => void handleLoadMoreSkills()}
+                        disabled={loadingMoreSkills}
+                      >
+                        {loadingMoreSkills ? t('extensions.actions.installing') : t('extensions.catalog.loadMore')}
+                      </button>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -732,9 +852,23 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
         <InstallDialog
           extensionKind={installDialogKind}
           entry={installDialogEntry}
+          trustTier={installDialogEntry.trustTier}
+          trustSignals={installDialogEntry.trustSignals}
           onConfirm={() => void handleInstallDialogConfirm()}
           onCancel={() => setInstallDialogEntry(null)}
           installing={installDialogKind === 'plugin' ? installingPlugin === installDialogEntry.id : installing === (installDialogEntry as SkillCatalogEntry).slug}
+        />
+      )}
+
+      {/* Trust override dialog */}
+      {overrideTarget !== null && (
+        <TrustOverrideDialog
+          extensionId={overrideTarget.id}
+          extensionKind={overrideTarget.kind}
+          extensionName={overrideTarget.name}
+          instanceId={instanceId}
+          onOverrideComplete={handleOverrideComplete}
+          onCancel={() => setOverrideTarget(null)}
         />
       )}
     </div>
