@@ -38,6 +38,7 @@ import metadataRoutes from './routes/metadata.js';
 import userRoutes from './routes/users.js';
 import notificationsRoutes from './routes/notifications.js';
 import skillRoutes from './routes/skills.js';
+import pluginRoutes from './routes/plugins.js';
 import extensionCredentialRoutes from './routes/extension-credentials.js';
 import execApprovalRoutes from './routes/exec-approval.js';
 import securityRoutes from './routes/security.js';
@@ -157,6 +158,7 @@ export function createApp(options: CreateAppOptions = {}): { app: express.Applic
   app.use('/api/users', userRoutes);
   app.use('/api/notifications', notificationsRoutes);
   app.use('/api/instances', skillRoutes);
+  app.use('/api/instances', pluginRoutes);
   app.use('/api/instances', extensionCredentialRoutes);
   app.use('/api/instances', execApprovalRoutes);
   app.use('/api', securityRoutes);
