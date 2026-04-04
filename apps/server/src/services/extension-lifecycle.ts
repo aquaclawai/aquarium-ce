@@ -3,7 +3,28 @@ import { GatewayRPCClient } from '../agent-types/openclaw/gateway-rpc.js';
 import { cleanupOrphanedOperations } from './extension-lock.js';
 import { getSkillsForInstance, updateSkillStatus, installSkill } from './skill-store.js';
 import { getPluginsForInstance, updatePluginStatus, installPlugin } from './plugin-store.js';
-import type { InstanceSkill, InstancePlugin } from '@aquarium/shared';
+import { isArtifactCached, getCachedArtifactPath } from './artifact-cache.js';
+import type { InstanceSkill, InstancePlugin, DeploymentTarget } from '@aquarium/shared';
+
+// ─── Private Helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Retrieve runtimeId and deploymentTarget for an instance without importing
+ * getInstance (avoids circular dependency with instance-manager).
+ */
+async function getInstanceRuntimeInfo(
+  instanceId: string,
+): Promise<{ runtimeId: string; deploymentTarget: DeploymentTarget } | null> {
+  const row = await db('instances')
+    .where({ id: instanceId })
+    .select('runtime_id', 'deployment_target')
+    .first() as Record<string, unknown> | undefined;
+  if (!row?.runtime_id) return null;
+  return {
+    runtimeId: row.runtime_id as string,
+    deploymentTarget: ((row.deployment_target as string | undefined) as DeploymentTarget | undefined) ?? 'docker',
+  };
+}
 
 // ─── RPC Response Types ───────────────────────────────────────────────────────
 
@@ -380,10 +401,28 @@ export async function replayPendingExtensions(
   // Replay pending skills
   for (const skill of skills) {
     try {
+      // OFFLINE-02: Prefer cached artifact over registry
+      let replaySkillSource = skill.source;
+      if (skill.lockedVersion && skill.source.type !== 'bundled') {
+        try {
+          const rtInfo = await getInstanceRuntimeInfo(instanceId);
+          if (rtInfo) {
+            const cached = await isArtifactCached('skill', skill.skillId, skill.lockedVersion, rtInfo.runtimeId, rtInfo.deploymentTarget);
+            if (cached) {
+              const cachePath = getCachedArtifactPath('skill', skill.skillId, skill.lockedVersion);
+              replaySkillSource = { type: 'url', url: `file://${cachePath}` };
+              console.log(`[extension-lifecycle] Phase 3: using cached artifact for skill ${skill.skillId}@${skill.lockedVersion}`);
+            }
+          }
+        } catch {
+          // Cache check failed — fall through to registry
+        }
+      }
+
       const { requiredCredentials } = await installSkill(
         instanceId,
         skill.skillId,
-        skill.source,
+        replaySkillSource,
         controlEndpoint,
         authToken,
       );
@@ -403,10 +442,29 @@ export async function replayPendingExtensions(
   // Replay pending plugins
   for (const plugin of plugins) {
     try {
+      // OFFLINE-02: Prefer cached artifact over registry
+      let replayPluginSource = plugin.source;
+      if (plugin.lockedVersion && plugin.source.type !== 'bundled') {
+        try {
+          const rtInfo = await getInstanceRuntimeInfo(instanceId);
+          if (rtInfo) {
+            const cached = await isArtifactCached('plugin', plugin.pluginId, plugin.lockedVersion, rtInfo.runtimeId, rtInfo.deploymentTarget);
+            if (cached) {
+              const cachePath = getCachedArtifactPath('plugin', plugin.pluginId, plugin.lockedVersion);
+              // npm requires file: prefix for local tarball installs
+              replayPluginSource = { type: 'npm', spec: `file:${cachePath}` };
+              console.log(`[extension-lifecycle] Phase 3: using cached artifact for plugin ${plugin.pluginId}@${plugin.lockedVersion}`);
+            }
+          }
+        } catch {
+          // Cache check failed — fall through to registry
+        }
+      }
+
       const { requiredCredentials } = await installPlugin(
         instanceId,
         plugin.pluginId,
-        plugin.source,
+        replayPluginSource,
         userId,
       );
       if (requiredCredentials.length > 0) {

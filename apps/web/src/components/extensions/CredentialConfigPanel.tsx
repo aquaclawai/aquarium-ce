@@ -25,6 +25,7 @@ interface CredentialConfigPanelProps {
   oauthProvider?: string;
   requiresReAuth?: boolean;
   vaultConfigured?: boolean;
+  isBundled?: boolean;
 }
 
 function truncateHash(hash: string): string {
@@ -62,6 +63,7 @@ export function CredentialConfigPanel({
   oauthProvider,
   requiresReAuth,
   vaultConfigured,
+  isBundled,
 }: CredentialConfigPanelProps) {
   const { t } = useTranslation();
   const [field, setField] = useState('');
@@ -202,6 +204,12 @@ export function CredentialConfigPanel({
 
   const displayVersion = upgradedVersion ?? lockedVersion;
 
+  // OFFLINE-01: Indicate that the artifact is cached locally for offline rebuild
+  const isCachedLocally =
+    !isBundled &&
+    lockedVersion != null &&
+    ['active', 'installed', 'disabled'].includes(status);
+
   const isSaveDisabled = disabled || saving || (
     credentialSource === 'direct'
       ? !field.trim() || !value.trim()
@@ -246,6 +254,15 @@ export function CredentialConfigPanel({
                 : t('extensions.version.integrityUnavailable')}
             </span>
           </div>
+
+          {/* Cached locally indicator — shown for non-bundled extensions with a locked version */}
+          {isCachedLocally && (
+            <div className="credential-panel__version-row">
+              <span className="credential-panel__version-label" style={{ color: 'var(--color-success)', fontSize: '0.8rem' }}>
+                {t('extensions.version.cachedLocally')}
+              </span>
+            </div>
+          )}
 
           {/* Upgrade status messages */}
           {upToDate && !upgradedVersion && (

@@ -1837,7 +1837,8 @@
       "upgrading": "升级中...",
       "upgradeSuccess": "已升级至 v{{version}}",
       "restartRequired": "需要重启网关",
-      "upgradeFailed": "升级失败"
+      "upgradeFailed": "升级失败",
+      "cachedLocally": "制品已本地缓存"
     },
     "empty": {
       "noInstalled": "未安装任何技能",

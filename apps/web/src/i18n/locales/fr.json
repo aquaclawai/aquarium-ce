@@ -1156,7 +1156,8 @@
       "upgrading": "Mise à jour...",
       "upgradeSuccess": "Mis à jour vers v{{version}}",
       "restartRequired": "Redémarrage de la passerelle requis",
-      "upgradeFailed": "Échec de la mise à jour"
+      "upgradeFailed": "Échec de la mise à jour",
+      "cachedLocally": "Artefact mis en cache localement"
     },
     "empty": {
       "noInstalled": "Aucune compétence installée",

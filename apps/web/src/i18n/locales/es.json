@@ -1156,7 +1156,8 @@
       "upgrading": "Actualizando...",
       "upgradeSuccess": "Actualizado a v{{version}}",
       "restartRequired": "Se requiere reiniciar la pasarela",
-      "upgradeFailed": "Error al actualizar"
+      "upgradeFailed": "Error al actualizar",
+      "cachedLocally": "Artefacto almacenado en cache localmente"
     },
     "empty": {
       "noInstalled": "No hay habilidades instaladas",

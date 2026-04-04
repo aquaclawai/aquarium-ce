@@ -615,6 +615,7 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
                         supportsOAuth={pluginCatalog.find(e => e.id === plugin.pluginId)?.requiredCredentials?.some(c => c.type === 'oauth_token') ?? false}
                         oauthProvider={pluginCatalog.find(e => e.id === plugin.pluginId)?.requiredCredentials?.find(c => c.type === 'oauth_token')?.field}
                         vaultConfigured={vaultConfigured}
+                        isBundled={plugin.source?.type === 'bundled'}
                       />
                     )}
                   </div>
@@ -773,6 +774,7 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
                         supportsOAuth={catalog.find(e => e.slug === skill.skillId || e.id === skill.skillId)?.requiredCredentials?.some(c => c.type === 'oauth_token') ?? false}
                         oauthProvider={catalog.find(e => e.slug === skill.skillId || e.id === skill.skillId)?.requiredCredentials?.find(c => c.type === 'oauth_token')?.field}
                         vaultConfigured={vaultConfigured}
+                        isBundled={skill.source?.type === 'bundled'}
                       />
                     )}
                   </div>

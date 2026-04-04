@@ -1838,7 +1838,8 @@
       "upgrading": "Upgrading...",
       "upgradeSuccess": "Upgraded to v{{version}}",
       "restartRequired": "Gateway restart required",
-      "upgradeFailed": "Upgrade failed"
+      "upgradeFailed": "Upgrade failed",
+      "cachedLocally": "Artifact cached locally"
     },
     "empty": {
       "noInstalled": "No skills installed",

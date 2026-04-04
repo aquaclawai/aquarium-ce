@@ -1156,7 +1156,8 @@
       "upgrading": "Aggiornamento in corso...",
       "upgradeSuccess": "Aggiornato a v{{version}}",
       "restartRequired": "Riavvio del gateway necessario",
-      "upgradeFailed": "Aggiornamento non riuscito"
+      "upgradeFailed": "Aggiornamento non riuscito",
+      "cachedLocally": "Artefatto memorizzato nella cache locale"
     },
     "empty": {
       "noInstalled": "Nessuna competenza installata",

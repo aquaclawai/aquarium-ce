@@ -1156,7 +1156,8 @@
       "upgrading": "Wird aktualisiert...",
       "upgradeSuccess": "Auf v{{version}} aktualisiert",
       "restartRequired": "Gateway-Neustart erforderlich",
-      "upgradeFailed": "Aktualisierung fehlgeschlagen"
+      "upgradeFailed": "Aktualisierung fehlgeschlagen",
+      "cachedLocally": "Artefakt lokal zwischengespeichert"
     },
     "empty": {
       "noInstalled": "Keine Skills installiert",
