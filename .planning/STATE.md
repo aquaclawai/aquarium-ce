@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: Phase 3 context gathered
-last_updated: "2026-04-04T03:27:33.561Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-04-04T03:58:35.133Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 11
-  completed_plans: 11
+  total_plans: 16
+  completed_plans: 12
   percent: 0
 ---
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02-plugin-management P02 | 2 | 1 tasks | 2 files |
 | Phase 02-plugin-management P03 | 6 | 2 tasks | 12 files |
 | Phase 02-plugin-management P04 | 11 | 3 tasks | 10 files |
+| Phase 03-clawhub-trust-policy P02 | 3 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,8 @@ Recent decisions affecting current work:
 - [Phase 02-plugin-management]: Vault/instance scope selector (UI-03) deferred to Phase 5 OAUTH-03 — all credentials are instance-scoped by default in Phase 2
 - [Phase 02-plugin-management]: Polling GET /instances/:id/plugins/:pluginId every 2s (not WebSocket) for restart completion detection — simpler per CONTEXT.md decision
 - [Phase 02-plugin-management]: Visual checkpoint auto-approved in auto-advance mode for Plan 02-04
+- [Phase 03-clawhub-trust-policy]: marketplace-client soft-fails on RPC errors: returns empty result instead of throwing (ClawHub unavailable = graceful degradation)
+- [Phase 03-clawhub-trust-policy]: TRUST-05/06 integrity check: only verifies on same-version reinstall when stored integrity_hash is non-null (legacy installs without hash skip verification)
 
 ### Pending Todos
 
@@ -111,6 +114,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T03:27:33.559Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-clawhub-trust-policy/03-CONTEXT.md
+Last session: 2026-04-04T03:58:35.098Z
+Stopped at: Completed 03-02-PLAN.md
+Resume file: None

@@ -43,12 +43,12 @@ Requirements for Plugin & Skill Marketplace. Each maps to roadmap phases.
 
 ### ClawHub Marketplace & Trust
 
-- [ ] **TRUST-01**: User can search ClawHub catalog for plugins and skills with category filtering
+- [x] **TRUST-01**: User can search ClawHub catalog for plugins and skills with category filtering
 - [ ] **TRUST-02**: System displays trust signals (verified badge, download count, age, VirusTotal status) on catalog entries
 - [ ] **TRUST-03**: System enforces deny-by-default: bundled/verified allow, community block, unscanned block always
 - [ ] **TRUST-04**: Admin can override trust for community extensions with credential-access consent dialog and audit trail
-- [ ] **TRUST-05**: System pins exact version + SHA-512 integrity hash on install
-- [ ] **TRUST-06**: System rejects reinstall if registry returns different hash for same version (integrity mismatch)
+- [x] **TRUST-05**: System pins exact version + SHA-512 integrity hash on install
+- [x] **TRUST-06**: System rejects reinstall if registry returns different hash for same version (integrity mismatch)
 - [ ] **TRUST-07**: User can explicitly upgrade an extension (fetches latest, re-pins, re-hashes)
 
 ### Template Portability
@@ -140,12 +140,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UI-02 | Phase 2 | Complete |
 | UI-03 | Phase 2 | Complete |
 | UI-04 | Phase 2 | Complete |
-| TRUST-01 | Phase 3 | Pending |
+| TRUST-01 | Phase 3 | Complete |
 | TRUST-02 | Phase 3 | Pending |
 | TRUST-03 | Phase 3 | Pending |
 | TRUST-04 | Phase 3 | Pending |
-| TRUST-05 | Phase 3 | Pending |
-| TRUST-06 | Phase 3 | Pending |
+| TRUST-05 | Phase 3 | Complete |
+| TRUST-06 | Phase 3 | Complete |
 | TRUST-07 | Phase 3 | Pending |
 | TMPL-01 | Phase 4 | Pending |
 | TMPL-02 | Phase 4 | Pending |

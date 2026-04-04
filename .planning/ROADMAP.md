@@ -68,7 +68,7 @@ Plans:
   3. An admin can override a community extension after reviewing the credential-access consent dialog, and the override is recorded in the audit trail
   4. An installed extension's version and SHA-512 hash are pinned in the DB, and a reinstall attempt that returns a different hash for the same version is rejected
   5. User can explicitly upgrade an extension to the latest version with re-pinning and re-hashing
-**Plans:** 5 plans
+**Plans:** 1/5 plans executed
 
 Plans:
 - [ ] 03-01-PLAN.md — Shared trust types, DB migration (trust_overrides table), trust-store service
@@ -116,7 +116,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|-----------|----------------|--------|-----------|
 | 1. Skill Management | 7/7 | Complete   | 2026-04-04 | - |
 | 2. Plugin Management | v1.1 | 0/4 | Planning complete | - |
-| 3. ClawHub & Trust Policy | v1.1 | 0/5 | Planning complete | - |
+| 3. ClawHub & Trust Policy | 1/5 | In Progress|  | - |
 | 4. Template Portability | v1.1 | 0/TBD | Not started | - |
 | 5. OAuth & Advanced Auth | v1.1 | 0/TBD | Not started | - |
 | 6. Offline Resilience | v1.1 | 0/TBD | Not started | - |
