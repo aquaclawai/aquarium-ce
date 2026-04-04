@@ -1452,6 +1452,8 @@ export interface SkillCatalogEntry {
   requiredEnvVars: string[];
   trustSignals?: TrustSignals;
   trustTier?: TrustTier;
+  trustDecision?: TrustDecision;
+  blockReason?: string;
 }
 
 export interface PluginCatalogEntry {
@@ -1465,6 +1467,8 @@ export interface PluginCatalogEntry {
   capabilities: string[];
   trustSignals?: TrustSignals;
   trustTier?: TrustTier;
+  trustDecision?: TrustDecision;
+  blockReason?: string;
 }
 
 export interface ExtensionOperation {
