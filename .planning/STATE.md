@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: Completed 02-plugin-management 02-03-PLAN.md
-last_updated: "2026-04-04T02:13:09.144Z"
+stopped_at: Completed 02-plugin-management 02-04-PLAN.md
+last_updated: "2026-04-04T02:27:27.400Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
   percent: 0
 ---
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02-plugin-management P01 | 250 | 2 tasks | 3 files |
 | Phase 02-plugin-management P02 | 2 | 1 tasks | 2 files |
 | Phase 02-plugin-management P03 | 6 | 2 tasks | 12 files |
+| Phase 02-plugin-management P04 | 11 | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,9 @@ Recent decisions affecting current work:
 - [Phase 02-plugin-management]: extensionKind discriminator prop on ExtensionRow and CatalogExtensionRow used to conditionally render Activate button vs toggle for plugins
 - [Phase 02-plugin-management]: CredentialConfigPanel props renamed from skillId/skillName to extensionId/extensionName with extensionKind prop — posts correct kind for both skills and plugins
 - [Phase 02-plugin-management]: confirmActivatePluginId state and handlePluginActivateConfirm defined in 02-03 ExtensionsTab for wiring in 02-04 ConfirmRestartDialog
+- [Phase 02-plugin-management]: Vault/instance scope selector (UI-03) deferred to Phase 5 OAUTH-03 — all credentials are instance-scoped by default in Phase 2
+- [Phase 02-plugin-management]: Polling GET /instances/:id/plugins/:pluginId every 2s (not WebSocket) for restart completion detection — simpler per CONTEXT.md decision
+- [Phase 02-plugin-management]: Visual checkpoint auto-approved in auto-advance mode for Plan 02-04
 
 ### Pending Todos
 
@@ -107,6 +111,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T02:13:09.143Z
-Stopped at: Completed 02-plugin-management 02-03-PLAN.md
+Last session: 2026-04-04T02:27:27.399Z
+Stopped at: Completed 02-plugin-management 02-04-PLAN.md
 Resume file: None

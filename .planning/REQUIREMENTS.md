@@ -73,8 +73,8 @@ Requirements for Plugin & Skill Marketplace. Each maps to roadmap phases.
 ### Frontend
 
 - [x] **UI-01**: Extensions tab with Plugins and Skills sub-tabs on instance detail page
-- [ ] **UI-02**: Catalog browse with search, category filter, and trust signal display
-- [ ] **UI-03**: Install flow dialog with trust summary, credential input, and vault/instance scope choice
+- [x] **UI-02**: Catalog browse with search, category filter, and trust signal display
+- [x] **UI-03**: Install flow dialog with trust summary, credential input, and vault/instance scope choice
 - [x] **UI-04**: Credential configuration panel (gear icon) with extension-scoped credential management
 - [x] **UI-05**: Gateway built-ins shown in separate read-only section (not mixed with managed extensions)
 - [x] **UI-06**: Dashboard alerts for failed/degraded extensions
@@ -137,8 +137,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PLUG-08 | Phase 2 | Complete |
 | PLUG-09 | Phase 2 | Complete |
 | PLUG-10 | Phase 2 | Complete |
-| UI-02 | Phase 2 | Pending |
-| UI-03 | Phase 2 | Pending |
+| UI-02 | Phase 2 | Complete |
+| UI-03 | Phase 2 | Complete |
 | UI-04 | Phase 2 | Complete |
 | TRUST-01 | Phase 3 | Pending |
 | TRUST-02 | Phase 3 | Pending |
