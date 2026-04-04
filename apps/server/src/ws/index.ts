@@ -15,7 +15,15 @@ interface WsClient {
 const clients = new Set<WsClient>();
 
 export function setupWebSocket(server: HttpServer): void {
-  const wss = new WebSocketServer({ server, path: '/ws' });
+  const wss = new WebSocketServer({ noServer: true });
+
+  server.on('upgrade', (req, socket, head) => {
+    const pathname = req.url?.split('?')[0];
+    if (pathname !== '/ws') return; // let other upgrade handlers (e.g. instance proxy) handle it
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit('connection', ws, req);
+    });
+  });
 
   wss.on('connection', (ws) => {
     const client: WsClient = {
