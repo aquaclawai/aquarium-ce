@@ -7,11 +7,13 @@ import {
   releaseLock,
   checkCancelRequested,
 } from './extension-lock.js';
+import { cacheArtifact } from './artifact-cache.js';
 import type {
   InstanceSkill,
   ExtensionSkillSource,
   ExtensionCredentialRequirement,
   ExtensionStatus,
+  DeploymentTarget,
 } from '@aquarium/shared';
 
 // ─── Row Mapping ─────────────────────────────────────────────────────────────
@@ -214,6 +216,19 @@ export async function installSkill(
     await db('instance_skills')
       .where({ instance_id: instanceId, skill_id: skillId })
       .update(versionUpdate);
+
+    // OFFLINE-01: Cache artifact for offline rebuild (fire-and-forget)
+    if (rpcResult.version !== undefined && source.type !== 'bundled') {
+      // Lightweight DB query to get runtimeId + deploymentTarget — avoids circular import
+      const inst = await db('instances')
+        .where({ id: instanceId })
+        .select('runtime_id', 'deployment_target')
+        .first() as Record<string, unknown> | undefined;
+      if (inst?.runtime_id) {
+        const dt = ((inst.deployment_target as string | undefined) as DeploymentTarget | undefined) ?? 'docker';
+        cacheArtifact('skill', skillId, rpcResult.version, inst.runtime_id as string, dt).catch(() => {});
+      }
+    }
 
     await releaseLock(operationId, fencingToken, 'success');
 

@@ -8,6 +8,7 @@ import {
   releaseLock,
   checkCancelRequested,
 } from './extension-lock.js';
+import { cacheArtifact } from './artifact-cache.js';
 import type {
   InstancePlugin,
   PluginSource,
@@ -355,6 +356,12 @@ export async function installPlugin(
       await db('instance_plugins')
         .where({ instance_id: instanceId, plugin_id: pluginId })
         .update(versionUpdate);
+    }
+
+    // OFFLINE-01: Cache artifact for offline rebuild (fire-and-forget)
+    if (version && source.type !== 'bundled' && instance.runtimeId) {
+      // Cache failure must never block install — fire-and-forget
+      cacheArtifact('plugin', pluginId, version, instance.runtimeId, instance.deploymentTarget).catch(() => {});
     }
 
     // 5. PLUG-03: No credentials needed → auto-activate within same lock hold
