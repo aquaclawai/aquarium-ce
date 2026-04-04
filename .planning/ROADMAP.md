@@ -15,7 +15,7 @@
 - [ ] **Phase 2: Plugin Management** - Plugin install/activate/enable/disable/uninstall with gateway restart flow and credential configuration UI
 - [x] **Phase 3: ClawHub & Trust Policy** - ClawHub catalog search, trust signals, deny-by-default enforcement, admin overrides, version pinning (completed 2026-04-04)
 - [x] **Phase 4: Template Portability** - Export/import with new extension tables, config scrubbing, trust re-evaluation, 3-phase startup (completed 2026-04-04)
-- [ ] **Phase 5: OAuth & Advanced Auth** - OAuth proxy flow, token export exclusion, SecretRef vault integration
+- [x] **Phase 5: OAuth & Advanced Auth** - OAuth proxy flow, token export exclusion, SecretRef vault integration (completed 2026-04-04)
 - [ ] **Phase 6: Offline Resilience** - Plugin artifact caching for air-gapped and restart rebuild recovery
 
 ## Phase Details
@@ -101,7 +101,7 @@ Plans:
   1. User can authenticate an OAuth-requiring plugin by clicking a link in the dashboard that opens a browser redirect flow and returns the token to the platform
   2. Exported templates do not contain OAuth tokens — those extensions are flagged with requiresReAuth so the importer knows re-authentication is needed
   3. User can configure a SecretRef vault integration (1Password or HashiCorp Vault) and have credentials resolve from the vault at activation time
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] 05-01-PLAN.md — OAuth proxy route (initiate/callback/status), requiresReAuth type + export/import logic
@@ -128,5 +128,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Plugin Management | v1.1 | 0/4 | Planning complete | - |
 | 3. ClawHub & Trust Policy | 5/5 | Complete   | 2026-04-04 | - |
 | 4. Template Portability | 3/3 | Complete   | 2026-04-04 | - |
-| 5. OAuth & Advanced Auth | 2/3 | In Progress|  | - |
+| 5. OAuth & Advanced Auth | 3/3 | Complete   | 2026-04-04 | - |
 | 6. Offline Resilience | v1.1 | 0/TBD | Not started | - |
