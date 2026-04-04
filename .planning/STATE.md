@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: Completed 04-template-portability-01-PLAN.md
-last_updated: "2026-04-04T05:03:49.568Z"
+stopped_at: Completed 04-template-portability-03-PLAN.md
+last_updated: "2026-04-04T05:09:13.206Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 20
-  completed_plans: 19
+  completed_plans: 20
   percent: 0
 ---
 
@@ -68,6 +68,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03-clawhub-trust-policy P06 | 3 | 1 tasks | 2 files |
 | Phase 04-template-portability P02 | 10 | 2 tasks | 3 files |
 | Phase 04-template-portability P01 | 15 | 2 tasks | 4 files |
+| Phase 04-template-portability P03 | 4 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,9 @@ Recent decisions affecting current work:
 - [Phase 04-template-portability]: SecurityWarning type extended with 'redacted_secret' variant — workspace secrets use different type than hardcoded key warnings
 - [Phase 04-template-portability]: scrubOpenclawConfigCredentials() extracted as standalone helper in reverse-adapter.ts — reusable and separate from main export flow
 - [Phase 04-template-portability]: SENSITIVE_PATTERNS exported from reverse-adapter.ts but template-store.ts keeps local copies — avoids circular imports between service-layer files
+- [Phase 04-template-portability]: plugin_dependencies ContentRow column reused for TemplateExtensionDeclaration[] — discriminated by 'kind' field, no schema migration needed
+- [Phase 04-template-portability]: Trust re-evaluation uses null signals at import time — no gateway running during instantiation, non-bundled extensions default to unscanned and are blocked
+- [Phase 04-template-portability]: Community tier split at import: without override -> requiresTrustOverride[] (resolvable); unscanned/scan-failed -> blockedExtensions[] (permanent block)
 
 ### Pending Todos
 
@@ -137,6 +141,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T05:03:49.562Z
-Stopped at: Completed 04-template-portability-01-PLAN.md
+Last session: 2026-04-04T05:09:13.204Z
+Stopped at: Completed 04-template-portability-03-PLAN.md
 Resume file: None

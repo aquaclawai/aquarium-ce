@@ -58,8 +58,8 @@ Requirements for Plugin & Skill Marketplace. Each maps to roadmap phases.
 - [x] **TMPL-03**: Export scrubs OpenClaw base config — all credential fields replaced with `${CREDENTIAL:...}` placeholders
 - [x] **TMPL-04**: Export uses workspace file allowlist + SENSITIVE_PATTERNS secret scanning with redaction
 - [x] **TMPL-05**: Export rejects local skills with `scripts/` or `assets/` directories
-- [ ] **TMPL-06**: Template import re-evaluates trust policy for each extension against current ClawHub metadata
-- [ ] **TMPL-07**: Blocked extensions on import require fresh admin override or are skipped with warning
+- [x] **TMPL-06**: Template import re-evaluates trust policy for each extension against current ClawHub metadata
+- [x] **TMPL-07**: Blocked extensions on import require fresh admin override or are skipped with warning
 - [x] **TMPL-08**: System uses 3-phase startup: Phase 1 (active/degraded config) → Phase 2 (boot+reconcile) → Phase 3 (pending replay)
 
 ### OAuth & Offline
@@ -152,8 +152,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TMPL-03 | Phase 4 | Complete |
 | TMPL-04 | Phase 4 | Complete |
 | TMPL-05 | Phase 4 | Complete |
-| TMPL-06 | Phase 4 | Pending |
-| TMPL-07 | Phase 4 | Pending |
+| TMPL-06 | Phase 4 | Complete |
+| TMPL-07 | Phase 4 | Complete |
 | TMPL-08 | Phase 4 | Complete |
 | OAUTH-01 | Phase 5 | Pending |
 | OAUTH-02 | Phase 5 | Pending |
