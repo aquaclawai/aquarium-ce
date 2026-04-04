@@ -592,6 +592,30 @@ export const openclawAdapter: AgentTypeAdapter = {
     }
     cfg.skills = securityCfg.skills;
 
+    // Phase 1 of 3-phase startup (PRD §5.4): include active/degraded skills in config
+    // Pending, installed, failed, and disabled skills are excluded — they are handled
+    // by Phase 2 reconciliation or Phase 3 replay on first boot.
+    const managedSkills = await db('instance_skills')
+      .where({ instance_id: instance.id })
+      .whereIn('status', ['active', 'degraded'])
+      .select('skill_id', 'source', 'config', 'enabled') as Array<Record<string, unknown>>;
+
+    if (managedSkills.length > 0) {
+      const skillsObj = (cfg.skills ?? {}) as Record<string, unknown>;
+      const skillEntries = (skillsObj.entries ?? {}) as Record<string, unknown>;
+      for (const ms of managedSkills) {
+        const skillId = ms.skill_id as string;
+        const skillConfig = dbAdapter.parseJson<Record<string, unknown>>(ms.config);
+        if (ms.enabled) {
+          skillEntries[skillId] = { enabled: true, ...skillConfig };
+        }
+      }
+      if (Object.keys(skillEntries).length > 0) {
+        skillsObj.entries = skillEntries;
+        cfg.skills = skillsObj;
+      }
+    }
+
     // PLUG-10: Disable chat-based plugin management for managed instances
     // The dashboard is the single writer for extension state — prevents state divergence
     cfg.commands = { ...(cfg.commands as Record<string, unknown> || {}), plugins: false };
