@@ -90,7 +90,7 @@ Plans:
 
 </details>
 
-### 🚧 v1.2 Gateway Simplification & Plugin Fixes (In Progress)
+### v1.2 Gateway Simplification & Plugin Fixes (In Progress)
 
 **Milestone Goal:** Remove redundant CE-specific workarounds now that the official OpenClaw gateway supports them natively, and fix plugin/extension bugs found during v1.1 testing.
 
@@ -123,10 +123,10 @@ Plans:
   1. New instances start with `gateway.bind: lan` in their config and are accessible from the Aquarium server without any TCP proxy process
   2. The custom Docker entrypoint only injects the platform-bridge plugin path, delegating all directory setup, permission management, and config initialization to the official OpenClaw entrypoint
   3. Existing running instances continue to work after upgrade (no breaking change to instance configs already deployed)
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 08-01: TBD
+- [ ] 08-01-PLAN.md -- Remove TCP proxy injection from docker.ts, confirm entrypoint minimality
 
 ## Progress
 
@@ -142,4 +142,4 @@ Phases execute in numeric order: 7 -> 8
 | 5. OAuth & Advanced Auth | v1.1 | 4/4 | Complete | 2026-04-04 |
 | 6. Offline Resilience | v1.1 | 1/1 | Complete | 2026-04-04 |
 | 7. Plugin & Extension Fixes | v1.2 | 0/2 | In progress | - |
-| 8. Gateway Simplification | v1.2 | 0/? | Not started | - |
+| 8. Gateway Simplification | v1.2 | 0/1 | Not started | - |
