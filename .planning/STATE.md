@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: Completed 02-plugin-management 02-02-PLAN.md
-last_updated: "2026-04-04T02:07:34.488Z"
+stopped_at: Completed 02-plugin-management 02-03-PLAN.md
+last_updated: "2026-04-04T02:13:09.144Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 11
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-skill-management P07 | 2 | 2 tasks | 2 files |
 | Phase 02-plugin-management P01 | 250 | 2 tasks | 3 files |
 | Phase 02-plugin-management P02 | 2 | 1 tasks | 2 files |
+| Phase 02-plugin-management P03 | 6 | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,9 @@ Recent decisions affecting current work:
 - [Phase 02-plugin-management]: PLUG-04 confirmed: extension-credentials route already handles extensionKind='plugin' at line 59 — no modification needed
 - [Phase 02-plugin-management]: Plugin route ordering: catalog route defined before :pluginId route to prevent route capture by Express
 - [Phase 02-plugin-management]: plugins.list RPC failure in GET /plugins is soft-logged (warn) — older gateway versions may not support the method
+- [Phase 02-plugin-management]: extensionKind discriminator prop on ExtensionRow and CatalogExtensionRow used to conditionally render Activate button vs toggle for plugins
+- [Phase 02-plugin-management]: CredentialConfigPanel props renamed from skillId/skillName to extensionId/extensionName with extensionKind prop — posts correct kind for both skills and plugins
+- [Phase 02-plugin-management]: confirmActivatePluginId state and handlePluginActivateConfirm defined in 02-03 ExtensionsTab for wiring in 02-04 ConfirmRestartDialog
 
 ### Pending Todos
 
@@ -103,6 +107,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T02:07:34.486Z
-Stopped at: Completed 02-plugin-management 02-02-PLAN.md
+Last session: 2026-04-04T02:13:09.143Z
+Stopped at: Completed 02-plugin-management 02-03-PLAN.md
 Resume file: None
