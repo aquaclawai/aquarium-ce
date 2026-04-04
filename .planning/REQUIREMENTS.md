@@ -30,10 +30,10 @@ Requirements for Plugin & Skill Marketplace. Each maps to roadmap phases.
 
 ### Plugin Management
 
-- [ ] **PLUG-01**: User can browse bundled plugins catalog from the Extensions tab
+- [x] **PLUG-01**: User can browse bundled plugins catalog from the Extensions tab
 - [x] **PLUG-02**: User can install a plugin artifact (Operation 1: npm install, no config.patch, status → installed or active)
 - [x] **PLUG-03**: Plugins with no required credentials skip to Operation 3 (activate) within same lock hold
-- [ ] **PLUG-04**: User can configure extension-scoped credentials for a plugin (Operation 2)
+- [x] **PLUG-04**: User can configure extension-scoped credentials for a plugin (Operation 2)
 - [x] **PLUG-05**: User can activate a plugin triggering gateway restart + health check (Operation 3)
 - [x] **PLUG-06**: Plugin activation verifies artifact exists and reinstalls from lockedVersion if missing (rebuild recovery)
 - [x] **PLUG-07**: System rolls back failed plugin activation (remove from config, restart, mark failed)
@@ -127,10 +127,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UI-05 | Phase 1 | Complete |
 | UI-06 | Phase 1 | Complete |
 | UI-07 | Phase 1 | Complete |
-| PLUG-01 | Phase 2 | Pending |
+| PLUG-01 | Phase 2 | Complete |
 | PLUG-02 | Phase 2 | Complete |
 | PLUG-03 | Phase 2 | Complete |
-| PLUG-04 | Phase 2 | Pending |
+| PLUG-04 | Phase 2 | Complete |
 | PLUG-05 | Phase 2 | Complete |
 | PLUG-06 | Phase 2 | Complete |
 | PLUG-07 | Phase 2 | Complete |
