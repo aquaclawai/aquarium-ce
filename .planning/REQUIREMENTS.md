@@ -53,11 +53,11 @@ Requirements for Plugin & Skill Marketplace. Each maps to roadmap phases.
 
 ### Template Portability
 
-- [ ] **TMPL-01**: Template export reads from `instance_plugins`/`instance_skills` tables (not legacy `plugin_dependencies`)
-- [ ] **TMPL-02**: Export includes active, installed (needsCredentials), disabled, and degraded extensions with state hints
-- [ ] **TMPL-03**: Export scrubs OpenClaw base config — all credential fields replaced with `${CREDENTIAL:...}` placeholders
-- [ ] **TMPL-04**: Export uses workspace file allowlist + SENSITIVE_PATTERNS secret scanning with redaction
-- [ ] **TMPL-05**: Export rejects local skills with `scripts/` or `assets/` directories
+- [x] **TMPL-01**: Template export reads from `instance_plugins`/`instance_skills` tables (not legacy `plugin_dependencies`)
+- [x] **TMPL-02**: Export includes active, installed (needsCredentials), disabled, and degraded extensions with state hints
+- [x] **TMPL-03**: Export scrubs OpenClaw base config — all credential fields replaced with `${CREDENTIAL:...}` placeholders
+- [x] **TMPL-04**: Export uses workspace file allowlist + SENSITIVE_PATTERNS secret scanning with redaction
+- [x] **TMPL-05**: Export rejects local skills with `scripts/` or `assets/` directories
 - [ ] **TMPL-06**: Template import re-evaluates trust policy for each extension against current ClawHub metadata
 - [ ] **TMPL-07**: Blocked extensions on import require fresh admin override or are skipped with warning
 - [x] **TMPL-08**: System uses 3-phase startup: Phase 1 (active/degraded config) → Phase 2 (boot+reconcile) → Phase 3 (pending replay)
@@ -147,11 +147,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRUST-05 | Phase 3 | Complete |
 | TRUST-06 | Phase 3 | Complete |
 | TRUST-07 | Phase 3 | Complete |
-| TMPL-01 | Phase 4 | Pending |
-| TMPL-02 | Phase 4 | Pending |
-| TMPL-03 | Phase 4 | Pending |
-| TMPL-04 | Phase 4 | Pending |
-| TMPL-05 | Phase 4 | Pending |
+| TMPL-01 | Phase 4 | Complete |
+| TMPL-02 | Phase 4 | Complete |
+| TMPL-03 | Phase 4 | Complete |
+| TMPL-04 | Phase 4 | Complete |
+| TMPL-05 | Phase 4 | Complete |
 | TMPL-06 | Phase 4 | Pending |
 | TMPL-07 | Phase 4 | Pending |
 | TMPL-08 | Phase 4 | Complete |

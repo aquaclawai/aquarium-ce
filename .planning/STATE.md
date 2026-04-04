@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: Completed 04-template-portability-04-02-PLAN.md
-last_updated: "2026-04-04T05:00:36.930Z"
+stopped_at: Completed 04-template-portability-01-PLAN.md
+last_updated: "2026-04-04T05:03:49.568Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 20
-  completed_plans: 18
+  completed_plans: 19
   percent: 0
 ---
 
@@ -67,6 +67,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03-clawhub-trust-policy P05 | 5 | 2 tasks | 9 files |
 | Phase 03-clawhub-trust-policy P06 | 3 | 1 tasks | 2 files |
 | Phase 04-template-portability P02 | 10 | 2 tasks | 3 files |
+| Phase 04-template-portability P01 | 15 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -122,6 +123,9 @@ Recent decisions affecting current work:
 - [Phase 03-clawhub-trust-policy]: No new handler needed for skill override: handleRequestOverride already supports kind='skill' and searches availableCatalog
 - [Phase 04-template-portability]: getPendingExtensionsForReplay kept as deprecated backward-compat wrapper delegating to getPendingExtensions
 - [Phase 04-template-portability]: Phase 3 replay in startInstanceAsync uses non-blocking try/catch per extension — individual failures never propagate to instance startup error
+- [Phase 04-template-portability]: SecurityWarning type extended with 'redacted_secret' variant — workspace secrets use different type than hardcoded key warnings
+- [Phase 04-template-portability]: scrubOpenclawConfigCredentials() extracted as standalone helper in reverse-adapter.ts — reusable and separate from main export flow
+- [Phase 04-template-portability]: SENSITIVE_PATTERNS exported from reverse-adapter.ts but template-store.ts keeps local copies — avoids circular imports between service-layer files
 
 ### Pending Todos
 
@@ -133,6 +137,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T05:00:36.928Z
-Stopped at: Completed 04-template-portability-04-02-PLAN.md
+Last session: 2026-04-04T05:03:49.562Z
+Stopped at: Completed 04-template-portability-01-PLAN.md
 Resume file: None
