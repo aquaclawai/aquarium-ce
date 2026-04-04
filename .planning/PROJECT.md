@@ -8,17 +8,18 @@ A self-hosted AI agent management platform (Aquarium CE) that manages OpenClaw g
 
 Users can discover and activate extensions for their AI agent instances without leaving the dashboard, with credentials encrypted at rest and untrusted code blocked by default.
 
-## Current Milestone: v1.1 Plugin & Skill Marketplace
+## Current Milestone: v1.2 Gateway Simplification & Plugin Fixes
 
-**Goal:** Full plugin/skill lifecycle management — from browsing catalogs to template portability — with deny-by-default security, fenced concurrency, and version-pinned durability.
+**Goal:** Remove redundant CE-specific workarounds now that the official OpenClaw gateway supports them natively, and fix plugin/extension bugs found during v1.1 testing.
 
 **Target features:**
-- Skill management (browse, install, configure, enable/disable, uninstall)
-- Plugin management (same + gateway restart flow)
-- ClawHub marketplace integration with trust policy enforcement
-- Template export/import with trust re-evaluation and config scrubbing
-- OAuth proxy flow for browser-based auth
-- Offline resilience via artifact caching
+- Remove TCP proxy injection — use native `gateway.bind: lan`
+- Remove conflicting RPC methods from platform-bridge plugin (skills.install/uninstall conflict with native)
+- Fix empty Available catalog after gateway restart (plugin loading failure)
+- Fix plugins.install handler causing gateway config corruption
+- Backend graceful degradation for unsupported RPC methods
+- Frontend response shape and source format fixes for Extensions tab
+- Simplify custom Docker entrypoint
 
 ## Requirements
 
@@ -81,4 +82,4 @@ Users can discover and activate extensions for their AI agent instances without 
 | 3-phase startup with reconcile-before-replay | Crash-recovered extensions checked before blind reinstall | — Pending |
 
 ---
-*Last updated: 2026-04-03 after v1.1 milestone initialization*
+*Last updated: 2026-04-04 after v1.2 milestone initialization*
