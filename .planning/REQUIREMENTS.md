@@ -31,15 +31,15 @@ Requirements for Plugin & Skill Marketplace. Each maps to roadmap phases.
 ### Plugin Management
 
 - [ ] **PLUG-01**: User can browse bundled plugins catalog from the Extensions tab
-- [ ] **PLUG-02**: User can install a plugin artifact (Operation 1: npm install, no config.patch, status → installed or active)
-- [ ] **PLUG-03**: Plugins with no required credentials skip to Operation 3 (activate) within same lock hold
+- [x] **PLUG-02**: User can install a plugin artifact (Operation 1: npm install, no config.patch, status → installed or active)
+- [x] **PLUG-03**: Plugins with no required credentials skip to Operation 3 (activate) within same lock hold
 - [ ] **PLUG-04**: User can configure extension-scoped credentials for a plugin (Operation 2)
-- [ ] **PLUG-05**: User can activate a plugin triggering gateway restart + health check (Operation 3)
-- [ ] **PLUG-06**: Plugin activation verifies artifact exists and reinstalls from lockedVersion if missing (rebuild recovery)
-- [ ] **PLUG-07**: System rolls back failed plugin activation (remove from config, restart, mark failed)
-- [ ] **PLUG-08**: User can enable/disable an installed plugin
-- [ ] **PLUG-09**: User can uninstall a plugin
-- [ ] **PLUG-10**: System disables `commands.plugins` for managed instances (chat commands off)
+- [x] **PLUG-05**: User can activate a plugin triggering gateway restart + health check (Operation 3)
+- [x] **PLUG-06**: Plugin activation verifies artifact exists and reinstalls from lockedVersion if missing (rebuild recovery)
+- [x] **PLUG-07**: System rolls back failed plugin activation (remove from config, restart, mark failed)
+- [x] **PLUG-08**: User can enable/disable an installed plugin
+- [x] **PLUG-09**: User can uninstall a plugin
+- [x] **PLUG-10**: System disables `commands.plugins` for managed instances (chat commands off)
 
 ### ClawHub Marketplace & Trust
 
@@ -128,15 +128,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UI-06 | Phase 1 | Complete |
 | UI-07 | Phase 1 | Complete |
 | PLUG-01 | Phase 2 | Pending |
-| PLUG-02 | Phase 2 | Pending |
-| PLUG-03 | Phase 2 | Pending |
+| PLUG-02 | Phase 2 | Complete |
+| PLUG-03 | Phase 2 | Complete |
 | PLUG-04 | Phase 2 | Pending |
-| PLUG-05 | Phase 2 | Pending |
-| PLUG-06 | Phase 2 | Pending |
-| PLUG-07 | Phase 2 | Pending |
-| PLUG-08 | Phase 2 | Pending |
-| PLUG-09 | Phase 2 | Pending |
-| PLUG-10 | Phase 2 | Pending |
+| PLUG-05 | Phase 2 | Complete |
+| PLUG-06 | Phase 2 | Complete |
+| PLUG-07 | Phase 2 | Complete |
+| PLUG-08 | Phase 2 | Complete |
+| PLUG-09 | Phase 2 | Complete |
+| PLUG-10 | Phase 2 | Complete |
 | UI-02 | Phase 2 | Pending |
 | UI-03 | Phase 2 | Pending |
 | UI-04 | Phase 2 | Pending |

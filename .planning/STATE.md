@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: Phase 2 context gathered
-last_updated: "2026-04-04T01:26:33.138Z"
+stopped_at: Completed 02-plugin-management 02-01-PLAN.md
+last_updated: "2026-04-04T02:03:12.196Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 11
+  completed_plans: 8
   percent: 0
 ---
 
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-skill-management P05 | 6 | 2 tasks | 11 files |
 | Phase 01-skill-management P06 | 3 | 1 tasks | 9 files |
 | Phase 01-skill-management P07 | 2 | 2 tasks | 2 files |
+| Phase 02-plugin-management P01 | 250 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,9 @@ Recent decisions affecting current work:
 - [Phase 01-skill-management]: color-mix() for alert tints — theme-aware, no hardcoded RGBA
 - [Phase 01-skill-management]: uninstallSkill cancel: return early without DB row cleanup — skill row stays as-is, no intermediate state to clean up (simpler than installSkill)
 - [Phase 01-skill-management]: INFRA-07 marked complete for Phase 1 scope: skills (3min) and config.patch (30s) enforced; npm and restart are Phase 2 concerns
+- [Phase 02-plugin-management]: DB-first activation: update status to active before restartInstance so seedConfig picks it up without config.patch RPC
+- [Phase 02-plugin-management]: commands.plugins=false enforced in seedConfig for all managed instances (PLUG-10 single-writer)
+- [Phase 02-plugin-management]: plugins.list RPC failure is soft-logged — older gateway versions may not support the method
 
 ### Pending Todos
 
@@ -95,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T01:26:33.136Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-plugin-management/02-CONTEXT.md
+Last session: 2026-04-04T02:03:12.194Z
+Stopped at: Completed 02-plugin-management 02-01-PLAN.md
+Resume file: None
