@@ -26,6 +26,8 @@ import type {
   PluginDependency,
   SkillDeclaration,
   McpServerDeclaration,
+  TemplateExtensionDeclaration,
+  ExtensionStatus,
 } from '@aquarium/shared';
 
 interface TemplateRow {
@@ -594,6 +596,187 @@ export async function exportFromInstance(
     sanitizedMcpConfigs[name] = cfg;
   }
 
+  // Read extension lifecycle tables (TMPL-01, TMPL-02)
+  const EXPORTABLE_STATUSES: ExtensionStatus[] = ['active', 'installed', 'disabled', 'degraded'];
+  const extensions: TemplateExtensionDeclaration[] = [];
+
+  const pluginRows = await db('instance_plugins')
+    .where({ instance_id: instanceId })
+    .whereIn('status', EXPORTABLE_STATUSES);
+
+  const skillRows = await db('instance_skills')
+    .where({ instance_id: instanceId })
+    .whereIn('status', EXPORTABLE_STATUSES);
+
+  if (pluginRows.length > 0 || skillRows.length > 0) {
+    for (const row of pluginRows) {
+      const status = row.status as ExtensionStatus;
+      extensions.push({
+        id: row.plugin_id as string,
+        kind: 'plugin',
+        source: parseJsonb<TemplateExtensionDeclaration['source']>(row.source, { type: 'bundled' }),
+        lockedVersion: (row.locked_version as string | null) ?? null,
+        integrityHash: (row.integrity_hash as string | null) ?? null,
+        enabled: status !== 'disabled',
+        needsCredentials: status === 'installed',
+        config: parseJsonb<Record<string, unknown>>(row.config, {}),
+      });
+    }
+
+    for (const row of skillRows) {
+      const status = row.status as ExtensionStatus;
+      extensions.push({
+        id: row.skill_id as string,
+        kind: 'skill',
+        source: parseJsonb<TemplateExtensionDeclaration['source']>(row.source, { type: 'bundled' }),
+        lockedVersion: (row.locked_version as string | null) ?? null,
+        integrityHash: (row.integrity_hash as string | null) ?? null,
+        enabled: status !== 'disabled',
+        needsCredentials: status === 'installed',
+        config: parseJsonb<Record<string, unknown>>(row.config, {}),
+      });
+    }
+  } else {
+    // Legacy fallback: instance_plugins/instance_skills tables empty — use plugin_dependencies from template_contents
+    // (pre-migration instances that pre-date lifecycle table tracking)
+    const templateContent = instance.template_id
+      ? await db('template_contents').where({ template_id: instance.template_id }).first()
+      : null;
+
+    if (templateContent) {
+      const legacyPlugins = parseJsonb<PluginDependency[]>(templateContent.plugin_dependencies, []);
+      for (const plugin of legacyPlugins) {
+        extensions.push({
+          id: plugin.id,
+          kind: 'plugin',
+          source: { type: 'bundled' },
+          lockedVersion: null,
+          integrityHash: null,
+          enabled: true,
+          needsCredentials: !!(plugin.credentialKeys && plugin.credentialKeys.length > 0),
+          config: plugin.config ?? {},
+        });
+      }
+    }
+  }
+
+  // Scrub OpenClaw config credential fields (TMPL-03)
+  const openclawConfig: Record<string, unknown> = {};
+
+  const rawPlugins = config.plugins as Record<string, unknown> | undefined;
+  const rawPluginEntries = rawPlugins?.entries as Record<string, unknown> | undefined;
+  if (rawPluginEntries) {
+    const scrubbedEntries: Record<string, unknown> = {};
+    for (const [pluginId, entryRaw] of Object.entries(rawPluginEntries)) {
+      const entry = entryRaw as Record<string, unknown> | null;
+      if (!entry || typeof entry !== 'object') {
+        scrubbedEntries[pluginId] = entry;
+        continue;
+      }
+      const entryCopy = { ...entry };
+      const entryConfig = entryCopy.config as Record<string, unknown> | undefined;
+      if (entryConfig && typeof entryConfig === 'object') {
+        const scrubbedConfig: Record<string, unknown> = {};
+        for (const [fieldName, fieldValue] of Object.entries(entryConfig)) {
+          if (typeof fieldValue === 'string') {
+            let scrubbed = false;
+            for (const { re } of SENSITIVE_PATTERNS) {
+              if (re.test(fieldValue)) {
+                scrubbedConfig[fieldName] = `\${CREDENTIAL:${pluginId}:${fieldName}}`;
+                warnings.push({
+                  type: 'possible_hardcoded_key',
+                  location: `plugins.entries.${pluginId}.config.${fieldName}`,
+                  pattern: maskValue(fieldValue),
+                  suggestion: `Replace with \${CREDENTIAL:${pluginId}:${fieldName}}`,
+                });
+                scrubbed = true;
+                break;
+              }
+            }
+            if (!scrubbed) scrubbedConfig[fieldName] = fieldValue;
+          } else {
+            scrubbedConfig[fieldName] = fieldValue;
+          }
+        }
+        entryCopy.config = scrubbedConfig;
+      }
+      scrubbedEntries[pluginId] = entryCopy;
+    }
+    openclawConfig.plugins = { ...rawPlugins, entries: scrubbedEntries };
+  }
+
+  const rawSkills = config.skills as Record<string, unknown> | undefined;
+  const rawSkillEntries = rawSkills?.entries as Record<string, unknown> | undefined;
+  if (rawSkillEntries) {
+    const scrubbedSkillEntries: Record<string, unknown> = {};
+    for (const [skillId, entryRaw] of Object.entries(rawSkillEntries)) {
+      const entry = entryRaw as Record<string, unknown> | null;
+      if (!entry || typeof entry !== 'object') {
+        scrubbedSkillEntries[skillId] = entry;
+        continue;
+      }
+      const entryCopy = { ...entry };
+      for (const sensitiveField of ['env', 'apiKey']) {
+        const fieldValue = entryCopy[sensitiveField];
+        if (typeof fieldValue === 'string') {
+          let scrubbed = false;
+          for (const { re } of SENSITIVE_PATTERNS) {
+            if (re.test(fieldValue)) {
+              entryCopy[sensitiveField] = `\${CREDENTIAL:${skillId}:${sensitiveField}}`;
+              warnings.push({
+                type: 'possible_hardcoded_key',
+                location: `skills.entries.${skillId}.${sensitiveField}`,
+                pattern: maskValue(fieldValue),
+                suggestion: `Replace with \${CREDENTIAL:${skillId}:${sensitiveField}}`,
+              });
+              scrubbed = true;
+              break;
+            }
+          }
+          if (scrubbed) continue;
+        }
+      }
+      scrubbedSkillEntries[skillId] = entryCopy;
+    }
+    openclawConfig.skills = { ...rawSkills, entries: scrubbedSkillEntries };
+  }
+
+  const rawProviders = config.providers as Record<string, unknown> | undefined;
+  if (rawProviders && typeof rawProviders === 'object') {
+    const scrubbedProviders: Record<string, unknown> = {};
+    for (const [providerName, providerCfg] of Object.entries(rawProviders)) {
+      const pCfg = providerCfg as Record<string, unknown> | null;
+      if (!pCfg || typeof pCfg !== 'object') {
+        scrubbedProviders[providerName] = pCfg;
+        continue;
+      }
+      const pCfgCopy = { ...pCfg };
+      const apiKey = pCfgCopy.api_key;
+      if (typeof apiKey === 'string') {
+        let scrubbed = false;
+        for (const { re } of SENSITIVE_PATTERNS) {
+          if (re.test(apiKey)) {
+            pCfgCopy.api_key = `\${CREDENTIAL:${providerName}:api_key}`;
+            warnings.push({
+              type: 'possible_hardcoded_key',
+              location: `providers.${providerName}.api_key`,
+              pattern: maskValue(apiKey),
+              suggestion: `Replace with \${CREDENTIAL:${providerName}:api_key}`,
+            });
+            scrubbed = true;
+            break;
+          }
+        }
+        if (scrubbed) {
+          scrubbedProviders[providerName] = pCfgCopy;
+          continue;
+        }
+      }
+      scrubbedProviders[providerName] = pCfgCopy;
+    }
+    openclawConfig.providers = scrubbedProviders;
+  }
+
   return {
     draft: {
       slug: slugify(instance.name as string),
@@ -609,9 +792,10 @@ export async function exportFromInstance(
       workspaceFiles,
       mcpServerConfigs: sanitizedMcpConfigs,
       inlineSkills: {},
-      openclawConfig: {},
+      openclawConfig,
       setupCommands: [],
       customImage: null,
+      extensions,
     },
     securityWarnings: warnings,
   };

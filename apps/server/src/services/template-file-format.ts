@@ -12,6 +12,7 @@ import type {
   TemplateCategory,
   TemplateLicense,
   BillingMode,
+  TemplateExtensionDeclaration,
 } from '@aquarium/shared';
 
 export interface ParsedOctemplate {
@@ -40,6 +41,7 @@ export interface ParsedOctemplate {
     pluginDependencies?: PluginDependency[];
     setupCommands?: SetupCommand[];
     security?: TemplateSecurityConfig;
+    extensions?: TemplateExtensionDeclaration[];
   };
 }
 
@@ -63,6 +65,7 @@ interface TemplateJsonSchema {
   openclawConfig?: Record<string, unknown>;
   setupCommands?: SetupCommand[];
   security?: TemplateSecurityConfig;
+  extensions?: TemplateExtensionDeclaration[];
 }
 
 export async function generateOctemplate(
@@ -98,6 +101,7 @@ export async function generateOctemplate(
     openclawConfig: content.openclawConfig,
     setupCommands: content.setupCommands,
     security: content.security,
+    extensions: (content as { extensions?: TemplateExtensionDeclaration[] }).extensions ?? [],
   };
 
   archive.append(JSON.stringify(templateJson, null, 2), { name: 'template.json' });
@@ -199,6 +203,7 @@ export async function parseOctemplate(buffer: Buffer): Promise<ParsedOctemplate>
       pluginDependencies: templateData.plugins,
       setupCommands: templateData.setupCommands,
       security: templateData.security,
+      extensions: templateData.extensions,
     },
   };
 }

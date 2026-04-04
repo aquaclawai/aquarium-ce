@@ -627,6 +627,17 @@ export interface InstantiateTemplateResponse {
   credentialStatus: Record<string, 'provided' | 'from_vault' | 'missing'>;
 }
 
+export interface TemplateExtensionDeclaration {
+  id: string;
+  kind: ExtensionKind;
+  source: PluginSource | ExtensionSkillSource;
+  lockedVersion: string | null;
+  integrityHash: string | null;
+  enabled: boolean;
+  needsCredentials: boolean;
+  config?: Record<string, unknown>;
+}
+
 export interface ExportTemplateResponse {
   draft: Omit<CreateTemplateRequest, 'content'>;
   content: {
@@ -636,12 +647,13 @@ export interface ExportTemplateResponse {
     openclawConfig: Record<string, unknown>;
     setupCommands: SetupCommand[];
     customImage: string | null;
+    extensions?: TemplateExtensionDeclaration[];
   };
   securityWarnings: SecurityWarning[];
 }
 
 export interface SecurityWarning {
-  type: 'possible_hardcoded_key';
+  type: 'possible_hardcoded_key' | 'redacted_secret';
   location: string;
   pattern: string;
   suggestion: string;
