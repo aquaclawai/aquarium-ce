@@ -134,9 +134,9 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
         params.set('page', '0');
         params.set('limit', String(PAGE_LIMIT));
         const query = params.toString();
-        const catalogData = await api.get<SkillCatalogEntry[]>(`/instances/${instanceId}/skills/catalog${query ? `?${query}` : ''}`);
-        setCatalog(catalogData);
-        setClawHubSkillHasMore(catalogData.length === PAGE_LIMIT);
+        const catalogData = await api.get<{ catalog: SkillCatalogEntry[]; hasMore: boolean }>(`/instances/${instanceId}/skills/catalog${query ? `?${query}` : ''}`);
+        setCatalog(catalogData.catalog);
+        setClawHubSkillHasMore(catalogData.hasMore);
         setClawHubSkillPage(0);
       } else {
         setCatalog([]);
@@ -164,9 +164,9 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
         params.set('page', '0');
         params.set('limit', String(PAGE_LIMIT));
         const query = params.toString();
-        const catalogData = await api.get<PluginCatalogEntry[]>(`/instances/${instanceId}/plugins/catalog${query ? `?${query}` : ''}`);
-        setPluginCatalog(catalogData);
-        setClawHubPluginHasMore(catalogData.length === PAGE_LIMIT);
+        const catalogData = await api.get<{ catalog: PluginCatalogEntry[]; hasMore: boolean }>(`/instances/${instanceId}/plugins/catalog${query ? `?${query}` : ''}`);
+        setPluginCatalog(catalogData.catalog);
+        setClawHubPluginHasMore(catalogData.hasMore);
         setClawHubPluginPage(0);
       } else {
         setPluginCatalog([]);
@@ -204,9 +204,9 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
       params.set('page', String(nextPage));
       params.set('limit', String(PAGE_LIMIT));
       const query = params.toString();
-      const moreData = await api.get<PluginCatalogEntry[]>(`/instances/${instanceId}/plugins/catalog?${query}`);
-      setPluginCatalog(prev => [...prev, ...moreData]);
-      setClawHubPluginHasMore(moreData.length === PAGE_LIMIT);
+      const moreData = await api.get<{ catalog: PluginCatalogEntry[]; hasMore: boolean }>(`/instances/${instanceId}/plugins/catalog?${query}`);
+      setPluginCatalog(prev => [...prev, ...moreData.catalog]);
+      setClawHubPluginHasMore(moreData.hasMore);
       setClawHubPluginPage(nextPage);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('extensions.errors.fetchFailed'));
@@ -225,9 +225,9 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
       params.set('page', String(nextPage));
       params.set('limit', String(PAGE_LIMIT));
       const query = params.toString();
-      const moreData = await api.get<SkillCatalogEntry[]>(`/instances/${instanceId}/skills/catalog?${query}`);
-      setCatalog(prev => [...prev, ...moreData]);
-      setClawHubSkillHasMore(moreData.length === PAGE_LIMIT);
+      const moreData = await api.get<{ catalog: SkillCatalogEntry[]; hasMore: boolean }>(`/instances/${instanceId}/skills/catalog?${query}`);
+      setCatalog(prev => [...prev, ...moreData.catalog]);
+      setClawHubSkillHasMore(moreData.hasMore);
       setClawHubSkillPage(nextPage);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('extensions.errors.fetchFailed'));
@@ -241,7 +241,8 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
     setInstalling(skillId);
     setError(null);
     try {
-      await api.post(`/instances/${instanceId}/skills/install`, { skillId, source });
+      const sourceObj = source === 'bundled' ? { type: 'bundled' } : { type: 'clawhub', spec: skillId };
+      await api.post(`/instances/${instanceId}/skills/install`, { skillId, source: sourceObj });
       await fetchSkillData();
     } catch (err) {
       setError(err instanceof Error ? err.message : t('extensions.errors.installFailed'));
@@ -281,7 +282,8 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
     setInstallingPlugin(pluginId);
     setError(null);
     try {
-      await api.post(`/instances/${instanceId}/plugins/install`, { pluginId, source });
+      const sourceObj = source === 'bundled' ? { type: 'bundled' } : { type: 'clawhub', spec: pluginId };
+      await api.post(`/instances/${instanceId}/plugins/install`, { pluginId, source: sourceObj });
       await fetchPluginData();
     } catch (err) {
       setError(err instanceof Error ? err.message : t('extensions.errors.installPluginFailed'));
@@ -470,7 +472,7 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
             {skill.status === 'failed' && !isIntegrityMismatch && (
               <button
                 className="btn btn--sm extension-alert__retry"
-                onClick={() => void api.post(`/instances/${instanceId}/skills/install`, { skillId: skill.skillId, source: 'bundled' }).then(() => void fetchSkillData())}
+                onClick={() => void api.post(`/instances/${instanceId}/skills/install`, { skillId: skill.skillId, source: { type: 'bundled' } }).then(() => void fetchSkillData())}
               >
                 {t('extensions.alerts.retry')}
               </button>
