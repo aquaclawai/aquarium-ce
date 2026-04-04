@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
-import type { ExtensionStatus } from '@aquarium/shared';
+import type { ExtensionStatus, ExtensionKind } from '@aquarium/shared';
 
 interface CredentialConfigPanelProps {
   instanceId: string;
-  skillId: string;
-  skillName: string;
+  extensionId: string;
+  extensionName: string;
+  extensionKind: ExtensionKind;
   status: ExtensionStatus;
   onClose: () => void;
   onSaved: () => void;
@@ -15,8 +16,9 @@ interface CredentialConfigPanelProps {
 
 export function CredentialConfigPanel({
   instanceId,
-  skillId,
-  skillName,
+  extensionId,
+  extensionName,
+  extensionKind,
   status,
   onClose,
   onSaved,
@@ -36,11 +38,11 @@ export function CredentialConfigPanel({
     setSuccess(false);
     try {
       await api.post(`/instances/${instanceId}/extension-credentials`, {
-        provider: skillId,
+        provider: extensionId,
         credentialType: 'api_key',
         value,
-        extensionKind: 'skill',
-        extensionId: skillId,
+        extensionKind,
+        extensionId,
         targetField: field,
       });
       setSuccess(true);
@@ -56,7 +58,7 @@ export function CredentialConfigPanel({
     <div className="credential-panel" role="region" aria-label={t('extensions.credentials.title')}>
       <div className="credential-panel__header">
         <h4 className="credential-panel__title">
-          {t('extensions.credentials.title')}: {skillName}
+          {t('extensions.credentials.title')}: {extensionName}
         </h4>
         <button
           className="icon-button"
@@ -76,11 +78,11 @@ export function CredentialConfigPanel({
 
       <div className="credential-panel__form">
         <div className="credential-panel__field">
-          <label htmlFor={`cred-field-${skillId}`} className="credential-panel__label">
+          <label htmlFor={`cred-field-${extensionId}`} className="credential-panel__label">
             {t('extensions.credentials.fieldLabel')}
           </label>
           <input
-            id={`cred-field-${skillId}`}
+            id={`cred-field-${extensionId}`}
             type="text"
             className="credential-panel__input"
             value={field}
@@ -91,11 +93,11 @@ export function CredentialConfigPanel({
         </div>
 
         <div className="credential-panel__field">
-          <label htmlFor={`cred-value-${skillId}`} className="credential-panel__label">
+          <label htmlFor={`cred-value-${extensionId}`} className="credential-panel__label">
             {t('extensions.credentials.valueLabel')}
           </label>
           <input
-            id={`cred-value-${skillId}`}
+            id={`cred-value-${extensionId}`}
             type="password"
             className="credential-panel__input"
             value={value}
