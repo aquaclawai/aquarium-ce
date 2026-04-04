@@ -210,9 +210,7 @@ export async function startServer(server: HttpServer, options: StartServerOption
       );
     }
 
-    // Detect whether we're running from compiled dist/ or source src/.
-    // When running from dist/ (e.g. node dist/cli.js), migrations are .js files.
-    // When running from src/ via tsx, migrations are .ts files.
+    // Load .ts when running from source (tsx), .js when running from dist/.
     const runningFromDist = import.meta.url.includes('/dist/');
     await db.migrate.latest({
       directory: migrationDirs,

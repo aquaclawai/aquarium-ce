@@ -1,42 +1,8 @@
 import type { Knex } from 'knex';
-import { addUuidPrimary, addJsonColumn } from '../migration-helpers.js';
 
 export async function up(knex: Knex): Promise<void> {
-  // Wizard configs table — stores all configurable wizard options
-  await knex.schema.createTable('wizard_configs', (table) => {
-    addUuidPrimary(table, knex, 'id');
-
-    // Config category
-    // Values: 'principles' | 'identity_templates' | 'temperature_presets'
-    //         | 'context_options' | 'chat_suggestions'
-    table.string('config_type', 50).notNullable();
-
-    // Agent type (supports future multi-agent types)
-    table.string('agent_type', 50).notNullable().defaultTo('openclaw');
-
-    // Multi-language support
-    table.string('locale', 10).notNullable().defaultTo('zh-CN');
-
-    // Config content (JSONB array)
-    addJsonColumn(table, 'items').notNullable();
-
-    // Sort order weight
-    table.integer('sort_order').notNullable().defaultTo(0);
-
-    // Whether this config is active
-    table.boolean('is_active').notNullable().defaultTo(true);
-
-    // Timestamps
-    table.timestamp('created_at').defaultTo(knex.fn.now());
-    table.timestamp('updated_at').defaultTo(knex.fn.now());
-
-    // Index for efficient lookups
-    table.index(['config_type', 'agent_type', 'locale', 'is_active']);
-  });
-
-  // Seed default data
   await knex('wizard_configs').insert([
-    // === Default Principles (Chinese) ===
+    // ── Principles ───────────────────────────────────────────────────────────
     {
       config_type: 'principles',
       agent_type: 'openclaw',
@@ -49,7 +15,6 @@ export async function up(knex: Knex): Promise<void> {
       ]),
       sort_order: 0,
     },
-    // === Default Principles (English) ===
     {
       config_type: 'principles',
       agent_type: 'openclaw',
@@ -62,7 +27,8 @@ export async function up(knex: Knex): Promise<void> {
       ]),
       sort_order: 0,
     },
-    // === Identity Templates (Chinese) ===
+
+    // ── Identity Templates ───────────────────────────────────────────────────
     {
       config_type: 'identity_templates',
       agent_type: 'openclaw',
@@ -76,7 +42,6 @@ export async function up(knex: Knex): Promise<void> {
       ]),
       sort_order: 0,
     },
-    // === Identity Templates (English) ===
     {
       config_type: 'identity_templates',
       agent_type: 'openclaw',
@@ -90,7 +55,8 @@ export async function up(knex: Knex): Promise<void> {
       ]),
       sort_order: 0,
     },
-    // === Temperature Presets (Chinese) ===
+
+    // ── Temperature Presets ──────────────────────────────────────────────────
     {
       config_type: 'temperature_presets',
       agent_type: 'openclaw',
@@ -102,7 +68,6 @@ export async function up(knex: Knex): Promise<void> {
       ]),
       sort_order: 0,
     },
-    // === Temperature Presets (English) ===
     {
       config_type: 'temperature_presets',
       agent_type: 'openclaw',
@@ -114,7 +79,8 @@ export async function up(knex: Knex): Promise<void> {
       ]),
       sort_order: 0,
     },
-    // === Context Length Options (Chinese) ===
+
+    // ── Context Length Options ────────────────────────────────────────────────
     {
       config_type: 'context_options',
       agent_type: 'openclaw',
@@ -132,7 +98,6 @@ export async function up(knex: Knex): Promise<void> {
       ]),
       sort_order: 0,
     },
-    // === Context Length Options (English) ===
     {
       config_type: 'context_options',
       agent_type: 'openclaw',
@@ -150,7 +115,8 @@ export async function up(knex: Knex): Promise<void> {
       ]),
       sort_order: 0,
     },
-    // === Chat Suggestions (Chinese) ===
+
+    // ── Chat Suggestions ─────────────────────────────────────────────────────
     {
       config_type: 'chat_suggestions',
       agent_type: 'openclaw',
@@ -163,7 +129,6 @@ export async function up(knex: Knex): Promise<void> {
       ]),
       sort_order: 0,
     },
-    // === Chat Suggestions (English) ===
     {
       config_type: 'chat_suggestions',
       agent_type: 'openclaw',
@@ -180,5 +145,5 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists('wizard_configs');
+  await knex('wizard_configs').del();
 }

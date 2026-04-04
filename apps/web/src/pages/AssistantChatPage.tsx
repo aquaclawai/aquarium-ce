@@ -9,6 +9,7 @@ import { MessageRenderer } from '../components/chat/MessageRenderer';
 import { ChatErrorBanner } from '../components/chat/ChatErrorBanner';
 import { classifyChatError } from '../components/chat/classifyError';
 import { SessionDrawer } from '../components/chat/SessionDrawer';
+import { useInstanceModels } from '../hooks/useInstanceModels';
 import { isImageMime, ALLOWED_ATTACHMENT_TYPES, MAX_FILE_UPLOAD_SIZE, FILE_INPUT_ACCEPT } from '@aquarium/shared';
 import type { InstancePublic, WsMessage, AgentTypeInfo, ChatErrorCategory } from '@aquarium/shared';
 import './MyAssistantsPage.css';
@@ -208,26 +209,7 @@ export function AssistantChatPage() {
   const [sessionThinking, setSessionThinking] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
 
-  const [rpcModels, setRpcModels] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (instance?.status !== 'running') { setRpcModels([]); return; }
-    if (!id) return;
-    if (instance.billingMode === 'platform') {
-      api.get<{ models: string[] }>('/litellm/models')
-        .then(res => setRpcModels(res.models))
-        .catch(() => setRpcModels([]));
-    } else {
-      rpc<{ models?: Array<{ id?: string; name?: string }> }>(id, 'models.list', {})
-        .then(res => {
-          const ids = (res.models ?? []).map(m => m.id ?? m.name).filter((v): v is string => !!v);
-          setRpcModels(ids);
-        })
-        .catch(() => setRpcModels([]));
-    }
-  }, [id, instance?.status, instance?.billingMode]);
-
-  const modelSuggestions = rpcModels;
+  const { models: gatewayModels } = useInstanceModels(id ?? '', instance?.status ?? '');
 
   const isStreaming = streamText !== null || sending;
 
@@ -318,7 +300,7 @@ export function AssistantChatPage() {
       const historyMsgs = res.messages
         .filter(m => {
           if (m.role === 'user') return true;
-          if (m.role === 'tool') return false;
+          if (m.role === 'tool' || m.role === 'toolResult') return false;
           return extractText(m.content).length > 0;
         })
         .map(m => ({
@@ -346,7 +328,7 @@ export function AssistantChatPage() {
       const historyMsgs = res.messages
         .filter(m => {
           if (m.role === 'user') return true;
-          if (m.role === 'tool') return false;
+          if (m.role === 'tool' || m.role === 'toolResult') return false;
           return extractText(m.content).length > 0;
         })
         .map(m => ({
@@ -657,7 +639,15 @@ export function AssistantChatPage() {
               list="achat-model-suggestions"
             />
             <datalist id="achat-model-suggestions">
-              {modelSuggestions.map(m => <option key={m} value={m} />)}
+              {[...gatewayModels]
+                .sort((a, b) => (a.usable === b.usable ? 0 : a.usable ? -1 : 1))
+                .map(m => (
+                  <option
+                    key={m.id}
+                    value={m.id}
+                    label={m.provider ? `${m.name} · ${m.provider}${m.usable ? '' : ' (no key)'}` : m.name}
+                  />
+                ))}
             </datalist>
           </div>
           <div className="achat-settings-field">

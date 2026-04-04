@@ -572,6 +572,8 @@ export const openclawAdapter: AgentTypeAdapter = {
     }
 
     // OpenClaw schema: plugins.entries is Record<id, {enabled, config}>, load.paths for external
+    // platform-bridge must be explicitly enabled in entries (load.paths only makes it discoverable)
+    pluginEntries['platform-bridge'] = { enabled: true };
     const pluginsCfg: Record<string, unknown> = {
       entries: pluginEntries,
       load: { paths: loadPaths },

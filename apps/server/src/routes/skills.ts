@@ -43,32 +43,29 @@ router.get('/:id/skills', async (req, res) => {
     let gatewayBuiltins: GatewayExtensionInfo[] = [];
 
     if (instance.status === 'running' && instance.controlEndpoint) {
-      // Fetch all skills known by gateway, separate out built-ins (not in DB)
+      // Fetch gateway's native bundled skills via skills.status RPC
       const managedIds = new Set(managed.map(s => s.skillId));
       const rpc = new GatewayRPCClient(instance.controlEndpoint, instance.authToken);
       try {
-        const rawList = await rpc.call('skills.list', {}, 30_000);
-        if (Array.isArray(rawList)) {
-          for (const item of rawList) {
-            if (typeof item !== 'object' || item === null) continue;
-            const entry = item as Record<string, unknown>;
-            // Gateway built-ins have source='bundled' and are not tracked in our DB
-            if (entry.source === 'bundled' && typeof entry.id === 'string' && !managedIds.has(entry.id)) {
-              gatewayBuiltins.push({
-                id: entry.id as string,
-                name: (entry.name as string) ?? entry.id as string,
-                description: (entry.description as string) ?? '',
-                version: (entry.version as string) ?? '0.0.0',
-                source: 'bundled',
-                enabled: Boolean(entry.enabled),
-              });
-            }
-          }
+        const rawResult = await rpc.call('skills.status', {}, 30_000) as Record<string, unknown> | null;
+        const rawSkills = rawResult && Array.isArray(rawResult.skills) ? rawResult.skills : [];
+        for (const item of rawSkills) {
+          if (typeof item !== 'object' || item === null) continue;
+          const entry = item as Record<string, unknown>;
+          const entryId = (entry.name as string) ?? '';
+          if (!entryId || managedIds.has(entryId)) continue;
+          gatewayBuiltins.push({
+            id: entryId,
+            name: entryId,
+            description: (entry.description as string) ?? '',
+            version: '0.0.0',
+            source: 'bundled',
+            enabled: entry.enabled !== false,
+          });
         }
       } catch (rpcErr: unknown) {
-        // Soft-log: older gateway versions may not support skills.list
         console.warn(
-          '[skills] skills.list RPC failed (older gateway?):',
+          '[skills] skills.status RPC failed:',
           rpcErr instanceof Error ? rpcErr.message : String(rpcErr),
         );
       } finally {

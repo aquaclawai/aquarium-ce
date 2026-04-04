@@ -1,5 +1,7 @@
 import Docker from 'dockerode';
 import type { Readable } from 'stream';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
 import { config } from '../config.js';
 import type { RuntimeEngine, InstanceSpec, StartResult, RuntimeStatus, ExecResult, ExecOptions } from './types.js';
 import { Buffer } from 'buffer';
@@ -257,6 +259,17 @@ export class DockerEngine implements RuntimeEngine {
         await this.docker.createVolume({ Name: volumeName });
       }
       binds.push(`${volumeName}:${v.mountPath}`);
+    }
+
+    // Mount the local platform-bridge plugin into the container so the gateway
+    // picks up the latest code without rebuilding the Docker image.
+    // Path: <repo>/openclaw/plugin relative to <repo>/apps/server/src/runtime/docker.ts
+    const pluginHostPath = path.resolve(
+      path.dirname(new URL(import.meta.url).pathname),
+      '../../../../openclaw/plugin',
+    );
+    if (fs.existsSync(pluginHostPath)) {
+      binds.push(`${pluginHostPath}:/opt/openclaw-plugins/platform-bridge:ro`);
     }
 
     // Env vars — inject HOME so root-user containers still use the expected data dir
