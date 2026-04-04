@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: "Completed 01-skill-management/01-06-PLAN.md (Phase 1 complete)"
-last_updated: "2026-04-03T17:10:00.000Z"
+stopped_at: Completed 01-skill-management/01-07-PLAN.md (Phase 1 gap closure complete)
+last_updated: "2026-04-04T01:15:31.647Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 7
+  completed_plans: 7
   percent: 0
 ---
 
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-skill-management P04 | 15 | 2 tasks | 3 files |
 | Phase 01-skill-management P05 | 6 | 2 tasks | 11 files |
 | Phase 01-skill-management P06 | 3 | 1 tasks | 9 files |
+| Phase 01-skill-management P07 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,8 @@ Recent decisions affecting current work:
 - [Phase 01-skill-management]: Gear icon toggles credential panel (second click closes) — prevents orphaned open panels
 - [Phase 01-skill-management]: Alert banners placed above sub-tab header — visible regardless of active sub-tab
 - [Phase 01-skill-management]: color-mix() for alert tints — theme-aware, no hardcoded RGBA
+- [Phase 01-skill-management]: uninstallSkill cancel: return early without DB row cleanup — skill row stays as-is, no intermediate state to clean up (simpler than installSkill)
+- [Phase 01-skill-management]: INFRA-07 marked complete for Phase 1 scope: skills (3min) and config.patch (30s) enforced; npm and restart are Phase 2 concerns
 
 ### Pending Todos
 
@@ -92,6 +95,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-03T17:10:00.000Z
-Stopped at: Completed 01-skill-management/01-06-PLAN.md (Phase 1 complete, visual checkpoint auto-approved)
+Last session: 2026-04-04T01:15:31.645Z
+Stopped at: Completed 01-skill-management/01-07-PLAN.md (Phase 1 gap closure complete)
 Resume file: None
