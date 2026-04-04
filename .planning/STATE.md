@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-04-04T04:00:10.513Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-04-04T04:08:24.378Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 16
-  completed_plans: 13
+  completed_plans: 14
   percent: 0
 ---
 
@@ -62,6 +62,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02-plugin-management P04 | 11 | 3 tasks | 10 files |
 | Phase 03-clawhub-trust-policy P02 | 3 | 2 tasks | 4 files |
 | Phase 03-clawhub-trust-policy P01 | 5 | 2 tasks | 3 files |
+| Phase 03-clawhub-trust-policy P03 | 15 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,9 @@ Recent decisions affecting current work:
 - [Phase 03-clawhub-trust-policy]: TRUST-05/06 integrity check: only verifies on same-version reinstall when stored integrity_hash is non-null (legacy installs without hash skip verification)
 - [Phase 03-clawhub-trust-policy]: unscanned tier blocks without override possibility — virusTotalPassed false/null treated identically
 - [Phase 03-clawhub-trust-policy]: createTrustOverride uses dialect-aware ON CONFLICT DO UPDATE (EXCLUDED vs excluded keyword)
+- [Phase 03-clawhub-trust-policy]: trustDecision and blockReason added to PluginCatalogEntry and SkillCatalogEntry — required for frontend trust UI
+- [Phase 03-clawhub-trust-policy]: Plugin upgrade triggers re-activation (restart) when status was active; skill upgrade does not
+- [Phase 03-clawhub-trust-policy]: blockReason stored as undefined (not null) in catalog entries to match optional field type in shared types
 
 ### Pending Todos
 
@@ -117,6 +121,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T04:00:10.511Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-04-04T04:08:24.375Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None
