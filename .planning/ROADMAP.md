@@ -109,11 +109,11 @@ Plans:
   3. When the gateway does not support `skills.list` or `plugins.list` RPC methods, the Extensions tab shows an empty list with no error instead of a 500 response
   4. The Extensions tab catalog endpoints return data that the frontend correctly renders without shape or format errors (no console errors about unexpected response types)
   5. Installing a skill or plugin from ClawHub sends the correct source format that the gateway's native handlers accept
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
+- [ ] 07-01-PLAN.md -- Remove conflicting RPC methods from platform-bridge plugin (root cause fix for empty catalog + config corruption)
+- [ ] 07-02-PLAN.md -- Backend graceful RPC degradation + frontend response shape and install param fixes
 
 ### Phase 8: Gateway Simplification
 **Goal**: The platform uses the official OpenClaw gateway's native network binding and entrypoint instead of injecting a TCP proxy and custom startup logic
@@ -141,5 +141,5 @@ Phases execute in numeric order: 7 -> 8
 | 4. Template Portability | v1.1 | 3/3 | Complete | 2026-04-04 |
 | 5. OAuth & Advanced Auth | v1.1 | 4/4 | Complete | 2026-04-04 |
 | 6. Offline Resilience | v1.1 | 1/1 | Complete | 2026-04-04 |
-| 7. Plugin & Extension Fixes | v1.2 | 0/? | Not started | - |
+| 7. Plugin & Extension Fixes | v1.2 | 0/2 | In progress | - |
 | 8. Gateway Simplification | v1.2 | 0/? | Not started | - |
