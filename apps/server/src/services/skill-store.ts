@@ -151,19 +151,20 @@ export async function installSkill(
     }
 
     // 3. Call gateway RPC: skills.install (3-min deadline per INFRA-07)
-    const rpcSourceParam =
-      source.type === 'bundled'
-        ? 'bundled'
-        : source.type === 'clawhub'
-          ? source.spec
-          : source.url;
+    // Gateway native schema (anyOf):
+    //   ClawHub: { source: "clawhub", slug, version?, force? }
+    //   Local:   { name, installId, timeoutMs? }
+    const rpcParams =
+      source.type === 'clawhub'
+        ? { source: 'clawhub', slug: source.spec }
+        : { name: skillId, installId: skillId };
 
     const rpc = new GatewayRPCClient(controlEndpoint, authToken);
     let rpcResult: unknown;
     try {
       rpcResult = await rpc.call(
         'skills.install',
-        { skillId, source: rpcSourceParam },
+        rpcParams,
         180_000,
       );
     } finally {

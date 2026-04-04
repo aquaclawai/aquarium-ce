@@ -144,70 +144,81 @@ export async function reconcileExtensions(
   let rpcResult: unknown;
   try {
     rpcResult = await rpc.call('skills.list', {}, 15_000);
+  } catch (skillListErr: unknown) {
+    // skills.list may not exist in older gateway versions — log and skip
+    console.warn(
+      `[extension-lifecycle] skills.list RPC failed for ${instanceId} (gateway may not support it):`,
+      skillListErr,
+    );
+    rpcResult = undefined;
   } finally {
     rpc.close();
   }
 
-  if (!isSkillsListResult(rpcResult)) {
-    throw new Error(`Unexpected skills.list RPC response: ${JSON.stringify(rpcResult)}`);
-  }
-
-  // Build gateway skills map: skillId -> gatewaySkillInfo
-  const gatewaySkills = new Map<string, GatewaySkillInfo>();
-  for (const skill of rpcResult.skills ?? []) {
-    if (skill.skillId) {
-      gatewaySkills.set(skill.skillId, skill);
-    }
-  }
-
-  // Fetch DB skill state
-  const dbSkills = await getSkillsForInstance(instanceId);
-
-  for (const dbSkill of dbSkills) {
-    const { skillId, status } = dbSkill;
-    const inGateway = gatewaySkills.has(skillId);
-
-    if (status === 'active' && inGateway) {
-      // Confirmed healthy — no change
-      unchanged.push(skillId);
-    } else if (status === 'degraded' && inGateway) {
-      // Was degraded but recovered — promote to active
-      await updateSkillStatus(instanceId, skillId, 'active');
-      promoted.push(skillId);
-    } else if (status === 'active' && !inGateway) {
-      // Active in DB but missing from gateway — mark failed
-      await updateSkillStatus(
-        instanceId,
-        skillId,
-        'failed',
-        'Extension not found in gateway after restart',
+  if (rpcResult !== undefined) {
+    if (!isSkillsListResult(rpcResult)) {
+      console.warn(
+        `[extension-lifecycle] Unexpected skills.list RPC response for ${instanceId}: ${JSON.stringify(rpcResult)}`
       );
-      demoted.push(skillId);
-    } else if (status === 'degraded' && !inGateway) {
-      // Degraded in DB and still absent — mark failed
-      await updateSkillStatus(
-        instanceId,
-        skillId,
-        'failed',
-        'Extension not recovered after restart',
-      );
-      demoted.push(skillId);
-    } else if (status === 'pending' && inGateway) {
-      // Install completed before the crash — promote to active and clear pending_owner
-      await db('instance_skills')
-        .where({ instance_id: instanceId, skill_id: skillId })
-        .update({
-          status: 'active',
-          pending_owner: null,
-          updated_at: db.fn.now(),
-        });
-      promoted.push(skillId);
-    } else if (status === 'pending' && !inGateway) {
-      // Install was in-flight when server crashed — leave pending for Phase 3 replay
-      unchanged.push(skillId);
     } else {
-      // installed / disabled / failed — no reconciliation needed
-      unchanged.push(skillId);
+      // Build gateway skills map: skillId -> gatewaySkillInfo
+      const gatewaySkills = new Map<string, GatewaySkillInfo>();
+      for (const skill of rpcResult.skills ?? []) {
+        if (skill.skillId) {
+          gatewaySkills.set(skill.skillId, skill);
+        }
+      }
+
+      // Fetch DB skill state
+      const dbSkills = await getSkillsForInstance(instanceId);
+
+      for (const dbSkill of dbSkills) {
+        const { skillId, status } = dbSkill;
+        const inGateway = gatewaySkills.has(skillId);
+
+        if (status === 'active' && inGateway) {
+          // Confirmed healthy — no change
+          unchanged.push(skillId);
+        } else if (status === 'degraded' && inGateway) {
+          // Was degraded but recovered — promote to active
+          await updateSkillStatus(instanceId, skillId, 'active');
+          promoted.push(skillId);
+        } else if (status === 'active' && !inGateway) {
+          // Active in DB but missing from gateway — mark failed
+          await updateSkillStatus(
+            instanceId,
+            skillId,
+            'failed',
+            'Extension not found in gateway after restart',
+          );
+          demoted.push(skillId);
+        } else if (status === 'degraded' && !inGateway) {
+          // Degraded in DB and still absent — mark failed
+          await updateSkillStatus(
+            instanceId,
+            skillId,
+            'failed',
+            'Extension not recovered after restart',
+          );
+          demoted.push(skillId);
+        } else if (status === 'pending' && inGateway) {
+          // Install completed before the crash — promote to active and clear pending_owner
+          await db('instance_skills')
+            .where({ instance_id: instanceId, skill_id: skillId })
+            .update({
+              status: 'active',
+              pending_owner: null,
+              updated_at: db.fn.now(),
+            });
+          promoted.push(skillId);
+        } else if (status === 'pending' && !inGateway) {
+          // Install was in-flight when server crashed — leave pending for Phase 3 replay
+          unchanged.push(skillId);
+        } else {
+          // installed / disabled / failed — no reconciliation needed
+          unchanged.push(skillId);
+        }
+      }
     }
   }
 

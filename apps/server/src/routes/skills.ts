@@ -65,6 +65,12 @@ router.get('/:id/skills', async (req, res) => {
             }
           }
         }
+      } catch (rpcErr: unknown) {
+        // Soft-log: older gateway versions may not support skills.list
+        console.warn(
+          '[skills] skills.list RPC failed (older gateway?):',
+          rpcErr instanceof Error ? rpcErr.message : String(rpcErr),
+        );
       } finally {
         rpc.close();
       }
@@ -113,6 +119,13 @@ router.get('/:id/skills/catalog', async (req, res) => {
     let rawList: unknown;
     try {
       rawList = await rpc.call('skills.list', {}, 30_000);
+    } catch (rpcErr: unknown) {
+      // Soft-log: older gateway versions may not support skills.list
+      console.warn(
+        '[skills] skills.list RPC failed in catalog (older gateway?):',
+        rpcErr instanceof Error ? rpcErr.message : String(rpcErr),
+      );
+      rawList = undefined;
     } finally {
       rpc.close();
     }
@@ -380,7 +393,7 @@ router.put('/:id/skills/:skillId/upgrade', async (req, res) => {
       try {
         installResult = await rpc.call(
           'skills.install',
-          { skillId, source: skill.source, version: clawHubInfo.version },
+          { source: 'clawhub', slug: skillId, version: clawHubInfo.version },
           300_000,
         );
       } finally {

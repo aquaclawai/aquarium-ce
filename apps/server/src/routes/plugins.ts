@@ -120,6 +120,13 @@ router.get('/:id/plugins/catalog', async (req, res) => {
     let rawList: unknown;
     try {
       rawList = await rpc.call('plugins.list', {}, 30_000);
+    } catch (rpcErr: unknown) {
+      // Soft-log: older gateway versions may not support plugins.list
+      console.warn(
+        '[plugins] plugins.list RPC failed in catalog (older gateway?):',
+        rpcErr instanceof Error ? rpcErr.message : String(rpcErr),
+      );
+      rawList = undefined;
     } finally {
       rpc.close();
     }
