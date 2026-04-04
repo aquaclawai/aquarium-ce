@@ -26,12 +26,12 @@ Requirements for Plugin & Skill Marketplace. Each maps to roadmap phases.
 - [x] **SKILL-04**: User can configure extension-scoped credentials for a skill (extensionKind + extensionId binding)
 - [x] **SKILL-05**: User can enable/disable an installed skill
 - [x] **SKILL-06**: User can uninstall a skill
-- [x] **SKILL-07**: System reconciles skill state on boot (Phase 2) — promotes crash-recovered skills already present in gateway
+- [x] **SKILL-07**: System reconciles skill state on boot (Phase 2) -- promotes crash-recovered skills already present in gateway
 
 ### Plugin Management
 
 - [x] **PLUG-01**: User can browse bundled plugins catalog from the Extensions tab
-- [x] **PLUG-02**: User can install a plugin artifact (Operation 1: npm install, no config.patch, status → installed or active)
+- [x] **PLUG-02**: User can install a plugin artifact (Operation 1: npm install, no config.patch, status -> installed or active)
 - [x] **PLUG-03**: Plugins with no required credentials skip to Operation 3 (activate) within same lock hold
 - [x] **PLUG-04**: User can configure extension-scoped credentials for a plugin (Operation 2)
 - [x] **PLUG-05**: User can activate a plugin triggering gateway restart + health check (Operation 3)
@@ -55,12 +55,12 @@ Requirements for Plugin & Skill Marketplace. Each maps to roadmap phases.
 
 - [x] **TMPL-01**: Template export reads from `instance_plugins`/`instance_skills` tables (not legacy `plugin_dependencies`)
 - [x] **TMPL-02**: Export includes active, installed (needsCredentials), disabled, and degraded extensions with state hints
-- [x] **TMPL-03**: Export scrubs OpenClaw base config — all credential fields replaced with `${CREDENTIAL:...}` placeholders
+- [x] **TMPL-03**: Export scrubs OpenClaw base config -- all credential fields replaced with `${CREDENTIAL:...}` placeholders
 - [x] **TMPL-04**: Export uses workspace file allowlist + SENSITIVE_PATTERNS secret scanning with redaction
 - [x] **TMPL-05**: Export rejects local skills with `scripts/` or `assets/` directories
 - [x] **TMPL-06**: Template import re-evaluates trust policy for each extension against current ClawHub metadata
 - [x] **TMPL-07**: Blocked extensions on import require fresh admin override or are skipped with warning
-- [x] **TMPL-08**: System uses 3-phase startup: Phase 1 (active/degraded config) → Phase 2 (boot+reconcile) → Phase 3 (pending replay)
+- [x] **TMPL-08**: System uses 3-phase startup: Phase 1 (active/degraded config) -> Phase 2 (boot+reconcile) -> Phase 3 (pending replay)
 
 ### OAuth & Offline
 
@@ -86,19 +86,19 @@ Requirements for v1.2 Gateway Simplification & Plugin Fixes.
 
 ### Gateway Simplification
 
-- [ ] **SIMP-01**: Remove TCP proxy injection from Docker runtime — use native `gateway.bind: lan`
+- [ ] **SIMP-01**: Remove TCP proxy injection from Docker runtime -- use native `gateway.bind: lan`
 - [ ] **SIMP-02**: Remove conflicting RPC methods from platform-bridge plugin (`skills.install`, `skills.uninstall`) that duplicate native gateway handlers
 - [ ] **SIMP-03**: Simplify custom Docker entrypoint to only inject platform-bridge plugin path, deferring directory/permission/config logic to official entrypoint
 
 ### Plugin Bug Fixes
 
-- [ ] **PLUGFIX-01**: Fix empty Available catalog after gateway restart — resolve plugin loading failure caused by method name conflicts with native handlers
+- [ ] **PLUGFIX-01**: Fix empty Available catalog after gateway restart -- resolve plugin loading failure caused by method name conflicts with native handlers
 - [ ] **PLUGFIX-02**: Fix `plugins.install` handler causing gateway config corruption (adding non-existent plugin paths)
 - [ ] **PLUGFIX-03**: Backend graceful degradation for `skills.list` and `plugins.list` RPC when gateway doesn't support them (return empty instead of 500)
 
 ### Frontend Fixes
 
-- [ ] **FRONT-01**: Fix Extensions tab response shape mismatch — catalog endpoints return `{ catalog: [], hasMore }` but frontend expected flat array
+- [ ] **FRONT-01**: Fix Extensions tab response shape mismatch -- catalog endpoints return `{ catalog: [], hasMore }` but frontend expected flat array
 - [ ] **FRONT-02**: Fix install handlers sending `source: "clawhub"` (string) instead of `source: { type: "clawhub", spec: "..." }` (object)
 - [ ] **FRONT-03**: Fix skill install RPC params to match gateway's native schema (`{ source: "clawhub", slug }`)
 
@@ -182,12 +182,21 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OAUTH-03 | Phase 5 | Complete |
 | OFFLINE-01 | Phase 6 | Complete |
 | OFFLINE-02 | Phase 6 | Complete |
+| SIMP-02 | Phase 7 | Pending |
+| PLUGFIX-01 | Phase 7 | Pending |
+| PLUGFIX-02 | Phase 7 | Pending |
+| PLUGFIX-03 | Phase 7 | Pending |
+| FRONT-01 | Phase 7 | Pending |
+| FRONT-02 | Phase 7 | Pending |
+| FRONT-03 | Phase 7 | Pending |
+| SIMP-01 | Phase 8 | Pending |
+| SIMP-03 | Phase 8 | Pending |
 
 **Coverage:**
-- v1.1 requirements: 52 total
-- Mapped to phases: 52
+- v1.1 requirements: 52 total, 52 mapped (Complete)
+- v1.2 requirements: 9 total, 9 mapped
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-03*
-*Last updated: 2026-04-04 after v1.2 requirements definition*
+*Last updated: 2026-04-04 after v1.2 roadmap creation*

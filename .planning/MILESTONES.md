@@ -11,8 +11,19 @@ Core platform: instance management, Docker runtime, credential storage, template
 
 ## v1.1 — Plugin & Skill Marketplace
 
-**Status:** In Progress
+**Status:** Shipped
 **Started:** 2026-04-03
-**Phases:** TBD (starting from phase 1)
+**Completed:** 2026-04-04
+**Phases:** 1-6
 
 Full plugin/skill lifecycle management with deny-by-default security, fenced concurrency, version-pinned durability, and template portability.
+
+---
+
+## v1.2 — Gateway Simplification & Plugin Fixes
+
+**Status:** In Progress
+**Started:** 2026-04-04
+**Phases:** 7-8
+
+Remove redundant CE-specific workarounds (TCP proxy, custom entrypoint logic) now that the official OpenClaw gateway supports them natively, and fix plugin/extension bugs found during v1.1 testing.
