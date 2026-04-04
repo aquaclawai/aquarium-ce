@@ -1108,32 +1108,43 @@
       "enable": "Aktivieren",
       "disable": "Deaktivieren",
       "configure": "Konfigurieren",
-      "refresh": "Aktualisieren"
+      "refresh": "Aktualisieren",
+      "activate": "Aktivieren",
+      "activating": "Aktiviere..."
     },
     "catalog": {
       "startInstance": "Instanz starten, um verfügbare Erweiterungen zu durchsuchen",
       "noResults": "Keine Erweiterungen verfügbar",
       "requiresCredentials": "Erfordert API-Schlüssel",
       "bundled": "Mitgeliefert",
-      "clawhub": "ClawHub"
+      "clawhub": "ClawHub",
+      "requires": "Erfordert"
     },
     "empty": {
       "noInstalled": "Keine Skills installiert",
-      "noBuiltins": "Keine eingebauten Gateway-Skills"
+      "noBuiltins": "Keine eingebauten Gateway-Skills",
+      "noPlugins": "Keine Plugins installiert",
+      "noPluginBuiltins": "Keine eingebauten Gateway-Plugins"
     },
     "confirm": {
       "uninstall": "Möchten Sie diesen Skill wirklich deinstallieren?",
-      "uninstallTitle": "Skill deinstallieren"
+      "uninstallTitle": "Skill deinstallieren",
+      "uninstallPlugin": "Möchten Sie dieses Plugin wirklich deinstallieren?"
     },
     "errors": {
       "fetchFailed": "Erweiterungen konnten nicht geladen werden",
       "installFailed": "Skill konnte nicht installiert werden",
       "toggleFailed": "Skill konnte nicht aktualisiert werden",
       "uninstallFailed": "Skill konnte nicht deinstalliert werden",
-      "conflict": "Eine andere Erweiterungsoperation läuft bereits"
+      "conflict": "Eine andere Erweiterungsoperation läuft bereits",
+      "pluginInstallFailed": "Plugin konnte nicht installiert werden",
+      "pluginToggleFailed": "Plugin konnte nicht aktualisiert werden",
+      "pluginUninstallFailed": "Plugin konnte nicht deinstalliert werden",
+      "pluginActivateFailed": "Plugin konnte nicht aktiviert werden"
     },
     "plugins": {
-      "comingSoon": "Plugin-Verwaltung kommt in Phase 2"
+      "comingSoon": "Plugin-Verwaltung kommt in Phase 2",
+      "requiresRestart": "Erfordert Gateway-Neustart"
     },
     "credentials": {
       "title": "Anmeldedaten konfigurieren",

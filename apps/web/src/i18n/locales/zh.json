@@ -1789,32 +1789,43 @@
       "enable": "启用",
       "disable": "禁用",
       "configure": "配置",
-      "refresh": "刷新"
+      "refresh": "刷新",
+      "activate": "激活",
+      "activating": "激活中..."
     },
     "catalog": {
       "startInstance": "启动实例以浏览可用扩展",
       "noResults": "暂无可用扩展",
       "requiresCredentials": "需要 API 密钥",
       "bundled": "内置",
-      "clawhub": "ClawHub"
+      "clawhub": "ClawHub",
+      "requires": "需要"
     },
     "empty": {
       "noInstalled": "未安装任何技能",
-      "noBuiltins": "无网关内置技能"
+      "noBuiltins": "无网关内置技能",
+      "noPlugins": "未安装任何插件",
+      "noPluginBuiltins": "无网关内置插件"
     },
     "confirm": {
       "uninstall": "确定要卸载此技能吗？",
-      "uninstallTitle": "卸载技能"
+      "uninstallTitle": "卸载技能",
+      "uninstallPlugin": "确定要卸载此插件吗？"
     },
     "errors": {
       "fetchFailed": "加载扩展失败",
       "installFailed": "安装技能失败",
       "toggleFailed": "更新技能失败",
       "uninstallFailed": "卸载技能失败",
-      "conflict": "另一个扩展操作正在进行中"
+      "conflict": "另一个扩展操作正在进行中",
+      "pluginInstallFailed": "安装插件失败",
+      "pluginToggleFailed": "更新插件失败",
+      "pluginUninstallFailed": "卸载插件失败",
+      "pluginActivateFailed": "激活插件失败"
     },
     "plugins": {
-      "comingSoon": "插件管理将在第二阶段推出"
+      "comingSoon": "插件管理将在第二阶段推出",
+      "requiresRestart": "需要重启网关"
     },
     "credentials": {
       "title": "配置凭证",

@@ -380,6 +380,39 @@
   font-style: italic;
 }
 
+/* Capability badges (plugin catalog) */
+.capability-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.capability-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+/* Catalog install block (button + restart note) */
+.catalog-install-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.catalog-restart-note {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
 /* Coming soon placeholder */
 .extensions-tab__coming-soon {
   display: flex;

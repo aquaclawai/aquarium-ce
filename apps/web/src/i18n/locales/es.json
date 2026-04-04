@@ -1108,32 +1108,43 @@
       "enable": "Activar",
       "disable": "Desactivar",
       "configure": "Configurar",
-      "refresh": "Actualizar"
+      "refresh": "Actualizar",
+      "activate": "Activar",
+      "activating": "Activando..."
     },
     "catalog": {
       "startInstance": "Inicia la instancia para explorar las extensiones disponibles",
       "noResults": "No hay extensiones disponibles",
       "requiresCredentials": "Requiere clave API",
       "bundled": "Incluido",
-      "clawhub": "ClawHub"
+      "clawhub": "ClawHub",
+      "requires": "Requiere"
     },
     "empty": {
       "noInstalled": "No hay habilidades instaladas",
-      "noBuiltins": "No hay habilidades integradas en la puerta de enlace"
+      "noBuiltins": "No hay habilidades integradas en la puerta de enlace",
+      "noPlugins": "No hay plugins instalados",
+      "noPluginBuiltins": "No hay plugins integrados en la puerta de enlace"
     },
     "confirm": {
       "uninstall": "¿Estás seguro de que quieres desinstalar esta habilidad?",
-      "uninstallTitle": "Desinstalar habilidad"
+      "uninstallTitle": "Desinstalar habilidad",
+      "uninstallPlugin": "¿Estás seguro de que quieres desinstalar este plugin?"
     },
     "errors": {
       "fetchFailed": "Error al cargar las extensiones",
       "installFailed": "Error al instalar la habilidad",
       "toggleFailed": "Error al actualizar la habilidad",
       "uninstallFailed": "Error al desinstalar la habilidad",
-      "conflict": "Otra operación de extensión está en curso"
+      "conflict": "Otra operación de extensión está en curso",
+      "pluginInstallFailed": "Error al instalar el plugin",
+      "pluginToggleFailed": "Error al actualizar el plugin",
+      "pluginUninstallFailed": "Error al desinstalar el plugin",
+      "pluginActivateFailed": "Error al activar el plugin"
     },
     "plugins": {
-      "comingSoon": "La gestión de plugins llegará en la fase 2"
+      "comingSoon": "La gestión de plugins llegará en la fase 2",
+      "requiresRestart": "Requiere reinicio de la puerta de enlace"
     },
     "credentials": {
       "title": "Configurar credenciales",

@@ -1108,32 +1108,43 @@
       "enable": "Abilita",
       "disable": "Disabilita",
       "configure": "Configura",
-      "refresh": "Aggiorna"
+      "refresh": "Aggiorna",
+      "activate": "Attiva",
+      "activating": "Attivazione..."
     },
     "catalog": {
       "startInstance": "Avvia l'istanza per sfogliare le estensioni disponibili",
       "noResults": "Nessuna estensione disponibile",
       "requiresCredentials": "Richiede chiave API",
       "bundled": "Incluso",
-      "clawhub": "ClawHub"
+      "clawhub": "ClawHub",
+      "requires": "Richiede"
     },
     "empty": {
       "noInstalled": "Nessuna competenza installata",
-      "noBuiltins": "Nessuna competenza integrata nel gateway"
+      "noBuiltins": "Nessuna competenza integrata nel gateway",
+      "noPlugins": "Nessun plugin installato",
+      "noPluginBuiltins": "Nessun plugin integrato nel gateway"
     },
     "confirm": {
       "uninstall": "Sei sicuro di voler disinstallare questa competenza?",
-      "uninstallTitle": "Disinstalla competenza"
+      "uninstallTitle": "Disinstalla competenza",
+      "uninstallPlugin": "Sei sicuro di voler disinstallare questo plugin?"
     },
     "errors": {
       "fetchFailed": "Impossibile caricare le estensioni",
       "installFailed": "Impossibile installare la competenza",
       "toggleFailed": "Impossibile aggiornare la competenza",
       "uninstallFailed": "Impossibile disinstallare la competenza",
-      "conflict": "Un'altra operazione di estensione è in corso"
+      "conflict": "Un'altra operazione di estensione è in corso",
+      "pluginInstallFailed": "Impossibile installare il plugin",
+      "pluginToggleFailed": "Impossibile aggiornare il plugin",
+      "pluginUninstallFailed": "Impossibile disinstallare il plugin",
+      "pluginActivateFailed": "Impossibile attivare il plugin"
     },
     "plugins": {
-      "comingSoon": "La gestione dei plugin arriverà nella fase 2"
+      "comingSoon": "La gestione dei plugin arriverà nella fase 2",
+      "requiresRestart": "Richiede il riavvio del gateway"
     },
     "credentials": {
       "title": "Configura credenziali",

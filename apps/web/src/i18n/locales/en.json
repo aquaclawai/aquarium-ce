@@ -1790,32 +1790,43 @@
       "enable": "Enable",
       "disable": "Disable",
       "configure": "Configure",
-      "refresh": "Refresh"
+      "refresh": "Refresh",
+      "activate": "Activate",
+      "activating": "Activating..."
     },
     "catalog": {
       "startInstance": "Start instance to browse available extensions",
       "noResults": "No extensions available",
       "requiresCredentials": "Requires API key",
       "bundled": "Bundled",
-      "clawhub": "ClawHub"
+      "clawhub": "ClawHub",
+      "requires": "Requires"
     },
     "empty": {
       "noInstalled": "No skills installed",
-      "noBuiltins": "No gateway built-in skills"
+      "noBuiltins": "No gateway built-in skills",
+      "noPlugins": "No plugins installed",
+      "noPluginBuiltins": "No gateway built-in plugins"
     },
     "confirm": {
       "uninstall": "Are you sure you want to uninstall this skill?",
-      "uninstallTitle": "Uninstall Skill"
+      "uninstallTitle": "Uninstall Skill",
+      "uninstallPlugin": "Are you sure you want to uninstall this plugin?"
     },
     "errors": {
       "fetchFailed": "Failed to load extensions",
       "installFailed": "Failed to install skill",
       "toggleFailed": "Failed to update skill",
       "uninstallFailed": "Failed to uninstall skill",
-      "conflict": "Another extension operation is in progress"
+      "conflict": "Another extension operation is in progress",
+      "pluginInstallFailed": "Failed to install plugin",
+      "pluginToggleFailed": "Failed to update plugin",
+      "pluginUninstallFailed": "Failed to uninstall plugin",
+      "pluginActivateFailed": "Failed to activate plugin"
     },
     "plugins": {
-      "comingSoon": "Plugin management coming in Phase 2"
+      "comingSoon": "Plugin management coming in Phase 2",
+      "requiresRestart": "Requires gateway restart"
     },
     "credentials": {
       "title": "Configure Credentials",

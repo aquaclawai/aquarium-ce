@@ -1108,32 +1108,43 @@
       "enable": "Activer",
       "disable": "Désactiver",
       "configure": "Configurer",
-      "refresh": "Actualiser"
+      "refresh": "Actualiser",
+      "activate": "Activer",
+      "activating": "Activation..."
     },
     "catalog": {
       "startInstance": "Démarrez l'instance pour parcourir les extensions disponibles",
       "noResults": "Aucune extension disponible",
       "requiresCredentials": "Nécessite une clé API",
       "bundled": "Inclus",
-      "clawhub": "ClawHub"
+      "clawhub": "ClawHub",
+      "requires": "Nécessite"
     },
     "empty": {
       "noInstalled": "Aucune compétence installée",
-      "noBuiltins": "Aucune compétence intégrée à la passerelle"
+      "noBuiltins": "Aucune compétence intégrée à la passerelle",
+      "noPlugins": "Aucun plugin installé",
+      "noPluginBuiltins": "Aucun plugin intégré à la passerelle"
     },
     "confirm": {
       "uninstall": "Voulez-vous vraiment désinstaller cette compétence ?",
-      "uninstallTitle": "Désinstaller la compétence"
+      "uninstallTitle": "Désinstaller la compétence",
+      "uninstallPlugin": "Voulez-vous vraiment désinstaller ce plugin ?"
     },
     "errors": {
       "fetchFailed": "Échec du chargement des extensions",
       "installFailed": "Échec de l'installation de la compétence",
       "toggleFailed": "Échec de la mise à jour de la compétence",
       "uninstallFailed": "Échec de la désinstallation de la compétence",
-      "conflict": "Une autre opération d'extension est en cours"
+      "conflict": "Une autre opération d'extension est en cours",
+      "pluginInstallFailed": "Échec de l'installation du plugin",
+      "pluginToggleFailed": "Échec de la mise à jour du plugin",
+      "pluginUninstallFailed": "Échec de la désinstallation du plugin",
+      "pluginActivateFailed": "Échec de l'activation du plugin"
     },
     "plugins": {
-      "comingSoon": "La gestion des plugins arrive en phase 2"
+      "comingSoon": "La gestion des plugins arrive en phase 2",
+      "requiresRestart": "Nécessite un redémarrage de la passerelle"
     },
     "credentials": {
       "title": "Configurer les identifiants",
