@@ -21,7 +21,7 @@ import { buildCredentialIndex, clearCredentialIndex, buildWorkspaceContentIndex,
 import { preloadDlpConfig, evictDlpConfig } from './gateway-event-relay.js';
 import { scanContent } from './dlp-scanner.js';
 import { createNotification } from './notification-store.js';
-import { reconcileExtensions } from './extension-lifecycle.js';
+import { reconcileExtensions, replayPendingExtensions } from './extension-lifecycle.js';
 
 // ── helpers ──
 
@@ -492,7 +492,8 @@ async function startInstanceAsync(id: string, userId: string, instance: Instance
       control_endpoint: controlEndpoint,
     }, 'Provisioning pod...');
 
-    // Seed config files into running container
+    // Phase 1: generate config for active/degraded extensions only (plugins + skills)
+    // Pending extensions are excluded here — they are handled by Phase 3 replay below.
     const userConfig = instance.config || {};
     if (adapter?.seedConfig && engine.writeFiles) {
       await updateStatus(id, 'starting', {}, 'Waiting for pod ready...');
@@ -582,7 +583,7 @@ async function startInstanceAsync(id: string, userId: string, instance: Instance
       connectGateway(id, controlEndpoint, instance.authToken);
     }
 
-    // Phase 2: reconcile extension state with gateway reality (non-blocking)
+    // Phase 2: boot + reconcile extension state with gateway reality (non-blocking)
     if (controlEndpoint && instance.authToken) {
       try {
         const result = await reconcileExtensions(id, controlEndpoint, instance.authToken);
@@ -590,6 +591,21 @@ async function startInstanceAsync(id: string, userId: string, instance: Instance
       } catch (err) {
         console.warn(`[extensions] Reconciliation failed for ${id}:`, err);
         // Non-fatal — instance continues booting
+      }
+    }
+
+    // Phase 3: replay remaining pending extensions (non-blocking)
+    // Pending extensions come from template instantiation or crash recovery.
+    // Trust was already evaluated at import/instantiation time.
+    if (controlEndpoint && instance.authToken) {
+      try {
+        const replay = await replayPendingExtensions(id, controlEndpoint, instance.authToken, userId);
+        if (replay.installed.length > 0 || replay.failed.length > 0) {
+          console.log(`[extensions] Phase 3 replay for ${id}: installed=${replay.installed.length}, failed=${replay.failed.length}, needsCredentials=${replay.needsCredentials.length}`);
+        }
+      } catch (err) {
+        console.warn(`[extensions] Phase 3 replay failed for ${id}:`, err);
+        // Non-fatal — instance continues running
       }
     }
   } catch (err: unknown) {

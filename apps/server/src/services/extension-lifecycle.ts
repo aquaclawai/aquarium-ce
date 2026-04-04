@@ -1,8 +1,8 @@
 import { db } from '../db/index.js';
 import { GatewayRPCClient } from '../agent-types/openclaw/gateway-rpc.js';
 import { cleanupOrphanedOperations } from './extension-lock.js';
-import { getSkillsForInstance, updateSkillStatus } from './skill-store.js';
-import { getPluginsForInstance, updatePluginStatus } from './plugin-store.js';
+import { getSkillsForInstance, updateSkillStatus, installSkill } from './skill-store.js';
+import { getPluginsForInstance, updatePluginStatus, installPlugin } from './plugin-store.js';
 import type { InstanceSkill, InstancePlugin } from '@aquarium/shared';
 
 // ─── RPC Response Types ───────────────────────────────────────────────────────
@@ -285,15 +285,18 @@ export async function reconcileExtensions(
 
 /**
  * Phase 3 input: get all pending extensions for replay.
- * Returns skills whose install was interrupted and need to be retried.
+ * Returns both skills and plugins whose install was interrupted and need to be retried.
  */
-export async function getPendingExtensionsForReplay(instanceId: string): Promise<InstanceSkill[]> {
-  const rows = await db('instance_skills')
+export async function getPendingExtensions(instanceId: string): Promise<{
+  skills: InstanceSkill[];
+  plugins: InstancePlugin[];
+}> {
+  // Pending skills
+  const skillRows = await db('instance_skills')
     .where({ instance_id: instanceId, status: 'pending' })
     .select('*') as Array<Record<string, unknown>>;
 
-  // Inline row mapping (mirrors mapSkillRow from skill-store.ts)
-  return rows.map((row) => ({
+  const skills: InstanceSkill[] = skillRows.map((row) => ({
     id: row.id as string,
     instanceId: row.instance_id as string,
     skillId: row.skill_id as string,
@@ -311,4 +314,113 @@ export async function getPendingExtensionsForReplay(instanceId: string): Promise
     installedAt: row.installed_at as string,
     updatedAt: row.updated_at as string,
   }));
+
+  // Pending plugins (mirrors skill row mapping pattern)
+  const pluginRows = await db('instance_plugins')
+    .where({ instance_id: instanceId, status: 'pending' })
+    .select('*') as Array<Record<string, unknown>>;
+
+  const plugins: InstancePlugin[] = pluginRows.map((row) => ({
+    id: row.id as string,
+    instanceId: row.instance_id as string,
+    pluginId: row.plugin_id as string,
+    source: typeof row.source === 'string' ? JSON.parse(row.source) : row.source,
+    version: (row.version as string | null) ?? null,
+    lockedVersion: (row.locked_version as string | null) ?? null,
+    integrityHash: (row.integrity_hash as string | null) ?? null,
+    enabled: Boolean(row.enabled),
+    config: typeof row.config === 'string' ? JSON.parse(row.config) : (row.config ?? {}),
+    status: row.status as InstancePlugin['status'],
+    errorMessage: (row.error_message as string | null) ?? null,
+    failedAt: (row.failed_at as string | null) ?? null,
+    pendingOwner: (row.pending_owner as string | null) ?? null,
+    retryCount: (row.retry_count as number) ?? 0,
+    installedAt: row.installed_at as string,
+    updatedAt: row.updated_at as string,
+  }));
+
+  return { skills, plugins };
+}
+
+/**
+ * @deprecated Use getPendingExtensions instead.
+ * Kept for backward compatibility.
+ */
+export async function getPendingExtensionsForReplay(instanceId: string): Promise<InstanceSkill[]> {
+  const { skills } = await getPendingExtensions(instanceId);
+  return skills;
+}
+
+/**
+ * Phase 3: replay pending extensions after gateway boot and reconciliation.
+ * Installs each pending skill and plugin, handling failures non-fatally.
+ *
+ * Extensions in 'pending' state come from template instantiation or crash recovery.
+ * Trust was already evaluated at import/instantiation time, so we replay
+ * the install as-is (locked_version preserved from import).
+ *
+ * Returns observability counts for logging.
+ */
+export async function replayPendingExtensions(
+  instanceId: string,
+  controlEndpoint: string,
+  authToken: string,
+  userId: string,
+): Promise<{ installed: string[]; failed: string[]; needsCredentials: string[] }> {
+  const installed: string[] = [];
+  const failed: string[] = [];
+  const needsCredentials: string[] = [];
+
+  const { skills, plugins } = await getPendingExtensions(instanceId);
+
+  if (skills.length === 0 && plugins.length === 0) {
+    return { installed, failed, needsCredentials };
+  }
+
+  // Replay pending skills
+  for (const skill of skills) {
+    try {
+      const { requiredCredentials } = await installSkill(
+        instanceId,
+        skill.skillId,
+        skill.source,
+        controlEndpoint,
+        authToken,
+      );
+      if (requiredCredentials.length > 0) {
+        needsCredentials.push(skill.skillId);
+      } else {
+        installed.push(skill.skillId);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn(`[extension-lifecycle] Phase 3: skill replay failed for ${skill.skillId} on ${instanceId}: ${message}`);
+      await updateSkillStatus(instanceId, skill.skillId, 'failed', message);
+      failed.push(skill.skillId);
+    }
+  }
+
+  // Replay pending plugins
+  for (const plugin of plugins) {
+    try {
+      const { requiredCredentials } = await installPlugin(
+        instanceId,
+        plugin.pluginId,
+        plugin.source,
+        userId,
+      );
+      if (requiredCredentials.length > 0) {
+        needsCredentials.push(plugin.pluginId);
+      } else {
+        installed.push(plugin.pluginId);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn(`[extension-lifecycle] Phase 3: plugin replay failed for ${plugin.pluginId} on ${instanceId}: ${message}`);
+      await updatePluginStatus(instanceId, plugin.pluginId, 'failed', message);
+      failed.push(plugin.pluginId);
+    }
+  }
+
+  return { installed, failed, needsCredentials };
 }
