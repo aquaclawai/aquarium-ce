@@ -13,6 +13,10 @@ import { CatalogSkillRow } from './CatalogSkillRow';
 import { ExtensionRow } from './ExtensionRow';
 import { CatalogExtensionRow } from './CatalogExtensionRow';
 import { CredentialConfigPanel } from './CredentialConfigPanel';
+import { ConfirmRestartDialog } from './ConfirmRestartDialog';
+import { InstallDialog } from './InstallDialog';
+import { RestartBanner } from './RestartBanner';
+import { RollbackModal } from './RollbackModal';
 import './ExtensionsTab.css';
 
 interface ExtensionsTabProps {
@@ -35,6 +39,13 @@ interface PluginsResponse {
 interface ConfiguringExtension {
   id: string;
   kind: 'plugin' | 'skill';
+}
+
+interface RollbackError {
+  pluginId: string;
+  pluginName: string;
+  errorMessage: string;
+  technicalDetails?: string;
 }
 
 function SkeletonRow() {
@@ -70,12 +81,25 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
   const [activatingPlugin, setActivatingPlugin] = useState<string | null>(null);
   const [confirmActivatePluginId, setConfirmActivatePluginId] = useState<string | null>(null);
 
+  // Restart/rollback state
+  const [restartingPlugin, setRestartingPlugin] = useState<{ id: string; name: string } | null>(null);
+  const [rollbackError, setRollbackError] = useState<RollbackError | null>(null);
+
+  // Install dialog state
+  const [installDialogEntry, setInstallDialogEntry] = useState<PluginCatalogEntry | SkillCatalogEntry | null>(null);
+  const [installDialogKind, setInstallDialogKind] = useState<'plugin' | 'skill'>('skill');
+
+  // Search/filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+
   // Shared state
   const [error, setError] = useState<string | null>(null);
   const [configuringExtension, setConfiguringExtension] = useState<ConfiguringExtension | null>(null);
 
   const isRunning = instanceStatus === 'running';
-  const mutationsDisabled = !isRunning;
+  const isRestarting = restartingPlugin !== null;
+  const mutationsDisabled = !isRunning || isRestarting;
 
   const fetchSkillData = useCallback(async () => {
     setSkillsLoading(true);
@@ -175,7 +199,7 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
       await api.post(`/instances/${instanceId}/plugins/install`, { pluginId, source });
       await fetchPluginData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('extensions.errors.pluginInstallFailed'));
+      setError(err instanceof Error ? err.message : t('extensions.errors.installPluginFailed'));
     } finally {
       setInstallingPlugin(null);
     }
@@ -188,17 +212,36 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
   const handlePluginActivateConfirm = useCallback(async () => {
     if (!confirmActivatePluginId) return;
     const pluginId = confirmActivatePluginId;
+    const pluginEntry = managedPlugins.find(p => p.pluginId === pluginId);
+    const pluginName = pluginEntry?.pluginId ?? pluginId;
     setConfirmActivatePluginId(null);
     setActivatingPlugin(pluginId);
+    setError(null);
     try {
       await api.post(`/instances/${instanceId}/plugins/${pluginId}/activate`);
-      // Success handled by RestartBanner polling (02-04)
+      // Show restart banner — polling happens in RestartBanner
+      setRestartingPlugin({ id: pluginId, name: pluginName });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('extensions.errors.pluginActivateFailed'));
+      setError(err instanceof Error ? err.message : t('extensions.errors.activateFailed'));
     } finally {
       setActivatingPlugin(null);
     }
-  }, [confirmActivatePluginId, instanceId, t]);
+  }, [confirmActivatePluginId, instanceId, managedPlugins, t]);
+
+  const handleRestartComplete = useCallback((success: boolean, errorMessage?: string) => {
+    const completing = restartingPlugin;
+    setRestartingPlugin(null);
+    if (success) {
+      void fetchPluginData();
+    } else {
+      setRollbackError({
+        pluginId: completing?.id ?? '',
+        pluginName: completing?.name ?? '',
+        errorMessage: errorMessage ?? t('extensions.errors.activateFailed'),
+      });
+      void fetchPluginData();
+    }
+  }, [restartingPlugin, fetchPluginData, t]);
 
   const handlePluginToggle = useCallback(async (pluginId: string, enabled: boolean) => {
     setError(null);
@@ -206,7 +249,7 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
       await api.put(`/instances/${instanceId}/plugins/${pluginId}`, { enabled });
       await fetchPluginData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('extensions.errors.pluginToggleFailed'));
+      setError(err instanceof Error ? err.message : t('extensions.errors.togglePluginFailed'));
     }
   }, [instanceId, fetchPluginData, t]);
 
@@ -216,7 +259,7 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
       await api.delete(`/instances/${instanceId}/plugins/${pluginId}`);
       await fetchPluginData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('extensions.errors.pluginUninstallFailed'));
+      setError(err instanceof Error ? err.message : t('extensions.errors.uninstallPluginFailed'));
     }
   }, [instanceId, fetchPluginData, t]);
 
@@ -225,6 +268,34 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
       prev?.id === pluginId && prev.kind === 'plugin' ? null : { id: pluginId, kind: 'plugin' }
     );
   }, []);
+
+  // Install dialog handlers — open dialog instead of immediately installing
+  const handleCatalogPluginInstallClick = useCallback((pluginId: string) => {
+    const entry = availablePluginCatalog.find(e => e.id === pluginId);
+    if (!entry) return;
+    setInstallDialogEntry(entry);
+    setInstallDialogKind('plugin');
+  }, [availablePluginCatalog]);
+
+  const handleCatalogSkillInstallClick = useCallback((skillId: string) => {
+    const entry = availableCatalog.find(e => e.slug === skillId);
+    if (!entry) return;
+    setInstallDialogEntry(entry);
+    setInstallDialogKind('skill');
+  }, [availableCatalog]);
+
+  const handleInstallDialogConfirm = useCallback(async () => {
+    if (!installDialogEntry) return;
+    const entry = installDialogEntry;
+    setInstallDialogEntry(null);
+    if (installDialogKind === 'plugin') {
+      await handlePluginInstall(entry.id, entry.source);
+    } else {
+      // SkillCatalogEntry uses slug as the install id
+      const skillEntry = entry as SkillCatalogEntry;
+      await handleInstall(skillEntry.slug, skillEntry.source);
+    }
+  }, [installDialogEntry, installDialogKind, handlePluginInstall, handleInstall]);
 
   const handleRefresh = useCallback(() => {
     if (subTab === 'skills') {
@@ -241,6 +312,27 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
   // Filter plugin catalog to exclude already-installed plugins
   const installedPluginIds = new Set(managedPlugins.map(p => p.pluginId));
   const availablePluginCatalog = pluginCatalog.filter(entry => !installedPluginIds.has(entry.id));
+
+  // Compute unique categories for the current sub-tab
+  const pluginCategories = [...new Set(availablePluginCatalog.map(e => e.category))].filter(Boolean);
+  const skillCategories = [...new Set(availableCatalog.map(e => e.category))].filter(Boolean);
+
+  // Apply search + category filter
+  const filteredPluginCatalog = availablePluginCatalog.filter(entry => {
+    const matchesSearch = !searchQuery ||
+      entry.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      entry.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || entry.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  const filteredSkillCatalog = availableCatalog.filter(entry => {
+    const matchesSearch = !searchQuery ||
+      entry.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      entry.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || entry.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
 
   // Alert banners for failed/degraded skills
   const alertSkills = managedSkills.filter(
@@ -297,6 +389,16 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
         </div>
       ))}
 
+      {/* Restart banner — shown above header when gateway is restarting */}
+      {restartingPlugin && (
+        <RestartBanner
+          pluginName={restartingPlugin.name}
+          instanceId={instanceId}
+          pluginId={restartingPlugin.id}
+          onComplete={handleRestartComplete}
+        />
+      )}
+
       <div className="extensions-tab__header">
         <div className="sub-tab-toggle" role="tablist" aria-label={t('extensions.title')}>
           <button
@@ -321,6 +423,7 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
           onClick={handleRefresh}
           title={t('extensions.actions.refresh')}
           aria-label={t('extensions.actions.refresh')}
+          disabled={isRestarting}
         >
           &#8635;
         </button>
@@ -332,11 +435,27 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
 
       {subTab === 'plugins' && (
         <>
-          {/* Confirmation dialog rendered by 02-04 — wires confirmActivatePluginId and handlePluginActivateConfirm */}
+          {/* Activation confirmation dialog */}
           {confirmActivatePluginId !== null && (
-            <div data-testid="confirm-activate-placeholder" style={{ display: 'none' }}>
-              <button onClick={() => void handlePluginActivateConfirm()} />
-            </div>
+            <ConfirmRestartDialog
+              pluginName={managedPlugins.find(p => p.pluginId === confirmActivatePluginId)?.pluginId ?? confirmActivatePluginId}
+              onConfirm={() => void handlePluginActivateConfirm()}
+              onCancel={() => setConfirmActivatePluginId(null)}
+            />
+          )}
+
+          {/* Rollback error modal */}
+          {rollbackError !== null && (
+            <RollbackModal
+              pluginName={rollbackError.pluginName}
+              errorMessage={rollbackError.errorMessage}
+              technicalDetails={rollbackError.technicalDetails}
+              onClose={() => setRollbackError(null)}
+              onRetry={() => {
+                setRollbackError(null);
+                handlePluginActivateRequest(rollbackError.pluginId);
+              }}
+            />
           )}
 
           {/* Installed Plugins */}
@@ -424,32 +543,57 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
             <h3 className="section-header">{t('extensions.sections.available')}</h3>
             {!isRunning ? (
               <p className="empty-state catalog-gated">{t('extensions.catalog.startInstance')}</p>
-            ) : pluginsLoading ? (
-              <>
-                <SkeletonRow />
-                <SkeletonRow />
-                <SkeletonRow />
-              </>
-            ) : availablePluginCatalog.length === 0 ? (
-              <p className="empty-state">{t('extensions.catalog.noResults')}</p>
             ) : (
-              <div className="skill-list">
-                {availablePluginCatalog.map(entry => (
-                  <CatalogExtensionRow
-                    key={entry.id}
-                    extensionKind="plugin"
-                    id={entry.id}
-                    name={entry.name}
-                    description={entry.description}
-                    source={entry.source}
-                    requiredCredentials={entry.requiredCredentials}
-                    capabilities={entry.capabilities}
-                    onInstall={handlePluginInstall}
-                    installing={installingPlugin === entry.id}
-                    disabled={mutationsDisabled}
+              <>
+                <div className="catalog-filters">
+                  <input
+                    type="search"
+                    className="catalog-search"
+                    placeholder={t('extensions.catalog.searchPlaceholder')}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    disabled={isRestarting}
                   />
-                ))}
-              </div>
+                  <select
+                    className="catalog-category-filter"
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    disabled={isRestarting}
+                  >
+                    <option value="all">{t('extensions.catalog.allCategories')}</option>
+                    {pluginCategories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                {pluginsLoading ? (
+                  <>
+                    <SkeletonRow />
+                    <SkeletonRow />
+                    <SkeletonRow />
+                  </>
+                ) : filteredPluginCatalog.length === 0 ? (
+                  <p className="empty-state">{t('extensions.catalog.noResults')}</p>
+                ) : (
+                  <div className="skill-list">
+                    {filteredPluginCatalog.map(entry => (
+                      <CatalogExtensionRow
+                        key={entry.id}
+                        extensionKind="plugin"
+                        id={entry.id}
+                        name={entry.name}
+                        description={entry.description}
+                        source={entry.source}
+                        requiredCredentials={entry.requiredCredentials}
+                        capabilities={entry.capabilities}
+                        onInstall={(id) => handleCatalogPluginInstallClick(id)}
+                        installing={installingPlugin === entry.id}
+                        disabled={mutationsDisabled}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </section>
         </>
@@ -535,29 +679,63 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
             <h3 className="section-header">{t('extensions.sections.available')}</h3>
             {!isRunning ? (
               <p className="empty-state catalog-gated">{t('extensions.catalog.startInstance')}</p>
-            ) : skillsLoading ? (
-              <>
-                <SkeletonRow />
-                <SkeletonRow />
-                <SkeletonRow />
-              </>
-            ) : availableCatalog.length === 0 ? (
-              <p className="empty-state">{t('extensions.catalog.noResults')}</p>
             ) : (
-              <div className="skill-list">
-                {availableCatalog.map(entry => (
-                  <CatalogSkillRow
-                    key={entry.id}
-                    entry={entry}
-                    onInstall={handleInstall}
-                    installing={installing === entry.slug}
-                    disabled={mutationsDisabled}
+              <>
+                <div className="catalog-filters">
+                  <input
+                    type="search"
+                    className="catalog-search"
+                    placeholder={t('extensions.catalog.searchPlaceholder')}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                   />
-                ))}
-              </div>
+                  <select
+                    className="catalog-category-filter"
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                  >
+                    <option value="all">{t('extensions.catalog.allCategories')}</option>
+                    {skillCategories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                {skillsLoading ? (
+                  <>
+                    <SkeletonRow />
+                    <SkeletonRow />
+                    <SkeletonRow />
+                  </>
+                ) : filteredSkillCatalog.length === 0 ? (
+                  <p className="empty-state">{t('extensions.catalog.noResults')}</p>
+                ) : (
+                  <div className="skill-list">
+                    {filteredSkillCatalog.map(entry => (
+                      <CatalogSkillRow
+                        key={entry.id}
+                        entry={entry}
+                        onInstall={(id) => handleCatalogSkillInstallClick(id)}
+                        installing={installing === entry.slug}
+                        disabled={mutationsDisabled}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </section>
         </>
+      )}
+
+      {/* Install dialog — shown when a catalog entry's Install button is clicked */}
+      {installDialogEntry !== null && (
+        <InstallDialog
+          extensionKind={installDialogKind}
+          entry={installDialogEntry}
+          onConfirm={() => void handleInstallDialogConfirm()}
+          onCancel={() => setInstallDialogEntry(null)}
+          installing={installDialogKind === 'plugin' ? installingPlugin === installDialogEntry.id : installing === (installDialogEntry as SkillCatalogEntry).slug}
+        />
       )}
     </div>
   );

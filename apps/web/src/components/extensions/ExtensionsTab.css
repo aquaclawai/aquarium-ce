@@ -612,6 +612,398 @@
   justify-content: flex-end;
 }
 
+/* ============================================================
+   Confirm Restart Dialog
+   ============================================================ */
+
+.confirm-restart-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: color-mix(in srgb, var(--color-bg) 60%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.confirm-restart-dialog {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  max-width: 420px;
+  width: calc(100% - 2 * var(--spacing-md));
+  box-shadow: var(--shadow-lg, 0 8px 32px rgba(0, 0, 0, 0.2));
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.confirm-restart-dialog__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.confirm-restart-dialog__plugin-name {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-primary);
+}
+
+.confirm-restart-dialog__message {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.confirm-restart-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
+}
+
+/* ============================================================
+   Catalog Filters (search + category)
+   ============================================================ */
+
+.catalog-filters {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.catalog-search {
+  flex: 1;
+  min-width: 180px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+}
+
+.catalog-search:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.catalog-search:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.catalog-category-filter {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.catalog-category-filter:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.catalog-category-filter:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   Install Dialog
+   ============================================================ */
+
+.install-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: color-mix(in srgb, var(--color-bg) 60%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.install-dialog {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  max-width: 480px;
+  width: calc(100% - 2 * var(--spacing-md));
+  box-shadow: var(--shadow-lg, 0 8px 32px rgba(0, 0, 0, 0.2));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.install-dialog__header {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.install-dialog__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.install-dialog__body {
+  padding: var(--spacing-md) var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.install-dialog__row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 0.875rem;
+}
+
+.install-dialog__label {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  min-width: 110px;
+  flex-shrink: 0;
+}
+
+.install-dialog__value {
+  color: var(--color-text);
+}
+
+.install-dialog__credentials {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.875rem;
+}
+
+.install-dialog__no-credentials {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  font-size: 0.8125rem;
+}
+
+.install-dialog__credentials-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.install-dialog__credential-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 4px 8px;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+}
+
+.install-dialog__credential-field {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.install-dialog__credential-type {
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+}
+
+.install-dialog__warning {
+  margin: 0;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: color-mix(in srgb, var(--color-warning) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 30%, transparent);
+  border-radius: var(--radius-sm);
+  color: var(--color-warning);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.install-dialog__footer {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+}
+
+/* ============================================================
+   Restart Banner
+   ============================================================ */
+
+.restart-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+}
+
+@keyframes restart-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.restart-banner__spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: restart-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.restart-banner__message {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.restart-banner__hint {
+  color: var(--color-text-secondary);
+  font-size: 0.8125rem;
+}
+
+/* ============================================================
+   Rollback Modal
+   ============================================================ */
+
+.rollback-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: color-mix(in srgb, var(--color-bg) 60%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.rollback-modal {
+  background-color: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-error) 40%, var(--color-border));
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  max-width: 520px;
+  width: calc(100% - 2 * var(--spacing-md));
+  box-shadow: var(--shadow-lg, 0 8px 32px rgba(0, 0, 0, 0.2));
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.rollback-modal__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-error);
+}
+
+.rollback-modal__message {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.rollback-modal__error {
+  margin: 0;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: color-mix(in srgb, var(--color-error) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-error) 25%, transparent);
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  color: var(--color-error);
+  word-break: break-word;
+}
+
+.rollback-modal__details {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  font-size: 0.8125rem;
+}
+
+.rollback-modal__details-summary {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  user-select: none;
+  background-color: var(--color-bg);
+}
+
+.rollback-modal__details-summary:hover {
+  color: var(--color-text);
+}
+
+.rollback-modal__details-content {
+  margin: 0;
+  padding: var(--spacing-sm);
+  background-color: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow: auto;
+  max-height: 200px;
+}
+
+.rollback-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
+}
+
+/* ============================================================
+   Cancel/secondary button style (plain, bordered)
+   ============================================================ */
+
+.btn--cancel {
+  background-color: transparent;
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.btn--cancel:hover:not(:disabled) {
+  background-color: var(--color-surface);
+  border-color: var(--color-text-secondary);
+}
+
 /* Responsive: stack on small screens */
 @media (max-width: 640px) {
   .skill-row {
