@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
 import type { ExtensionStatus, ExtensionKind, TrustOverride } from '@aquarium/shared';
@@ -21,6 +21,10 @@ interface CredentialConfigPanelProps {
   lockedVersion?: string | null;
   integrityHash?: string | null;
   trustOverride?: TrustOverride | null;
+  supportsOAuth?: boolean;
+  oauthProvider?: string;
+  requiresReAuth?: boolean;
+  vaultConfigured?: boolean;
 }
 
 function truncateHash(hash: string): string {
@@ -54,6 +58,10 @@ export function CredentialConfigPanel({
   lockedVersion,
   integrityHash,
   trustOverride,
+  supportsOAuth,
+  oauthProvider,
+  requiresReAuth,
+  vaultConfigured,
 }: CredentialConfigPanelProps) {
   const { t } = useTranslation();
   const [field, setField] = useState('');
@@ -70,20 +78,72 @@ export function CredentialConfigPanel({
   const [upgradeError, setUpgradeError] = useState<string | null>(null);
   const [upgradedVersion, setUpgradedVersion] = useState<string | null>(null);
 
+  // OAuth flow state
+  const [oauthConnecting, setOauthConnecting] = useState(false);
+  const [oauthConnected, setOauthConnected] = useState(false);
+  const [oauthError, setOauthError] = useState<string | null>(null);
+
+  // Credential source state
+  const [credentialSource, setCredentialSource] = useState<'direct' | 'vault'>('direct');
+  const [vaultPath, setVaultPath] = useState('');
+
+  // Listen for postMessage from OAuth popup
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'oauth-callback' && event.data?.extensionId === extensionId) {
+        if (event.data.status === 'success') {
+          setOauthConnected(true);
+          setOauthConnecting(false);
+          onSaved();
+        } else {
+          setOauthError((event.data.error as string | undefined) || t('extensions.oauth.failed'));
+          setOauthConnecting(false);
+        }
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [extensionId, onSaved, t]);
+
+  const handleOAuthConnect = async () => {
+    setOauthConnecting(true);
+    setOauthError(null);
+    try {
+      const data = await api.post<{ authUrl: string; state: string }>(
+        `/instances/${instanceId}/oauth-proxy/initiate`,
+        { extensionId, extensionKind, provider: oauthProvider }
+      );
+      const popup = window.open(data.authUrl, 'oauth-popup', 'width=600,height=700');
+      if (!popup) {
+        setOauthError(t('extensions.oauth.popupBlocked'));
+        setOauthConnecting(false);
+      }
+    } catch (err) {
+      setOauthError(err instanceof Error ? err.message : t('extensions.oauth.failed'));
+      setOauthConnecting(false);
+    }
+  };
+
   const handleSave = async () => {
-    if (!field.trim() || !value.trim()) return;
+    if (credentialSource === 'direct' && (!field.trim() || !value.trim())) return;
+    if (credentialSource === 'vault' && (!field.trim() || !vaultPath.trim())) return;
     setSaving(true);
     setError(null);
     setSuccess(false);
     try {
-      await api.post(`/instances/${instanceId}/extension-credentials`, {
+      const body: Record<string, unknown> = {
         provider: extensionId,
         credentialType: 'api_key',
-        value,
+        value: credentialSource === 'vault' ? 'VAULT_REFERENCE' : value,
         extensionKind,
         extensionId,
         targetField: field,
-      });
+      };
+      if (credentialSource === 'vault') {
+        body.source = 'vault';
+        body.vaultPath = vaultPath;
+      }
+      await api.post(`/instances/${instanceId}/extension-credentials`, body);
       setSuccess(true);
       onSaved();
     } catch (err) {
@@ -142,6 +202,12 @@ export function CredentialConfigPanel({
 
   const displayVersion = upgradedVersion ?? lockedVersion;
 
+  const isSaveDisabled = disabled || saving || (
+    credentialSource === 'direct'
+      ? !field.trim() || !value.trim()
+      : !field.trim() || !vaultPath.trim()
+  );
+
   return (
     <div className="credential-panel" role="region" aria-label={t('extensions.credentials.title')}>
       <div className="credential-panel__header">
@@ -157,6 +223,13 @@ export function CredentialConfigPanel({
           &times;
         </button>
       </div>
+
+      {/* requiresReAuth banner — shown when extension imported from template needs re-auth */}
+      {requiresReAuth && !oauthConnected && (
+        <div className="credential-panel__reauth-banner">
+          <span>{t('extensions.oauth.requiresReAuth')}</span>
+        </div>
+      )}
 
       {/* Version info section — only shown when extension has a locked/pinned version */}
       {displayVersion != null && (
@@ -247,10 +320,77 @@ export function CredentialConfigPanel({
         </div>
       )}
 
-      {status === 'installed' && (
+      {status === 'installed' && !supportsOAuth && (
         <p className="credential-panel__hint">
           {t('extensions.credentials.requiresCredentials')}
         </p>
+      )}
+
+      {/* OAuth connect section — shown when extension supports OAuth */}
+      {supportsOAuth && (
+        <div className="credential-panel__oauth">
+          {oauthConnected ? (
+            <div className="credential-panel__oauth-success">
+              <span className="credential-panel__oauth-check">&#10003;</span>
+              <span>{t('extensions.oauth.connected', { provider: oauthProvider ?? extensionId })}</span>
+            </div>
+          ) : (
+            <>
+              <button
+                className="btn btn--primary btn--sm credential-panel__oauth-btn"
+                onClick={() => void handleOAuthConnect()}
+                disabled={disabled || oauthConnecting}
+              >
+                {oauthConnecting
+                  ? t('extensions.oauth.connecting')
+                  : t('extensions.oauth.connectWith', { provider: oauthProvider ?? extensionId })}
+              </button>
+              {oauthError && (
+                <div className="credential-panel__oauth-error">
+                  <span role="alert">{oauthError}</span>
+                  <button
+                    className="btn btn--sm btn--cancel"
+                    onClick={() => { setOauthError(null); void handleOAuthConnect(); }}
+                    disabled={disabled}
+                  >
+                    {t('extensions.oauth.tryAgain')}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Credential source toggle — only shown when vault is configured */}
+      {vaultConfigured && (
+        <div className="credential-panel__source">
+          <span className="credential-panel__label">{t('extensions.credentials.source')}</span>
+          <div className="credential-panel__source-options">
+            <label className="credential-panel__source-option">
+              <input
+                type="radio"
+                name={`cred-source-${extensionId}`}
+                value="direct"
+                checked={credentialSource === 'direct'}
+                onChange={() => setCredentialSource('direct')}
+                disabled={disabled || saving}
+              />
+              {t('extensions.credentials.sourceDirect')}
+            </label>
+            <label className="credential-panel__source-option">
+              <input
+                type="radio"
+                name={`cred-source-${extensionId}`}
+                value="vault"
+                checked={credentialSource === 'vault'}
+                onChange={() => setCredentialSource('vault')}
+                disabled={disabled || saving}
+              />
+              {t('extensions.credentials.sourceVault')}
+            </label>
+          </div>
+        </div>
       )}
 
       <div className="credential-panel__form">
@@ -269,20 +409,37 @@ export function CredentialConfigPanel({
           />
         </div>
 
-        <div className="credential-panel__field">
-          <label htmlFor={`cred-value-${extensionId}`} className="credential-panel__label">
-            {t('extensions.credentials.valueLabel')}
-          </label>
-          <input
-            id={`cred-value-${extensionId}`}
-            type="password"
-            className="credential-panel__input"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder="sk-..."
-            disabled={disabled || saving}
-          />
-        </div>
+        {credentialSource === 'direct' ? (
+          <div className="credential-panel__field">
+            <label htmlFor={`cred-value-${extensionId}`} className="credential-panel__label">
+              {t('extensions.credentials.valueLabel')}
+            </label>
+            <input
+              id={`cred-value-${extensionId}`}
+              type="password"
+              className="credential-panel__input"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="sk-..."
+              disabled={disabled || saving}
+            />
+          </div>
+        ) : (
+          <div className="credential-panel__field">
+            <label htmlFor={`cred-vault-path-${extensionId}`} className="credential-panel__label">
+              {t('extensions.credentials.vaultPath')}
+            </label>
+            <input
+              id={`cred-vault-path-${extensionId}`}
+              type="text"
+              className="credential-panel__input"
+              value={vaultPath}
+              onChange={(e) => setVaultPath(e.target.value)}
+              placeholder={t('extensions.credentials.vaultPathPlaceholderHc')}
+              disabled={disabled || saving}
+            />
+          </div>
+        )}
       </div>
 
       {error && (
@@ -296,7 +453,7 @@ export function CredentialConfigPanel({
         <button
           className="btn btn--primary btn--sm"
           onClick={() => void handleSave()}
-          disabled={disabled || saving || !field.trim() || !value.trim()}
+          disabled={isSaveDisabled}
         >
           {saving ? t('extensions.credentials.saving') : t('extensions.credentials.save')}
         </button>

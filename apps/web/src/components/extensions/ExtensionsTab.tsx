@@ -106,6 +106,9 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
   // Trust override dialog state
   const [overrideTarget, setOverrideTarget] = useState<{ id: string; kind: ExtensionKind; name: string } | null>(null);
 
+  // Vault config state
+  const [vaultConfigured, setVaultConfigured] = useState(false);
+
   // Shared state
   const [error, setError] = useState<string | null>(null);
   const [configuringExtension, setConfiguringExtension] = useState<ConfiguringExtension | null>(null);
@@ -183,6 +186,12 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
   useEffect(() => {
     void fetchPluginData();
   }, [fetchPluginData]);
+
+  useEffect(() => {
+    api.get<{ vaultConfig: unknown }>(`/instances/${instanceId}/vault-config`)
+      .then(data => setVaultConfigured(data.vaultConfig != null))
+      .catch(() => setVaultConfigured(false));
+  }, [instanceId]);
 
   // Load more handlers for ClawHub pagination
   const handleLoadMorePlugins = useCallback(async () => {
@@ -603,6 +612,9 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
                         lockedVersion={plugin.lockedVersion}
                         integrityHash={plugin.integrityHash}
                         trustOverride={plugin.trustOverride ?? null}
+                        supportsOAuth={pluginCatalog.find(e => e.id === plugin.pluginId)?.requiredCredentials?.some(c => c.type === 'oauth_token') ?? false}
+                        oauthProvider={pluginCatalog.find(e => e.id === plugin.pluginId)?.requiredCredentials?.find(c => c.type === 'oauth_token')?.field}
+                        vaultConfigured={vaultConfigured}
                       />
                     )}
                   </div>
@@ -758,6 +770,9 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
                         lockedVersion={skill.lockedVersion}
                         integrityHash={skill.integrityHash}
                         trustOverride={skill.trustOverride ?? null}
+                        supportsOAuth={catalog.find(e => e.slug === skill.skillId || e.id === skill.skillId)?.requiredCredentials?.some(c => c.type === 'oauth_token') ?? false}
+                        oauthProvider={catalog.find(e => e.slug === skill.skillId || e.id === skill.skillId)?.requiredCredentials?.find(c => c.type === 'oauth_token')?.field}
+                        vaultConfigured={vaultConfigured}
                       />
                     )}
                   </div>
