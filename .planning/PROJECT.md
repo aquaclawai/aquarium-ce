@@ -8,18 +8,18 @@ A self-hosted AI agent management platform (Aquarium CE) that manages OpenClaw g
 
 Users can discover and activate extensions for their AI agent instances without leaving the dashboard, with credentials encrypted at rest and untrusted code blocked by default.
 
-## Current Milestone: v1.2 Gateway Simplification & Plugin Fixes
+## Current Milestone: v1.3 Gateway Communication Overhaul
 
-**Goal:** Remove redundant CE-specific workarounds now that the official OpenClaw gateway supports them natively, and fix plugin/extension bugs found during v1.1 testing.
+**Goal:** Redesign platform ↔ gateway communication so the gateway is the source of truth when containers are running, replacing the current DB-first pattern with gateway-first operations and event-driven state sync.
 
 **Target features:**
-- Remove TCP proxy injection — use native `gateway.bind: lan`
-- Remove conflicting RPC methods from platform-bridge plugin (skills.install/uninstall conflict with native)
-- Fix empty Available catalog after gateway restart (plugin loading failure)
-- Fix plugins.install handler causing gateway config corruption
-- Backend graceful degradation for unsupported RPC methods
-- Frontend response shape and source format fixes for Extensions tab
-- Simplify custom Docker entrypoint
+- Route all RPC calls through the persistent WebSocket connection (eliminate ephemeral connections)
+- Event-driven DB sync — listen to gateway events to update DB state
+- Gateway-first config updates — operate on gateway, sync DB on success
+- Hot-reload extensions via config.patch instead of full container restarts
+- Eliminate config file rewrites for running instances (only seed on creation)
+- Fix config integrity check to stop fighting gateway normalization
+- Add gateway-level health checks alongside Docker container status polling
 
 ## Requirements
 
@@ -82,4 +82,4 @@ Users can discover and activate extensions for their AI agent instances without 
 | 3-phase startup with reconcile-before-replay | Crash-recovered extensions checked before blind reinstall | — Pending |
 
 ---
-*Last updated: 2026-04-04 after v1.2 milestone initialization*
+*Last updated: 2026-04-05 after v1.3 milestone initialization*
