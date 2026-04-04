@@ -1,3 +1,4 @@
+// For OAuth-type credentials, see oauth-proxy.ts which handles browser redirect flow.
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { getInstance } from '../services/instance-manager.js';
@@ -35,6 +36,8 @@ router.post('/:id/extension-credentials', async (req, res) => {
     extensionKind,
     extensionId,
     targetField,
+    source,     // optional: 'vault' when credential comes from vault
+    vaultPath,  // optional: vault path/key when source is 'vault'
   } = req.body as {
     provider: unknown;
     credentialType: unknown;
@@ -42,6 +45,8 @@ router.post('/:id/extension-credentials', async (req, res) => {
     extensionKind: unknown;
     extensionId: unknown;
     targetField: unknown;
+    source: unknown;
+    vaultPath: unknown;
   };
 
   if (!provider || typeof provider !== 'string') {
@@ -66,6 +71,14 @@ router.post('/:id/extension-credentials', async (req, res) => {
   }
   if (!targetField || typeof targetField !== 'string') {
     res.status(400).json({ ok: false, error: 'Missing or invalid targetField' } satisfies ApiResponse);
+    return;
+  }
+  if (source !== undefined && source !== 'vault') {
+    res.status(400).json({ ok: false, error: 'Invalid source — must be "vault" if provided' } satisfies ApiResponse);
+    return;
+  }
+  if (source === 'vault' && (typeof vaultPath !== 'string' || vaultPath.length === 0)) {
+    res.status(400).json({ ok: false, error: 'vaultPath is required when source is "vault"' } satisfies ApiResponse);
     return;
   }
 
@@ -94,16 +107,22 @@ router.post('/:id/extension-credentials', async (req, res) => {
 
   try {
     // 1. Encrypt and persist the credential bound to this extension
+    const credentialMetadata: Record<string, unknown> = {
+      extensionKind: validatedKind,
+      extensionId: validatedExtensionId,
+      targetField: validatedTargetField,
+    };
+    // Persist vault source/vaultPath so adapter.ts seedConfig can resolve vault references
+    if (source === 'vault' && typeof vaultPath === 'string' && vaultPath.length > 0) {
+      credentialMetadata.source = 'vault';
+      credentialMetadata.vaultPath = vaultPath;
+    }
     await addCredential(
       instanceId,
       validatedProvider,
       validatedCredentialType,
       validatedValue,
-      {
-        extensionKind: validatedKind,
-        extensionId: validatedExtensionId,
-        targetField: validatedTargetField,
-      },
+      credentialMetadata,
     );
 
     // 2. Build the SecretRef payload and config.patch path

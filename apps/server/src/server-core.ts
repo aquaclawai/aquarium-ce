@@ -40,6 +40,7 @@ import notificationsRoutes from './routes/notifications.js';
 import skillRoutes from './routes/skills.js';
 import pluginRoutes from './routes/plugins.js';
 import extensionCredentialRoutes from './routes/extension-credentials.js';
+import oauthProxyRoutes from './routes/oauth-proxy.js';
 import trustOverrideRoutes from './routes/trust-overrides.js';
 import execApprovalRoutes from './routes/exec-approval.js';
 import securityRoutes from './routes/security.js';
@@ -161,6 +162,7 @@ export function createApp(options: CreateAppOptions = {}): { app: express.Applic
   app.use('/api/instances', skillRoutes);
   app.use('/api/instances', pluginRoutes);
   app.use('/api/instances', extensionCredentialRoutes);
+  app.use('/api/instances', oauthProxyRoutes);
   app.use('/api/instances', trustOverrideRoutes);
   app.use('/api/instances', execApprovalRoutes);
   app.use('/api', securityRoutes);
