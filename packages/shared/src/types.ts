@@ -650,6 +650,7 @@ export interface TemplateExtensionDeclaration {
   integrityHash: string | null;
   enabled: boolean;
   needsCredentials: boolean;
+  requiresReAuth?: boolean;   // extension uses OAuth credentials that cannot be exported
   config?: Record<string, unknown>;
 }
 

@@ -612,32 +612,65 @@ export async function exportFromInstance(
     .where({ instance_id: instanceId })
     .whereIn('status', EXPORTABLE_STATUSES);
 
+  // Build a Set of extension IDs that have OAuth credentials (oauth_token sentinel rows).
+  // These rows are written by oauth-proxy.ts callback after successful token exchange.
+  // Without this detection, requiresReAuth would never be set on export.
+  const instanceCreds = await db('instance_credentials')
+    .where({ instance_id: instanceId })
+    .select('provider', 'credential_type', 'metadata');
+
+  const oauthExtensionIds = new Set<string>();
+  for (const cred of instanceCreds) {
+    if (cred.credential_type === 'oauth_token') {
+      const meta = typeof cred.metadata === 'string'
+        ? JSON.parse(cred.metadata) as Record<string, unknown>
+        : ((cred.metadata as Record<string, unknown>) ?? {});
+      if (meta.extensionId && typeof meta.extensionId === 'string') {
+        oauthExtensionIds.add(meta.extensionId);
+      }
+      // Also add by provider name as fallback (provider may match extensionId for extension-scoped creds)
+      if (typeof cred.provider === 'string') {
+        oauthExtensionIds.add(cred.provider);
+      }
+    }
+  }
+
   if (pluginRows.length > 0 || skillRows.length > 0) {
     for (const row of pluginRows) {
       const status = row.status as ExtensionStatus;
+      const pluginId = row.plugin_id as string;
+      const isOAuth = oauthExtensionIds.has(pluginId);
+      const baseConfig = parseJsonb<Record<string, unknown>>(row.config, {});
       extensions.push({
-        id: row.plugin_id as string,
+        id: pluginId,
         kind: 'plugin',
         source: parseJsonb<TemplateExtensionDeclaration['source']>(row.source, { type: 'bundled' }),
         lockedVersion: (row.locked_version as string | null) ?? null,
         integrityHash: (row.integrity_hash as string | null) ?? null,
         enabled: status !== 'disabled',
-        needsCredentials: status === 'installed',
-        config: parseJsonb<Record<string, unknown>>(row.config, {}),
+        needsCredentials: isOAuth ? true : status === 'installed',
+        ...(isOAuth ? { requiresReAuth: true } : {}),
+        // For OAuth extensions, clear any OAuth-specific config to prevent token leakage
+        config: isOAuth ? {} : baseConfig,
       });
     }
 
     for (const row of skillRows) {
       const status = row.status as ExtensionStatus;
+      const skillId = row.skill_id as string;
+      const isOAuth = oauthExtensionIds.has(skillId);
+      const baseConfig = parseJsonb<Record<string, unknown>>(row.config, {});
       extensions.push({
-        id: row.skill_id as string,
+        id: skillId,
         kind: 'skill',
         source: parseJsonb<TemplateExtensionDeclaration['source']>(row.source, { type: 'bundled' }),
         lockedVersion: (row.locked_version as string | null) ?? null,
         integrityHash: (row.integrity_hash as string | null) ?? null,
         enabled: status !== 'disabled',
-        needsCredentials: status === 'installed',
-        config: parseJsonb<Record<string, unknown>>(row.config, {}),
+        needsCredentials: isOAuth ? true : status === 'installed',
+        ...(isOAuth ? { requiresReAuth: true } : {}),
+        // For OAuth extensions, clear any OAuth-specific config to prevent token leakage
+        config: isOAuth ? {} : baseConfig,
       });
     }
   } else {
@@ -1057,7 +1090,13 @@ export async function instantiateTemplate(
     }
 
     // evaluation.decision === 'allow' → insert lifecycle row
+    // If requiresReAuth=true, force 'installed' status so the extension waits
+    // for user re-authentication via OAuth before being loaded by seedConfig.
     const now = new Date().toISOString();
+    const initialStatus = ext.requiresReAuth
+      ? 'installed'
+      : (ext.enabled ? 'pending' : 'disabled');
+
     if (ext.kind === 'plugin') {
       await db('instance_plugins').insert({
         id: randomUUID(),
@@ -1068,7 +1107,7 @@ export async function instantiateTemplate(
         integrity_hash: ext.integrityHash,
         enabled: ext.enabled,
         config: JSON.stringify(ext.config ?? {}),
-        status: ext.enabled ? 'pending' : 'disabled',
+        status: initialStatus,
         installed_at: now,
         updated_at: now,
       });
@@ -1083,7 +1122,7 @@ export async function instantiateTemplate(
         integrity_hash: ext.integrityHash,
         enabled: ext.enabled,
         config: JSON.stringify(ext.config ?? {}),
-        status: ext.enabled ? 'pending' : 'disabled',
+        status: initialStatus,
         installed_at: now,
         updated_at: now,
       });
