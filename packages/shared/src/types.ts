@@ -625,6 +625,21 @@ export interface InstantiateTemplateRequest {
 export interface InstantiateTemplateResponse {
   instance: Instance;
   credentialStatus: Record<string, 'provided' | 'from_vault' | 'missing'>;
+  /** Extensions that were blocked by trust policy and omitted from the instance */
+  blockedExtensions?: Array<{
+    id: string;
+    kind: ExtensionKind;
+    reason: string;
+  }>;
+  /** Extensions that require fresh admin trust override before they can be installed */
+  requiresTrustOverride?: Array<{
+    id: string;
+    kind: ExtensionKind;
+    source: PluginSource | ExtensionSkillSource;
+    reason: string;
+  }>;
+  /** Count of extensions successfully inserted as lifecycle rows */
+  extensionsImported?: number;
 }
 
 export interface TemplateExtensionDeclaration {
