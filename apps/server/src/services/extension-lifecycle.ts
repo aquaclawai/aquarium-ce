@@ -2,7 +2,8 @@ import { db } from '../db/index.js';
 import { GatewayRPCClient } from '../agent-types/openclaw/gateway-rpc.js';
 import { cleanupOrphanedOperations } from './extension-lock.js';
 import { getSkillsForInstance, updateSkillStatus } from './skill-store.js';
-import type { InstanceSkill } from '@aquarium/shared';
+import { getPluginsForInstance, updatePluginStatus } from './plugin-store.js';
+import type { InstanceSkill, InstancePlugin } from '@aquarium/shared';
 
 // ─── RPC Response Types ───────────────────────────────────────────────────────
 
@@ -26,6 +27,27 @@ function isSkillsListResult(val: unknown): val is SkillsListResult {
   return true; // no skills key = empty list
 }
 
+interface GatewayPluginInfo {
+  pluginId: string;
+  id?: string; // some gateway versions use 'id' instead of 'pluginId'
+  status?: string;
+  [key: string]: unknown;
+}
+
+interface PluginsListResult {
+  plugins?: GatewayPluginInfo[];
+  [key: string]: unknown;
+}
+
+function isPluginsListResult(val: unknown): val is PluginsListResult {
+  if (typeof val !== 'object' || val === null) return false;
+  const obj = val as Record<string, unknown>;
+  if ('plugins' in obj) {
+    return Array.isArray(obj.plugins);
+  }
+  return true; // no plugins key = empty list
+}
+
 // ─── Exported Functions ───────────────────────────────────────────────────────
 
 /**
@@ -43,16 +65,30 @@ export async function recoverOrphanedOperations(): Promise<void> {
 
   // Count pending skills from other sessions — these will be reconciled in Phase 2
   // or replayed in Phase 3. We intentionally leave them as 'pending'.
-  const orphanedPending = await db('instance_skills')
+  const orphanedPendingSkills = await db('instance_skills')
     .whereNotNull('pending_owner')
     .where('status', 'pending')
     .count('* as cnt')
     .first() as Record<string, unknown> | undefined;
 
-  const orphanedPendingCount = Number(orphanedPending?.cnt ?? 0);
-  if (orphanedPendingCount > 0) {
+  const orphanedSkillCount = Number(orphanedPendingSkills?.cnt ?? 0);
+  if (orphanedSkillCount > 0) {
     console.log(
-      `[extension-lifecycle] Found ${orphanedPendingCount} pending extension(s) from previous sessions — will reconcile on instance boot`
+      `[extension-lifecycle] Found ${orphanedSkillCount} pending skill(s) from previous sessions — will reconcile on instance boot`
+    );
+  }
+
+  // Count pending plugins from other sessions — same reconciliation pattern
+  const orphanedPendingPlugins = await db('instance_plugins')
+    .whereNotNull('pending_owner')
+    .where('status', 'pending')
+    .count('* as cnt')
+    .first() as Record<string, unknown> | undefined;
+
+  const orphanedPluginCount = Number(orphanedPendingPlugins?.cnt ?? 0);
+  if (orphanedPluginCount > 0) {
+    console.log(
+      `[extension-lifecycle] Found ${orphanedPluginCount} pending plugin(s) from previous sessions — will reconcile on instance boot`
     );
   }
 }
@@ -151,6 +187,92 @@ export async function reconcileExtensions(
     } else {
       // installed / disabled / failed — no reconciliation needed
       unchanged.push(skillId);
+    }
+  }
+
+  // ── Plugin reconciliation ──────────────────────────────────────────────────
+  // Fetch current gateway plugin state
+  const pluginRpc = new GatewayRPCClient(controlEndpoint, authToken);
+  let pluginRpcResult: unknown;
+  try {
+    pluginRpcResult = await pluginRpc.call('plugins.list', {}, 30_000);
+  } catch (pluginListErr: unknown) {
+    // plugins.list may not exist in older gateway versions — log and skip
+    console.warn(
+      `[extension-lifecycle] plugins.list RPC failed for ${instanceId} (gateway may not support it):`,
+      pluginListErr,
+    );
+    pluginRpcResult = undefined;
+  } finally {
+    pluginRpc.close();
+  }
+
+  if (pluginRpcResult !== undefined) {
+    if (!isPluginsListResult(pluginRpcResult)) {
+      console.warn(
+        `[extension-lifecycle] Unexpected plugins.list RPC response for ${instanceId}: ${JSON.stringify(pluginRpcResult)}`
+      );
+    } else {
+      // Build gateway plugins map: pluginId -> gatewayPluginInfo
+      const gatewayPlugins = new Map<string, GatewayPluginInfo>();
+      for (const plugin of pluginRpcResult.plugins ?? []) {
+        // Gateway may return 'id' or 'pluginId'
+        const id = plugin.pluginId ?? plugin.id;
+        if (id) {
+          gatewayPlugins.set(id as string, plugin);
+        }
+      }
+
+      // Fetch DB plugin state
+      const dbPlugins = await getPluginsForInstance(instanceId);
+
+      for (const dbPlugin of dbPlugins) {
+        const { pluginId, status } = dbPlugin;
+        const inGateway = gatewayPlugins.has(pluginId);
+
+        if (status === 'active' && inGateway) {
+          // Confirmed healthy — no change
+          unchanged.push(pluginId);
+        } else if (status === 'degraded' && inGateway) {
+          // Was degraded but recovered — promote to active
+          await updatePluginStatus(instanceId, pluginId, 'active');
+          promoted.push(pluginId);
+        } else if (status === 'active' && !inGateway) {
+          // Active in DB but missing from gateway — mark failed
+          await updatePluginStatus(
+            instanceId,
+            pluginId,
+            'failed',
+            'Plugin not found in gateway after restart',
+          );
+          demoted.push(pluginId);
+        } else if (status === 'degraded' && !inGateway) {
+          // Degraded in DB and still absent — mark failed
+          await updatePluginStatus(
+            instanceId,
+            pluginId,
+            'failed',
+            'Plugin not recovered after restart',
+          );
+          demoted.push(pluginId);
+        } else if (status === 'pending' && inGateway) {
+          // Install completed before the crash — promote to active and clear pending_owner
+          await db('instance_plugins')
+            .where({ instance_id: instanceId, plugin_id: pluginId })
+            .update({
+              status: 'active',
+              pending_owner: null,
+              updated_at: db.fn.now(),
+            });
+          promoted.push(pluginId);
+        } else if (status === 'pending' && !inGateway) {
+          // Install was in-flight when server crashed — leave pending for Phase 3 replay
+          unchanged.push(pluginId);
+        } else {
+          // installed / disabled / failed — no reconciliation needed
+          unchanged.push(pluginId);
+        }
+      }
     }
   }
 

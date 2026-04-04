@@ -1,8 +1,10 @@
 import type { AgentTypeAdapter, ConfigFileCategories } from '../types.js';
-import type { ToolPermissions, TemplateSecurityConfig } from '@aquarium/shared';
+import type { ToolPermissions, TemplateSecurityConfig, PluginSource } from '@aquarium/shared';
 import { DEFAULT_TOOL_PERMISSIONS } from '@aquarium/shared';
 import { GatewayRPCClient } from './gateway-rpc.js';
 import { getGatewayClient, connectGateway } from '../../services/gateway-event-relay.js';
+import { db } from '../../db/index.js';
+import { getAdapter } from '../../db/adapter.js';
 
 /** Recursively deep-merge source into target (objects only; arrays are replaced). */
 function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
@@ -533,10 +535,38 @@ export const openclawAdapter: AgentTypeAdapter = {
       },
     };
 
+    // Managed plugins from extension management (Phase 2)
+    // Include active and degraded plugins in seedConfig — degraded may still work from cache
+    const dbAdapter = getAdapter();
+    const managedPlugins = await db('instance_plugins')
+      .where({ instance_id: instance.id })
+      .whereIn('status', ['active', 'degraded'])
+      .select('plugin_id', 'source', 'config', 'enabled') as Array<Record<string, unknown>>;
+
+    for (const mp of managedPlugins) {
+      const pluginId = mp.plugin_id as string;
+      const pluginConfig = dbAdapter.parseJson<Record<string, unknown>>(mp.config);
+      // Only include if enabled (active plugins should always be enabled, but check)
+      if (mp.enabled) {
+        pluginEntries[pluginId] = { enabled: true, ...pluginConfig };
+      }
+    }
+
+    // Build dynamic load.paths: platform-bridge (always) + npm-installed managed plugins
+    const loadPaths: string[] = ['/opt/openclaw-plugins/platform-bridge'];
+    for (const mp of managedPlugins) {
+      const pluginId = mp.plugin_id as string;
+      const pluginSource = dbAdapter.parseJson<PluginSource>(mp.source);
+      // Non-bundled plugins are installed via npm to a plugin-specific path
+      if (pluginSource && pluginSource.type !== 'bundled') {
+        loadPaths.push(`/home/node/.openclaw/plugins/${pluginId}`);
+      }
+    }
+
     // OpenClaw schema: plugins.entries is Record<id, {enabled, config}>, load.paths for external
     const pluginsCfg: Record<string, unknown> = {
       entries: pluginEntries,
-      load: { paths: ['/opt/openclaw-plugins/platform-bridge'] },
+      load: { paths: loadPaths },
     };
     cfg.plugins = pluginsCfg;
 
@@ -558,9 +588,13 @@ export const openclawAdapter: AgentTypeAdapter = {
     }
     // Preserve load.paths after security deep-merge (security config may overwrite it)
     if (!(finalPlugins.load as Record<string, unknown> | undefined)?.paths) {
-      finalPlugins.load = { paths: ['/opt/openclaw-plugins/platform-bridge'] };
+      finalPlugins.load = { paths: loadPaths };
     }
     cfg.skills = securityCfg.skills;
+
+    // PLUG-10: Disable chat-based plugin management for managed instances
+    // The dashboard is the single writer for extension state — prevents state divergence
+    cfg.commands = { ...(cfg.commands as Record<string, unknown> || {}), plugins: false };
 
     // SecretRef: when the Gateway image supports it, inject a secrets provider
     // so that keyRef/tokenRef entries in auth-profiles.json can resolve env vars.
