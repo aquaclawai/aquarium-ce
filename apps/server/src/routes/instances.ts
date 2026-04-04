@@ -16,7 +16,8 @@ import {
   updateSecurityProfile,
 } from '../services/instance-manager.js';
 import { getRuntimeEngine } from '../runtime/factory.js';
-import type { ApiResponse, Instance, InstancePublic, CreateInstanceRequest, CredentialRequirement, SecurityProfile } from '@aquarium/shared';
+import { getInstanceModels } from '../services/instance-models.js';
+import type { ApiResponse, Instance, InstancePublic, CreateInstanceRequest, CredentialRequirement, SecurityProfile, InstanceModelsResponse } from '@aquarium/shared';
 
 const router = Router();
 router.use(requireAuth);
@@ -459,6 +460,29 @@ router.put('/:id/avatar', async (req, res) => {
 
     const updated = await getInstance(req.params.id, req.auth!.userId);
     res.json({ ok: true, data: updated ?? undefined } satisfies ApiResponse<Instance>);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ ok: false, error: message } satisfies ApiResponse);
+  }
+});
+
+// --- Instance models (gateway catalog + credential status) ---
+
+router.get('/:id/models', async (req, res) => {
+  try {
+    const instance = await getInstance(req.params.id, req.auth!.userId);
+    if (!instance) {
+      res.status(404).json({ ok: false, error: 'Instance not found' } satisfies ApiResponse);
+      return;
+    }
+
+    if (instance.status !== 'running' || !instance.controlEndpoint) {
+      res.status(400).json({ ok: false, error: 'Instance is not running' } satisfies ApiResponse);
+      return;
+    }
+
+    const data = await getInstanceModels(instance);
+    res.json({ ok: true, data } satisfies ApiResponse<InstanceModelsResponse>);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ ok: false, error: message } satisfies ApiResponse);

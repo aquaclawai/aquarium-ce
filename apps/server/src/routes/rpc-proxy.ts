@@ -23,6 +23,7 @@ const ALLOWED_RPC_METHODS = new Set([
   'health',
   'exec.approval.resolve',
   'logs.tail',
+  'models.list',
 ]);
 
 const router = Router();

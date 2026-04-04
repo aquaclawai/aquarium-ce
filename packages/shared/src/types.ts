@@ -9,6 +9,23 @@ export type UserRole = 'admin' | 'user' | 'viewer';
 export type ModelMode = 'auto' | 'specific';
 export type ChatErrorCategory = 'timeout' | 'auth' | 'quota' | 'model' | 'gateway' | 'unknown';
 
+/** A model returned by the gateway, enriched with credential status. */
+export interface GatewayModel {
+  id: string;
+  name: string;
+  provider: string;
+  contextWindow?: number;
+  reasoning?: boolean;
+  /** Whether the instance has a credential configured for this model's provider. */
+  usable: boolean;
+}
+
+/** Response shape for GET /instances/:id/models. */
+export interface InstanceModelsResponse {
+  models: GatewayModel[];
+  configuredProviders: string[];
+}
+
 /** Attachment sent with a chat message (image only, base64-encoded). */
 export interface ChatAttachment {
   type: 'image' | 'file';

@@ -4,7 +4,7 @@ import { useWebSocket } from '../../context/WebSocketContext.js';
 import { rpc } from '../../utils/rpc.js';
 import { api } from '../../api.js';
 import { MessageRenderer } from './MessageRenderer.js';
-import { MODEL_SUGGESTIONS } from '../../constants/models.js';
+import { useInstanceModels } from '../../hooks/useInstanceModels';
 import { SessionDrawer } from './SessionDrawer.js';
 import type { Instance, WsMessage } from '@aquarium/shared';
 import { isImageMime, ALLOWED_ATTACHMENT_TYPES, MAX_FILE_UPLOAD_SIZE, FILE_INPUT_ACCEPT } from '@aquarium/shared';
@@ -413,7 +413,7 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
   const [sessionThinking, setSessionThinking] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
 
-  const allModelSuggestions = Object.values(MODEL_SUGGESTIONS).flat();
+  const { models: gatewayModels, loading: modelsLoading } = useInstanceModels(instanceId, instanceStatus);
 
   useEffect(() => {
     if (!showSettings) return;
@@ -616,11 +616,19 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
               type="text"
               value={sessionModel}
               onChange={e => setSessionModel(e.target.value)}
-              placeholder={t('chat.sessionSettings.modelPlaceholder')}
+              placeholder={modelsLoading ? t('common.loading') : t('chat.sessionSettings.modelPlaceholder')}
               list="model-suggestions"
             />
             <datalist id="model-suggestions">
-              {allModelSuggestions.map(m => <option key={m} value={m} />)}
+              {[...gatewayModels]
+                .sort((a, b) => (a.usable === b.usable ? 0 : a.usable ? -1 : 1))
+                .map(m => (
+                  <option
+                    key={m.id}
+                    value={m.id}
+                    label={m.provider ? `${m.name} · ${m.provider}${m.usable ? '' : ' (no key)'}` : m.name}
+                  />
+                ))}
             </datalist>
           </div>
           <div className="chat-settings-field">
