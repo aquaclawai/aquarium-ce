@@ -86,7 +86,7 @@ Plans:
   2. A template export with local skills that contain scripts/ or assets/ directories is rejected with a clear error
   3. Importing a template re-evaluates each extension's trust against ClawHub — blocked extensions are skipped with a warning rather than silently imported
   4. The platform uses 3-phase startup: loads active config first, then reconciles boot state, then replays pending installs
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] 04-01-PLAN.md — Template export: extension lifecycle table reads, config scrubbing, workspace allowlist + secret scanning, local skill rejection
@@ -122,6 +122,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Skill Management | 7/7 | Complete   | 2026-04-04 | - |
 | 2. Plugin Management | v1.1 | 0/4 | Planning complete | - |
 | 3. ClawHub & Trust Policy | 5/5 | Complete   | 2026-04-04 | - |
-| 4. Template Portability | v1.1 | 0/3 | Planning complete | - |
+| 4. Template Portability | 1/3 | In Progress|  | - |
 | 5. OAuth & Advanced Auth | v1.1 | 0/TBD | Not started | - |
 | 6. Offline Resilience | v1.1 | 0/TBD | Not started | - |

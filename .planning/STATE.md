@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: Phase 4 context gathered
-last_updated: "2026-04-04T04:37:36.539Z"
+stopped_at: Completed 04-template-portability-04-02-PLAN.md
+last_updated: "2026-04-04T05:00:36.930Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 17
-  completed_plans: 17
+  total_plans: 20
+  completed_plans: 18
   percent: 0
 ---
 
@@ -66,6 +66,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03-clawhub-trust-policy P04 | 15 | 2 tasks | 11 files |
 | Phase 03-clawhub-trust-policy P05 | 5 | 2 tasks | 9 files |
 | Phase 03-clawhub-trust-policy P06 | 3 | 1 tasks | 2 files |
+| Phase 04-template-portability P02 | 10 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,8 @@ Recent decisions affecting current work:
 - [Phase 03-clawhub-trust-policy]: Truncated hash shown as sha512-{first16}...{last8} for compact readability in configure panel
 - [Phase 03-clawhub-trust-policy]: Two-step upgrade dryRun flow: Check for Updates queries version without side effects, Upgrade button commits
 - [Phase 03-clawhub-trust-policy]: No new handler needed for skill override: handleRequestOverride already supports kind='skill' and searches availableCatalog
+- [Phase 04-template-portability]: getPendingExtensionsForReplay kept as deprecated backward-compat wrapper delegating to getPendingExtensions
+- [Phase 04-template-portability]: Phase 3 replay in startInstanceAsync uses non-blocking try/catch per extension — individual failures never propagate to instance startup error
 
 ### Pending Todos
 
@@ -130,6 +133,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T04:37:36.533Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-template-portability/04-CONTEXT.md
+Last session: 2026-04-04T05:00:36.928Z
+Stopped at: Completed 04-template-portability-04-02-PLAN.md
+Resume file: None
