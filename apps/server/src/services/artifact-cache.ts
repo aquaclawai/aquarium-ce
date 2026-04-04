@@ -70,11 +70,11 @@ export async function cacheArtifact(
 ): Promise<void> {
   try {
     const engine = getRuntimeEngine(deploymentTarget);
-    const exec = engine.exec;
-    if (!exec) {
+    if (!engine.exec) {
       console.warn(`[artifact-cache] exec not supported by ${deploymentTarget} engine — skipping cache for ${kind} ${extensionId}@${version}`);
       return;
     }
+    const exec = engine.exec.bind(engine);
 
     if (kind === 'plugin') {
       const cacheDir = `${CACHE_BASE}/plugin/${extensionId}`;
