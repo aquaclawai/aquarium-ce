@@ -115,7 +115,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. After a plugin is successfully installed, its artifact is cached under ~/.openclaw/plugin-cache/
   2. When the gateway rebuilds after a restart, the platform prefers the cached artifact over the registry and only falls back to the registry if the cache is missing
-**Plans**: TBD
+**Plans:** 1 plan
+
+Plans:
+- [ ] 06-01-PLAN.md — Artifact cache service, cache-after-install in plugin/skill stores, cache-preferred replay, UI cached indicator, i18n
 
 ## Progress
 
@@ -129,4 +132,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. ClawHub & Trust Policy | 5/5 | Complete   | 2026-04-04 | - |
 | 4. Template Portability | 3/3 | Complete   | 2026-04-04 | - |
 | 5. OAuth & Advanced Auth | 4/4 | Complete   | 2026-04-04 | - |
-| 6. Offline Resilience | v1.1 | 0/TBD | Not started | - |
+| 6. Offline Resilience | v1.1 | 0/1 | Planning complete | - |
