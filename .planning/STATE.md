@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Gateway Simplification & Plugin Fixes
 status: executing
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-04-04T10:10:10.630Z"
-last_activity: 2026-04-04 -- Completed 07-01 (plugin method conflict fix)
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-04-04T10:08:56Z"
+last_activity: 2026-04-04 -- Completed 07-02 (plugin extension bug fixes)
 progress:
   total_phases: 8
   completed_phases: 7
@@ -26,22 +26,23 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 ## Current Position
 
 Phase: 7 of 8 (Plugin & Extension Fixes)
-Plan: 1 of 2 (Plugin Method Conflict Fix -- complete)
-Status: Executing
-Last activity: 2026-04-04 -- Completed 07-01 (plugin method conflict fix)
+Plan: 2 of 2 (Plugin Extension Bug Fixes -- complete)
+Status: Phase 7 complete
+Last activity: 2026-04-04 -- Completed 07-02 (plugin extension bug fixes)
 
-Progress: [██████████] 96%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
+- Total plans completed: 2
 - Average duration: 3min
-- Total execution time: 0.05 hours
+- Total execution time: 0.10 hours
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 07    | 01   | 3min     | 2     | 1     |
+| 07    | 02   | 3min     | 3     | 5     |
 
 *Updated after each plan completion*
 
@@ -62,6 +63,8 @@ v1.2 roadmap:
 - SIMP-02 and PLUGFIX-01 are same root cause (method name conflicts)
 - PLUGFIX-03, FRONT-01, FRONT-02, FRONT-03 already coded in working tree -- need clean commits
 - [Phase 07]: Removed 4 conflicting RPC methods from platform-bridge (skills.install, skills.uninstall, plugins.install, plugins.uninstall) -- kept list methods as read-only supplements
+- [Phase 07]: Log RPC failures as warnings and return empty lists rather than throwing 500 errors -- backward compatibility with older gateways
+- [Phase 07]: Use gateway native schema { source: 'clawhub', slug } for skills.install RPC instead of platform-specific params
 
 ### Pending Todos
 
@@ -73,6 +76,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T10:10:10.628Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-04-04T10:08:56Z
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None

@@ -94,13 +94,13 @@ Requirements for v1.2 Gateway Simplification & Plugin Fixes.
 
 - [x] **PLUGFIX-01**: Fix empty Available catalog after gateway restart -- resolve plugin loading failure caused by method name conflicts with native handlers
 - [x] **PLUGFIX-02**: Fix `plugins.install` handler causing gateway config corruption (adding non-existent plugin paths)
-- [ ] **PLUGFIX-03**: Backend graceful degradation for `skills.list` and `plugins.list` RPC when gateway doesn't support them (return empty instead of 500)
+- [x] **PLUGFIX-03**: Backend graceful degradation for `skills.list` and `plugins.list` RPC when gateway doesn't support them (return empty instead of 500)
 
 ### Frontend Fixes
 
-- [ ] **FRONT-01**: Fix Extensions tab response shape mismatch -- catalog endpoints return `{ catalog: [], hasMore }` but frontend expected flat array
-- [ ] **FRONT-02**: Fix install handlers sending `source: "clawhub"` (string) instead of `source: { type: "clawhub", spec: "..." }` (object)
-- [ ] **FRONT-03**: Fix skill install RPC params to match gateway's native schema (`{ source: "clawhub", slug }`)
+- [x] **FRONT-01**: Fix Extensions tab response shape mismatch -- catalog endpoints return `{ catalog: [], hasMore }` but frontend expected flat array
+- [x] **FRONT-02**: Fix install handlers sending `source: "clawhub"` (string) instead of `source: { type: "clawhub", spec: "..." }` (object)
+- [x] **FRONT-03**: Fix skill install RPC params to match gateway's native schema (`{ source: "clawhub", slug }`)
 
 ## v2 Requirements
 
@@ -185,10 +185,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SIMP-02 | Phase 7 | Complete |
 | PLUGFIX-01 | Phase 7 | Complete |
 | PLUGFIX-02 | Phase 7 | Complete |
-| PLUGFIX-03 | Phase 7 | Pending |
-| FRONT-01 | Phase 7 | Pending |
-| FRONT-02 | Phase 7 | Pending |
-| FRONT-03 | Phase 7 | Pending |
+| PLUGFIX-03 | Phase 7 | Complete |
+| FRONT-01 | Phase 7 | Complete |
+| FRONT-02 | Phase 7 | Complete |
+| FRONT-03 | Phase 7 | Complete |
 | SIMP-01 | Phase 8 | Pending |
 | SIMP-03 | Phase 8 | Pending |
 
