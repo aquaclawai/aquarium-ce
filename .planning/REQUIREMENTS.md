@@ -80,6 +80,28 @@ Requirements for Plugin & Skill Marketplace. Each maps to roadmap phases.
 - [x] **UI-06**: Dashboard alerts for failed/degraded extensions
 - [x] **UI-07**: All new UI strings added to 6 locale files (en, zh, fr, de, es, it)
 
+## v1.2 Requirements
+
+Requirements for v1.2 Gateway Simplification & Plugin Fixes.
+
+### Gateway Simplification
+
+- [ ] **SIMP-01**: Remove TCP proxy injection from Docker runtime — use native `gateway.bind: lan`
+- [ ] **SIMP-02**: Remove conflicting RPC methods from platform-bridge plugin (`skills.install`, `skills.uninstall`) that duplicate native gateway handlers
+- [ ] **SIMP-03**: Simplify custom Docker entrypoint to only inject platform-bridge plugin path, deferring directory/permission/config logic to official entrypoint
+
+### Plugin Bug Fixes
+
+- [ ] **PLUGFIX-01**: Fix empty Available catalog after gateway restart — resolve plugin loading failure caused by method name conflicts with native handlers
+- [ ] **PLUGFIX-02**: Fix `plugins.install` handler causing gateway config corruption (adding non-existent plugin paths)
+- [ ] **PLUGFIX-03**: Backend graceful degradation for `skills.list` and `plugins.list` RPC when gateway doesn't support them (return empty instead of 500)
+
+### Frontend Fixes
+
+- [ ] **FRONT-01**: Fix Extensions tab response shape mismatch — catalog endpoints return `{ catalog: [], hasMore }` but frontend expected flat array
+- [ ] **FRONT-02**: Fix install handlers sending `source: "clawhub"` (string) instead of `source: { type: "clawhub", spec: "..." }` (object)
+- [ ] **FRONT-03**: Fix skill install RPC params to match gateway's native schema (`{ source: "clawhub", slug }`)
+
 ## v2 Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -168,4 +190,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-04-03*
-*Last updated: 2026-04-04 after Phase 1 gap closure (Plan 01-07)*
+*Last updated: 2026-04-04 after v1.2 requirements definition*
