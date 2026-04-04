@@ -1141,7 +1141,22 @@
       "reasonPlaceholder": "¿Por qué apruebas esta extensión?",
       "approveOverride": "Aprobar",
       "overrideSuccess": "Anulación de confianza concedida",
-      "trustSummary": "Confianza"
+      "trustSummary": "Confianza",
+      "auditTrail": "Aprobado por el administrador {{userId}} el {{date}}: {{reason}}"
+    },
+    "version": {
+      "pinned": "Versión: {{version}} (fijada)",
+      "integrity": "Integridad: {{hash}}",
+      "integrityUnavailable": "Integridad: no disponible",
+      "checkForUpdates": "Buscar actualizaciones",
+      "checking": "Comprobando...",
+      "upToDate": "Actualizado",
+      "upgradeAvailable": "v{{current}} -> v{{latest}}",
+      "upgrade": "Actualizar",
+      "upgrading": "Actualizando...",
+      "upgradeSuccess": "Actualizado a v{{version}}",
+      "restartRequired": "Se requiere reiniciar la pasarela",
+      "upgradeFailed": "Error al actualizar"
     },
     "empty": {
       "noInstalled": "No hay habilidades instaladas",
@@ -1218,7 +1233,8 @@
     "alerts": {
       "failed": "{{name}} falló: {{error}}",
       "degraded": "{{name}} está degradado — puede que siga ejecutándose desde la caché",
-      "retry": "Reintentar"
+      "retry": "Reintentar",
+      "integrityMismatch": "Discrepancia de integridad detectada"
     }
   }
 }

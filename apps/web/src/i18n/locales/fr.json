@@ -1141,7 +1141,22 @@
       "reasonPlaceholder": "Pourquoi approuvez-vous cette extension ?",
       "approveOverride": "Approuver",
       "overrideSuccess": "Remplacement de confiance accordé",
-      "trustSummary": "Confiance"
+      "trustSummary": "Confiance",
+      "auditTrail": "Approuvé par l'administrateur {{userId}} le {{date}} : {{reason}}"
+    },
+    "version": {
+      "pinned": "Version : {{version}} (épinglée)",
+      "integrity": "Intégrité : {{hash}}",
+      "integrityUnavailable": "Intégrité : non disponible",
+      "checkForUpdates": "Vérifier les mises à jour",
+      "checking": "Vérification...",
+      "upToDate": "À jour",
+      "upgradeAvailable": "v{{current}} -> v{{latest}}",
+      "upgrade": "Mettre à jour",
+      "upgrading": "Mise à jour...",
+      "upgradeSuccess": "Mis à jour vers v{{version}}",
+      "restartRequired": "Redémarrage de la passerelle requis",
+      "upgradeFailed": "Échec de la mise à jour"
     },
     "empty": {
       "noInstalled": "Aucune compétence installée",
@@ -1218,7 +1233,8 @@
     "alerts": {
       "failed": "{{name}} a échoué : {{error}}",
       "degraded": "{{name}} est dégradé — il est peut-être encore en cours d'exécution depuis le cache",
-      "retry": "Réessayer"
+      "retry": "Réessayer",
+      "integrityMismatch": "Incohérence d'intégrité détectée"
     }
   }
 }

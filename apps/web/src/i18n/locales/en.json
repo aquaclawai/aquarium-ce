@@ -1823,7 +1823,22 @@
       "reasonPlaceholder": "Why are you approving this extension?",
       "approveOverride": "Approve",
       "overrideSuccess": "Trust override granted",
-      "trustSummary": "Trust"
+      "trustSummary": "Trust",
+      "auditTrail": "Admin-approved by {{userId}} on {{date}}: {{reason}}"
+    },
+    "version": {
+      "pinned": "Version: {{version}} (pinned)",
+      "integrity": "Integrity: {{hash}}",
+      "integrityUnavailable": "Integrity: not available",
+      "checkForUpdates": "Check for Updates",
+      "checking": "Checking...",
+      "upToDate": "Up to date",
+      "upgradeAvailable": "v{{current}} -> v{{latest}}",
+      "upgrade": "Upgrade",
+      "upgrading": "Upgrading...",
+      "upgradeSuccess": "Upgraded to v{{version}}",
+      "restartRequired": "Gateway restart required",
+      "upgradeFailed": "Upgrade failed"
     },
     "empty": {
       "noInstalled": "No skills installed",
@@ -1900,7 +1915,8 @@
     "alerts": {
       "failed": "{{name}} failed: {{error}}",
       "degraded": "{{name}} is degraded — may still be running from cache",
-      "retry": "Retry"
+      "retry": "Retry",
+      "integrityMismatch": "Integrity mismatch detected"
     }
   }
 }

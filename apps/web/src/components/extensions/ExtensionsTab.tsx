@@ -440,47 +440,57 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
   return (
     <div className="extensions-tab">
       {/* Alert banners for failed/degraded extensions */}
-      {alertSkills.map(skill => (
-        <div
-          key={skill.skillId}
-          className={`extension-alert extension-alert--${skill.status}`}
-          role="alert"
-        >
-          <span className="extension-alert__icon" aria-hidden="true">
-            {skill.status === 'failed' ? '✕' : '⚠'}
-          </span>
-          <span className="extension-alert__message">
-            {skill.status === 'failed'
-              ? t('extensions.alerts.failed', { name: skill.skillId, error: skill.errorMessage ?? '' })
-              : t('extensions.alerts.degraded', { name: skill.skillId })}
-          </span>
-          {skill.status === 'failed' && (
-            <button
-              className="btn btn--sm extension-alert__retry"
-              onClick={() => void api.post(`/instances/${instanceId}/skills/install`, { skillId: skill.skillId, source: 'bundled' }).then(() => void fetchSkillData())}
-            >
-              {t('extensions.alerts.retry')}
-            </button>
-          )}
-        </div>
-      ))}
+      {alertSkills.map(skill => {
+        const isIntegrityMismatch = skill.status === 'failed' && skill.errorMessage?.includes('Integrity mismatch');
+        return (
+          <div
+            key={skill.skillId}
+            className={`extension-alert extension-alert--${isIntegrityMismatch ? 'integrity' : skill.status}`}
+            role="alert"
+          >
+            <span className="extension-alert__icon" aria-hidden="true">
+              {isIntegrityMismatch ? '🛡' : skill.status === 'failed' ? '✕' : '⚠'}
+            </span>
+            <span className="extension-alert__message">
+              {isIntegrityMismatch
+                ? t('extensions.alerts.integrityMismatch') + `: ${skill.skillId}`
+                : skill.status === 'failed'
+                  ? t('extensions.alerts.failed', { name: skill.skillId, error: skill.errorMessage ?? '' })
+                  : t('extensions.alerts.degraded', { name: skill.skillId })}
+            </span>
+            {skill.status === 'failed' && !isIntegrityMismatch && (
+              <button
+                className="btn btn--sm extension-alert__retry"
+                onClick={() => void api.post(`/instances/${instanceId}/skills/install`, { skillId: skill.skillId, source: 'bundled' }).then(() => void fetchSkillData())}
+              >
+                {t('extensions.alerts.retry')}
+              </button>
+            )}
+          </div>
+        );
+      })}
 
-      {alertPlugins.map(plugin => (
-        <div
-          key={plugin.pluginId}
-          className={`extension-alert extension-alert--${plugin.status}`}
-          role="alert"
-        >
-          <span className="extension-alert__icon" aria-hidden="true">
-            {plugin.status === 'failed' ? '✕' : '⚠'}
-          </span>
-          <span className="extension-alert__message">
-            {plugin.status === 'failed'
-              ? t('extensions.alerts.failed', { name: plugin.pluginId, error: plugin.errorMessage ?? '' })
-              : t('extensions.alerts.degraded', { name: plugin.pluginId })}
-          </span>
-        </div>
-      ))}
+      {alertPlugins.map(plugin => {
+        const isIntegrityMismatch = plugin.status === 'failed' && plugin.errorMessage?.includes('Integrity mismatch');
+        return (
+          <div
+            key={plugin.pluginId}
+            className={`extension-alert extension-alert--${isIntegrityMismatch ? 'integrity' : plugin.status}`}
+            role="alert"
+          >
+            <span className="extension-alert__icon" aria-hidden="true">
+              {isIntegrityMismatch ? '🛡' : plugin.status === 'failed' ? '✕' : '⚠'}
+            </span>
+            <span className="extension-alert__message">
+              {isIntegrityMismatch
+                ? t('extensions.alerts.integrityMismatch') + `: ${plugin.pluginId}`
+                : plugin.status === 'failed'
+                  ? t('extensions.alerts.failed', { name: plugin.pluginId, error: plugin.errorMessage ?? '' })
+                  : t('extensions.alerts.degraded', { name: plugin.pluginId })}
+            </span>
+          </div>
+        );
+      })}
 
       {/* Restart banner — shown above header when gateway is restarting */}
       {restartingPlugin && (
@@ -590,6 +600,9 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
                         onClose={() => setConfiguringExtension(null)}
                         onSaved={() => { setConfiguringExtension(null); void fetchPluginData(); }}
                         disabled={mutationsDisabled}
+                        lockedVersion={plugin.lockedVersion}
+                        integrityHash={plugin.integrityHash}
+                        trustOverride={plugin.trustOverride ?? null}
                       />
                     )}
                   </div>
@@ -742,6 +755,9 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
                         onClose={() => setConfiguringExtension(null)}
                         onSaved={() => { setConfiguringExtension(null); void fetchSkillData(); }}
                         disabled={mutationsDisabled}
+                        lockedVersion={skill.lockedVersion}
+                        integrityHash={skill.integrityHash}
+                        trustOverride={skill.trustOverride ?? null}
                       />
                     )}
                   </div>

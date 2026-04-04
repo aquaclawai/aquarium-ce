@@ -1822,7 +1822,22 @@
       "reasonPlaceholder": "为什么批准此扩展？",
       "approveOverride": "批准",
       "overrideSuccess": "已授予信任覆盖",
-      "trustSummary": "信任"
+      "trustSummary": "信任",
+      "auditTrail": "由 {{userId}} 于 {{date}} 管理员批准：{{reason}}"
+    },
+    "version": {
+      "pinned": "版本：{{version}}（已固定）",
+      "integrity": "完整性：{{hash}}",
+      "integrityUnavailable": "完整性：不可用",
+      "checkForUpdates": "检查更新",
+      "checking": "检查中...",
+      "upToDate": "已是最新",
+      "upgradeAvailable": "v{{current}} -> v{{latest}}",
+      "upgrade": "升级",
+      "upgrading": "升级中...",
+      "upgradeSuccess": "已升级至 v{{version}}",
+      "restartRequired": "需要重启网关",
+      "upgradeFailed": "升级失败"
     },
     "empty": {
       "noInstalled": "未安装任何技能",
@@ -1899,7 +1914,8 @@
     "alerts": {
       "failed": "{{name}} 失败：{{error}}",
       "degraded": "{{name}} 已降级 — 可能仍在从缓存中运行",
-      "retry": "重试"
+      "retry": "重试",
+      "integrityMismatch": "检测到完整性不匹配"
     }
   }
 }

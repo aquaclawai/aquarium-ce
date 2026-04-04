@@ -1141,7 +1141,22 @@
       "reasonPlaceholder": "Warum genehmigen Sie diese Erweiterung?",
       "approveOverride": "Genehmigen",
       "overrideSuccess": "Vertrauensüberschreibung gewährt",
-      "trustSummary": "Vertrauen"
+      "trustSummary": "Vertrauen",
+      "auditTrail": "Admin-genehmigt von {{userId}} am {{date}}: {{reason}}"
+    },
+    "version": {
+      "pinned": "Version: {{version}} (angeheftet)",
+      "integrity": "Integrität: {{hash}}",
+      "integrityUnavailable": "Integrität: nicht verfügbar",
+      "checkForUpdates": "Nach Updates suchen",
+      "checking": "Wird geprüft...",
+      "upToDate": "Aktuell",
+      "upgradeAvailable": "v{{current}} -> v{{latest}}",
+      "upgrade": "Aktualisieren",
+      "upgrading": "Wird aktualisiert...",
+      "upgradeSuccess": "Auf v{{version}} aktualisiert",
+      "restartRequired": "Gateway-Neustart erforderlich",
+      "upgradeFailed": "Aktualisierung fehlgeschlagen"
     },
     "empty": {
       "noInstalled": "Keine Skills installiert",
@@ -1218,7 +1233,8 @@
     "alerts": {
       "failed": "{{name}} fehlgeschlagen: {{error}}",
       "degraded": "{{name}} ist eingeschränkt — läuft möglicherweise noch aus dem Cache",
-      "retry": "Wiederholen"
+      "retry": "Wiederholen",
+      "integrityMismatch": "Integritätsfehler erkannt"
     }
   }
 }
