@@ -843,6 +843,11 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
                           onInstall={(id) => handleCatalogSkillInstallClick(id)}
                           installing={installing === entry.slug}
                           disabled={mutationsDisabled}
+                          trustTier={entry.trustTier}
+                          trustSignals={entry.trustSignals}
+                          blocked={entry.trustDecision === 'block'}
+                          blockReason={entry.blockReason}
+                          onRequestOverride={(id) => handleRequestOverride(id, 'skill')}
                         />
                       ))}
                     </div>
