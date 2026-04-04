@@ -63,10 +63,10 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Feature | Reason |
 |---------|--------|
-| Gateway-side event emission for config/plugin/skill changes | Requires upstream OpenClaw changes — gateway currently emits zero events for these |
-| Hot-reload plugins without restart | Gateway architecture limitation — `plugins.*` changes always trigger SIGUSR1 |
+| Gateway-side event emission for config/plugin/skill changes | Requires upstream OpenClaw changes -- gateway currently emits zero events for these |
+| Hot-reload plugins without restart | Gateway architecture limitation -- `plugins.*` changes always trigger SIGUSR1 |
 | Real-time event-driven DB sync | Gateway doesn't emit the events; using shutdown/reconnect/query pattern instead |
-| Mock gateway WebSocket server for CI | Useful but separate infrastructure concern — would be its own milestone |
+| Mock gateway WebSocket server for CI | Useful but separate infrastructure concern -- would be its own milestone |
 | Protocol version negotiation | Current protocol v3 is stable; negotiation adds complexity without immediate value |
 
 ## Traceability
@@ -75,39 +75,39 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RPC-01 | — | Pending |
-| RPC-02 | — | Pending |
-| RPC-03 | — | Pending |
-| RPC-04 | — | Pending |
-| RPC-05 | — | Pending |
-| CFG-01 | — | Pending |
-| CFG-02 | — | Pending |
-| CFG-03 | — | Pending |
-| CFG-04 | — | Pending |
-| CFG-05 | — | Pending |
-| CFG-06 | — | Pending |
-| CFG-07 | — | Pending |
-| SYNC-01 | — | Pending |
-| SYNC-02 | — | Pending |
-| SYNC-03 | — | Pending |
-| SYNC-04 | — | Pending |
-| SYNC-05 | — | Pending |
-| EXT-01 | — | Pending |
-| EXT-02 | — | Pending |
-| EXT-03 | — | Pending |
-| EXT-04 | — | Pending |
-| EXT-05 | — | Pending |
-| EXT-06 | — | Pending |
-| HLTH-01 | — | Pending |
-| HLTH-02 | — | Pending |
-| HLTH-03 | — | Pending |
-| HLTH-04 | — | Pending |
+| RPC-01 | Phase 9 | Pending |
+| RPC-02 | Phase 9 | Pending |
+| RPC-03 | Phase 9 | Pending |
+| RPC-04 | Phase 9 | Pending |
+| RPC-05 | Phase 9 | Pending |
+| CFG-01 | Phase 10 | Pending |
+| CFG-02 | Phase 10 | Pending |
+| CFG-03 | Phase 10 | Pending |
+| CFG-04 | Phase 10 | Pending |
+| CFG-05 | Phase 10 | Pending |
+| CFG-06 | Phase 10 | Pending |
+| CFG-07 | Phase 10 | Pending |
+| SYNC-01 | Phase 11 | Pending |
+| SYNC-02 | Phase 11 | Pending |
+| SYNC-03 | Phase 11 | Pending |
+| SYNC-04 | Phase 11 | Pending |
+| SYNC-05 | Phase 11 | Pending |
+| EXT-01 | Phase 12 | Pending |
+| EXT-02 | Phase 12 | Pending |
+| EXT-03 | Phase 12 | Pending |
+| EXT-04 | Phase 12 | Pending |
+| EXT-05 | Phase 12 | Pending |
+| EXT-06 | Phase 12 | Pending |
+| HLTH-01 | Phase 13 | Pending |
+| HLTH-02 | Phase 13 | Pending |
+| HLTH-03 | Phase 13 | Pending |
+| HLTH-04 | Phase 13 | Pending |
 
 **Coverage:**
 - v1.3 requirements: 27 total
-- Mapped to phases: 0
-- Unmapped: 27 ⚠️
+- Mapped to phases: 27
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-05*
-*Last updated: 2026-04-05 after initial definition*
+*Last updated: 2026-04-05 after roadmap creation*

@@ -4,7 +4,8 @@
 
 - ✅ **v1.0 Core** - Phases 1-N (shipped -- existing codebase)
 - ✅ **v1.1 Plugin & Skill Marketplace** - Phases 1-6 (shipped 2026-04-04)
-- 🚧 **v1.2 Gateway Simplification & Plugin Fixes** - Phases 7-8 (in progress)
+- ✅ **v1.2 Gateway Simplification & Plugin Fixes** - Phases 7-8 (shipped 2026-04-05)
+- 🚧 **v1.3 Gateway Communication Overhaul** - Phases 9-13 (in progress)
 
 ## Phases
 
@@ -90,48 +91,128 @@ Plans:
 
 </details>
 
-### v1.2 Gateway Simplification & Plugin Fixes (In Progress)
+<details>
+<summary>v1.2 Gateway Simplification & Plugin Fixes (Phases 7-8) -- SHIPPED 2026-04-05</summary>
 
-**Milestone Goal:** Remove redundant CE-specific workarounds now that the official OpenClaw gateway supports them natively, and fix plugin/extension bugs found during v1.1 testing.
-
-- [ ] **Phase 7: Plugin & Extension Fixes** - Fix method conflicts causing empty catalog, config corruption in plugin install, backend graceful degradation, and frontend response/format mismatches
-- [ ] **Phase 8: Gateway Simplification** - Remove TCP proxy injection and simplify Docker entrypoint to use native gateway capabilities
-
-## Phase Details
+- [x] **Phase 7: Plugin & Extension Fixes** - Fix method conflicts causing empty catalog, config corruption in plugin install, backend graceful degradation, and frontend response/format mismatches (completed 2026-04-05)
+- [x] **Phase 8: Gateway Simplification** - Remove TCP proxy injection and simplify Docker entrypoint to use native gateway capabilities (completed 2026-04-05)
 
 ### Phase 7: Plugin & Extension Fixes
 **Goal**: The Extensions tab works correctly end-to-end -- Available catalog loads after restart, plugin install does not corrupt config, unsupported RPC methods degrade gracefully, and frontend correctly handles response shapes and install parameters
 **Depends on**: Phase 6 (v1.1 complete)
 **Requirements**: SIMP-02, PLUGFIX-01, PLUGFIX-02, PLUGFIX-03, FRONT-01, FRONT-02, FRONT-03
-**Success Criteria** (what must be TRUE):
-  1. After a gateway restart, the Available catalog in the Extensions tab shows the full list of bundled skills and plugins (not empty)
-  2. Installing a plugin via the dashboard does not add non-existent paths to the gateway config or corrupt the config file
-  3. When the gateway does not support `skills.list` or `plugins.list` RPC methods, the Extensions tab shows an empty list with no error instead of a 500 response
-  4. The Extensions tab catalog endpoints return data that the frontend correctly renders without shape or format errors (no console errors about unexpected response types)
-  5. Installing a skill or plugin from ClawHub sends the correct source format that the gateway's native handlers accept
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 07-01-PLAN.md -- Remove conflicting RPC methods from platform-bridge plugin (root cause fix for empty catalog + config corruption)
-- [ ] 07-02-PLAN.md -- Backend graceful RPC degradation + frontend response shape and install param fixes
+- [x] 07-01-PLAN.md -- Remove conflicting RPC methods from platform-bridge plugin (root cause fix for empty catalog + config corruption)
+- [x] 07-02-PLAN.md -- Backend graceful RPC degradation + frontend response shape and install param fixes
 
 ### Phase 8: Gateway Simplification
 **Goal**: The platform uses the official OpenClaw gateway's native network binding and entrypoint instead of injecting a TCP proxy and custom startup logic
 **Depends on**: Phase 7
 **Requirements**: SIMP-01, SIMP-03
-**Success Criteria** (what must be TRUE):
-  1. New instances start with `gateway.bind: lan` in their config and are accessible from the Aquarium server without any TCP proxy process
-  2. The custom Docker entrypoint only injects the platform-bridge plugin path, delegating all directory setup, permission management, and config initialization to the official OpenClaw entrypoint
-  3. Existing running instances continue to work after upgrade (no breaking change to instance configs already deployed)
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 08-01-PLAN.md -- Remove TCP proxy injection from docker.ts, confirm entrypoint minimality
+- [x] 08-01-PLAN.md -- Remove TCP proxy injection from docker.ts, confirm entrypoint minimality
+
+</details>
+
+### v1.3 Gateway Communication Overhaul (In Progress)
+
+**Milestone Goal:** Redesign platform-to-gateway communication so the gateway is the source of truth when containers are running, replacing the current DB-first pattern with gateway-first operations and reconnect-driven state sync.
+
+- [ ] **Phase 9: RPC Consolidation** - Route all gateway RPC through the persistent WebSocket client, eliminating ephemeral connections
+- [ ] **Phase 10: Config Lifecycle** - Gateway-first config updates via config.patch with baseHash concurrency, rate limiting, and correct merge-patch format
+- [ ] **Phase 11: Restart Cycle & State Sync** - Shutdown event handling, reconnect-driven state reconciliation, and RPC queueing during disconnect windows
+- [ ] **Phase 12: Extension Operations** - Plugin activate/deactivate and skill configure via config.patch with batching, post-restart verification, and rollback
+- [ ] **Phase 13: Health Integration** - Gateway HTTP /ready polling, WS ping/pong liveness, and gateway-authoritative config integrity checks
+
+## Phase Details
+
+### Phase 9: RPC Consolidation
+**Goal**: All gateway communication flows through a single persistent WebSocket connection per instance, with correct client identity and graceful handling of connection gaps
+**Depends on**: Phase 8 (v1.2 complete)
+**Requirements**: RPC-01, RPC-02, RPC-03, RPC-04, RPC-05
+**Success Criteria** (what must be TRUE):
+  1. Every gateway RPC call (config, tools, skills, extensions) goes through the persistent WebSocket connection -- no code path creates an ephemeral `GatewayRPCClient` for a running instance
+  2. When the persistent connection drops and reconnects, any RPC calls made during the gap are automatically retried after reconnection (not silently lost)
+  3. Extension lifecycle reconciliation and catalog queries at boot time use the persistent client, not a throwaway connection
+  4. The gateway sees all platform connections identified as the correct client ID -- no `openclaw-control-ui` or mismatched IDs appear in gateway logs
+  5. All call sites that previously used `plugins.list` now use `tools.catalog` and `config.get` to query extension state
+**Plans**: TBD
+
+Plans:
+- [ ] 09-01: TBD
+- [ ] 09-02: TBD
+
+### Phase 10: Config Lifecycle
+**Goal**: Config mutations for running instances operate on the gateway first and sync results back to DB, with correct merge-patch format, optimistic concurrency, and rate-limit enforcement
+**Depends on**: Phase 9
+**Requirements**: CFG-01, CFG-02, CFG-03, CFG-04, CFG-05, CFG-06, CFG-07
+**Success Criteria** (what must be TRUE):
+  1. When a user changes config on a running instance, the platform sends `config.patch` to the gateway first -- if the gateway rejects or is unreachable, the operation fails visibly (no silent DB-only write)
+  2. When a user changes config on a stopped instance, the change writes to DB only and takes effect on next start (no attempt to reach a non-existent gateway)
+  3. Config patches use the `{ raw: "<json5>" }` merge-patch format with a valid `baseHash` -- stale-hash conflicts are retried automatically (up to 3 times with re-read)
+  4. Multiple config changes within a short window are batched into a single `config.patch` call, never exceeding 3 writes per 60 seconds per instance
+  5. After a successful `config.patch`, the platform reads back the actual config from the gateway via `config.get` and persists it to DB -- the DB never contains a config the gateway has not confirmed
+**Plans**: TBD
+
+Plans:
+- [ ] 10-01: TBD
+- [ ] 10-02: TBD
+
+### Phase 11: Restart Cycle & State Sync
+**Goal**: The platform correctly handles gateway restarts triggered by config changes -- detecting shutdown, maintaining connection continuity, and reconciling actual gateway state with DB records after every reconnect
+**Depends on**: Phase 10
+**Requirements**: SYNC-01, SYNC-02, SYNC-03, SYNC-04, SYNC-05
+**Success Criteria** (what must be TRUE):
+  1. When a config.patch triggers a gateway SIGUSR1 restart, the instance shows "restarting" status in the dashboard (not "stopped" or "error") and the platform does not raise alerts during the expected restart window
+  2. After the gateway reconnects following a restart, the platform queries `config.get`, `tools.catalog`, and `skills.status` and updates DB records to match actual gateway state -- no stale DB entries persist
+  3. Extension reconciliation runs on every WebSocket reconnect (not just server boot), promoting or demoting plugin/skill status based on what the gateway actually reports
+  4. After a config.patch that adds or removes plugins, the platform verifies the operation succeeded by checking `tools.catalog` post-restart -- it does not assume success based on the patch response alone
+  5. The persistent WebSocket auto-reconnects after any gateway restart with exponential backoff, and full state reconciliation completes before the instance is marked "running" again
+**Plans**: TBD
+
+Plans:
+- [ ] 11-01: TBD
+- [ ] 11-02: TBD
+
+### Phase 12: Extension Operations
+**Goal**: Plugin and skill lifecycle operations use config.patch instead of full container restarts, with batched writes respecting rate limits and verified outcomes replacing optimistic status updates
+**Depends on**: Phase 10, Phase 11
+**Requirements**: EXT-01, EXT-02, EXT-03, EXT-04, EXT-05, EXT-06
+**Success Criteria** (what must be TRUE):
+  1. Activating or deactivating a plugin sends a `config.patch` to modify the gateway config in-place -- the Docker container is NOT stopped/recreated, and active chat sessions survive the operation
+  2. When a user installs multiple plugins at once, all plugin config changes are batched into a single `config.patch` call -- the gateway restarts once (not once per plugin) and only one rate-limit slot is consumed
+  3. After a plugin operation triggers a gateway restart, the dashboard shows the plugin as "restarting" until `tools.catalog` confirms it loaded, then transitions to "active" -- or marks it "failed" if the plugin is absent from the catalog
+  4. When post-restart verification shows a plugin failed to load, the platform marks it as `failed` in DB and provides a rollback option that removes the failed plugin entry via another `config.patch`
+  5. Skill enable/disable/configure operations use `config.patch` and take effect without a gateway restart -- the skill status updates immediately based on the patch response
+**Plans**: TBD
+
+Plans:
+- [ ] 12-01: TBD
+- [ ] 12-02: TBD
+
+### Phase 13: Health Integration
+**Goal**: The health monitor uses gateway-native signals (HTTP readiness and WebSocket liveness) alongside Docker container checks, and config integrity verification uses the gateway's authoritative state instead of fighting its file normalization
+**Depends on**: Phase 9
+**Requirements**: HLTH-01, HLTH-02, HLTH-03, HLTH-04
+**Success Criteria** (what must be TRUE):
+  1. The health monitor polls the gateway's HTTP `/ready` endpoint and surfaces degraded gateway subsystems (from the `failing` array) in the dashboard -- even when the Docker container reports "healthy"
+  2. The persistent WebSocket uses ping/pong frames to detect gateway unresponsiveness independently of network-level TCP keepalive -- a gateway that stops responding to pings is flagged within 60 seconds
+  3. Config integrity checks compare the gateway's authoritative config hash (from `config.get`) against the DB record -- hash mismatches update the DB to match the gateway (not the other way around)
+  4. The config integrity check never triggers `reseedConfigFiles` for a running instance -- the infinite reseed loop caused by gateway config normalization is eliminated
+**Plans**: TBD
+
+Plans:
+- [ ] 13-01: TBD
+- [ ] 13-02: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 7 -> 8
+Phases execute in numeric order: 9 -> 10 -> 11 -> 12 -> 13
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -141,5 +222,10 @@ Phases execute in numeric order: 7 -> 8
 | 4. Template Portability | v1.1 | 3/3 | Complete | 2026-04-04 |
 | 5. OAuth & Advanced Auth | v1.1 | 4/4 | Complete | 2026-04-04 |
 | 6. Offline Resilience | v1.1 | 1/1 | Complete | 2026-04-04 |
-| 7. Plugin & Extension Fixes | v1.2 | 0/2 | In progress | - |
-| 8. Gateway Simplification | v1.2 | 0/1 | Not started | - |
+| 7. Plugin & Extension Fixes | v1.2 | 2/2 | Complete | 2026-04-05 |
+| 8. Gateway Simplification | v1.2 | 1/1 | Complete | 2026-04-05 |
+| 9. RPC Consolidation | v1.3 | 0/? | Not started | - |
+| 10. Config Lifecycle | v1.3 | 0/? | Not started | - |
+| 11. Restart Cycle & State Sync | v1.3 | 0/? | Not started | - |
+| 12. Extension Operations | v1.3 | 0/? | Not started | - |
+| 13. Health Integration | v1.3 | 0/? | Not started | - |
