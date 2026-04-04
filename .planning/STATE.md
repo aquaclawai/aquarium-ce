@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-04-04T04:08:24.378Z"
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-04-04T04:11:37.821Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 16
-  completed_plans: 14
+  completed_plans: 15
   percent: 0
 ---
 
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03-clawhub-trust-policy P02 | 3 | 2 tasks | 4 files |
 | Phase 03-clawhub-trust-policy P01 | 5 | 2 tasks | 3 files |
 | Phase 03-clawhub-trust-policy P03 | 15 | 2 tasks | 5 files |
+| Phase 03-clawhub-trust-policy P04 | 15 | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,8 @@ Recent decisions affecting current work:
 - [Phase 03-clawhub-trust-policy]: trustDecision and blockReason added to PluginCatalogEntry and SkillCatalogEntry — required for frontend trust UI
 - [Phase 03-clawhub-trust-policy]: Plugin upgrade triggers re-activation (restart) when status was active; skill upgrade does not
 - [Phase 03-clawhub-trust-policy]: blockReason stored as undefined (not null) in catalog entries to match optional field type in shared types
+- [Phase 03-clawhub-trust-policy]: trustDecision/blockReason added as optional fields to catalog entry types — UI uses server-provided values when plan 03-03 populates them, no blocked state otherwise
+- [Phase 03-clawhub-trust-policy]: CatalogSkillRow not extended with trust display — deferred pending 03-03 server integration that adds trust data to skill catalog entries
 
 ### Pending Todos
 
@@ -121,6 +124,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T04:08:24.375Z
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-04-04T04:11:37.818Z
+Stopped at: Completed 03-04-PLAN.md
 Resume file: None
