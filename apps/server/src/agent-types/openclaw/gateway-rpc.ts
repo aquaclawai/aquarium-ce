@@ -6,6 +6,122 @@ import type { ChatAttachment } from '@aquarium/shared';
 
 const PROTOCOL_VERSION = 3;
 
+/**
+ * Unified gateway RPC facade. All gateway calls route through this function.
+ *
+ * If the persistent client is connected, sends immediately.
+ * If disconnected but client exists, queues the request (with 30s timeout).
+ * If no client exists (instance not running), throws immediately.
+ */
+export async function gatewayCall(
+  instanceId: string,
+  method: string,
+  params: Record<string, unknown> = {},
+  timeoutMs = 30_000,
+): Promise<unknown> {
+  const client = getGatewayClient(instanceId);
+  if (!client) {
+    throw new Error(
+      `No gateway connection for instance ${instanceId}. ` +
+      `Instance may not be running or persistent client not yet created.`
+    );
+  }
+  return client.call(method, params, timeoutMs);
+}
+
+// ── Plugin presence from tools.catalog ──
+
+export interface PluginPresenceInfo {
+  pluginId: string;
+  loaded: boolean;
+  toolCount: number;
+}
+
+/**
+ * Extract plugin presence from tools.catalog response.
+ * Returns a Map of pluginId -> info for all plugins that have loaded tools.
+ * Used to replace the non-existent `plugins.list` RPC.
+ */
+export function extractPluginPresence(
+  toolsCatalogResult: unknown,
+): Map<string, PluginPresenceInfo> {
+  const map = new Map<string, PluginPresenceInfo>();
+  if (typeof toolsCatalogResult !== 'object' || toolsCatalogResult === null) return map;
+
+  const result = toolsCatalogResult as Record<string, unknown>;
+  const groups = Array.isArray(result.groups) ? result.groups : [];
+
+  for (const group of groups) {
+    if (typeof group !== 'object' || group === null) continue;
+    const g = group as Record<string, unknown>;
+    if (g.source === 'plugin' && typeof g.pluginId === 'string') {
+      const existing = map.get(g.pluginId);
+      const tools = Array.isArray(g.tools) ? g.tools : [];
+      if (existing) {
+        // Multiple tool groups from same plugin -- aggregate
+        existing.toolCount += tools.length;
+      } else {
+        map.set(g.pluginId, {
+          pluginId: g.pluginId,
+          loaded: true,
+          toolCount: tools.length,
+        });
+      }
+    }
+  }
+  return map;
+}
+
+// ── Plugin config from config.get ──
+
+export interface PluginConfigEntry {
+  pluginId: string;
+  enabled: boolean;
+  config: Record<string, unknown>;
+}
+
+/**
+ * Extract plugin config entries from config.get response.
+ * Returns a Map of pluginId -> config entry for all plugins in the gateway config.
+ * The config.get response contains config.plugins.entries as Record<id, {enabled, config}>.
+ * Used alongside extractPluginPresence to get complete plugin state (RPC-03).
+ */
+export function extractPluginConfigEntries(
+  configGetResult: unknown,
+): Map<string, PluginConfigEntry> {
+  const map = new Map<string, PluginConfigEntry>();
+  if (typeof configGetResult !== 'object' || configGetResult === null) return map;
+
+  const result = configGetResult as Record<string, unknown>;
+  const cfg = (typeof result.config === 'object' && result.config !== null)
+    ? result.config as Record<string, unknown>
+    : null;
+  if (!cfg) return map;
+
+  const plugins = (typeof cfg.plugins === 'object' && cfg.plugins !== null)
+    ? cfg.plugins as Record<string, unknown>
+    : null;
+  if (!plugins) return map;
+
+  const entries = (typeof plugins.entries === 'object' && plugins.entries !== null)
+    ? plugins.entries as Record<string, unknown>
+    : null;
+  if (!entries) return map;
+
+  for (const [pluginId, value] of Object.entries(entries)) {
+    if (typeof value !== 'object' || value === null) continue;
+    const entry = value as Record<string, unknown>;
+    map.set(pluginId, {
+      pluginId,
+      enabled: entry.enabled !== false, // default to true if not explicitly false
+      config: (typeof entry.config === 'object' && entry.config !== null)
+        ? entry.config as Record<string, unknown>
+        : {},
+    });
+  }
+  return map;
+}
+
 export class GatewayRPCClient {
   private ws: WebSocket | null = null;
   private connected = false;
