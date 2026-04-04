@@ -13,19 +13,19 @@ Requirements for Plugin & Skill Marketplace. Each maps to roadmap phases.
 - [x] **INFRA-02**: System creates `instance_skills` table with same schema as plugins
 - [x] **INFRA-03**: System creates `extension_operations` table with fencing tokens, cancel support, and partial unique index for one-active-per-instance
 - [x] **INFRA-04**: System generates `server_session_id` (UUID) on each startup for orphan detection
-- [ ] **INFRA-05**: System enforces per-instance extension mutation lock with fencing token verification on all DB/config writes
-- [ ] **INFRA-06**: System supports cooperative cancellation via `cancel_requested` flag checked at worker checkpoints
-- [ ] **INFRA-07**: System enforces per-subprocess execution deadlines (npm: 5min, skills: 3min, restart: 2min, config.patch: 30s)
+- [x] **INFRA-05**: System enforces per-instance extension mutation lock with fencing token verification on all DB/config writes
+- [x] **INFRA-06**: System supports cooperative cancellation via `cancel_requested` flag checked at worker checkpoints
+- [x] **INFRA-07**: System enforces per-subprocess execution deadlines (npm: 5min, skills: 3min, restart: 2min, config.patch: 30s)
 - [x] **INFRA-08**: System recovers orphaned operations on startup by marking stale-session ops as crashed and extensions as `pending`
 
 ### Skill Management
 
 - [x] **SKILL-01**: User can browse bundled skills catalog from the Extensions tab
-- [ ] **SKILL-02**: User can install a skill with one click (acquires lock, sends `skills.install` RPC, releases lock)
-- [ ] **SKILL-03**: Skills with no required credentials promote directly to `active` after install
+- [x] **SKILL-02**: User can install a skill with one click (acquires lock, sends `skills.install` RPC, releases lock)
+- [x] **SKILL-03**: Skills with no required credentials promote directly to `active` after install
 - [x] **SKILL-04**: User can configure extension-scoped credentials for a skill (extensionKind + extensionId binding)
-- [ ] **SKILL-05**: User can enable/disable an installed skill
-- [ ] **SKILL-06**: User can uninstall a skill
+- [x] **SKILL-05**: User can enable/disable an installed skill
+- [x] **SKILL-06**: User can uninstall a skill
 - [x] **SKILL-07**: System reconciles skill state on boot (Phase 2) — promotes crash-recovered skills already present in gateway
 
 ### Plugin Management
@@ -112,16 +112,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-02 | Phase 1 | Complete |
 | INFRA-03 | Phase 1 | Complete |
 | INFRA-04 | Phase 1 | Complete |
-| INFRA-05 | Phase 1 | Pending |
-| INFRA-06 | Phase 1 | Pending |
-| INFRA-07 | Phase 1 | Pending |
+| INFRA-05 | Phase 1 | Complete |
+| INFRA-06 | Phase 1 | Complete |
+| INFRA-07 | Phase 1 | Complete |
 | INFRA-08 | Phase 1 | Complete |
 | SKILL-01 | Phase 1 | Complete |
-| SKILL-02 | Phase 1 | Pending |
-| SKILL-03 | Phase 1 | Pending |
+| SKILL-02 | Phase 1 | Complete |
+| SKILL-03 | Phase 1 | Complete |
 | SKILL-04 | Phase 1 | Complete |
-| SKILL-05 | Phase 1 | Pending |
-| SKILL-06 | Phase 1 | Pending |
+| SKILL-05 | Phase 1 | Complete |
+| SKILL-06 | Phase 1 | Complete |
 | SKILL-07 | Phase 1 | Complete |
 | UI-01 | Phase 1 | Complete |
 | UI-05 | Phase 1 | Complete |
@@ -168,4 +168,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-04-03*
-*Last updated: 2026-04-03 after roadmap creation*
+*Last updated: 2026-04-04 after Phase 1 gap closure (Plan 01-07)*
