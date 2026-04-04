@@ -4,7 +4,7 @@ milestone: v1.2
 milestone_name: Gateway Simplification & Plugin Fixes
 status: completed
 stopped_at: Completed 08-01-PLAN.md -- all phases done, v1.2 milestone complete
-last_updated: "2026-04-04T10:32:05.541Z"
+last_updated: "2026-04-04T10:36:51.608Z"
 last_activity: 2026-04-04 -- Completed 08-01 (remove TCP proxy)
 progress:
   total_phases: 8

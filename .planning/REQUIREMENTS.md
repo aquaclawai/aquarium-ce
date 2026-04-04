@@ -88,7 +88,7 @@ Requirements for v1.2 Gateway Simplification & Plugin Fixes.
 
 - [x] **SIMP-01**: Remove TCP proxy injection from Docker runtime -- use native `gateway.bind: lan`
 - [x] **SIMP-02**: Remove conflicting RPC methods from platform-bridge plugin (`skills.install`, `skills.uninstall`) that duplicate native gateway handlers
-- [x] **SIMP-03**: Simplify custom Docker entrypoint to only inject platform-bridge plugin path, deferring directory/permission/config logic to official entrypoint
+- [x] **SIMP-03**: Simplify custom Docker entrypoint — confirm no proxy logic exists, retain CE-specific sections (permission fix, directory creation, config generation, platform-bridge injection) needed for K8s compatibility
 
 ### Plugin Bug Fixes
 
