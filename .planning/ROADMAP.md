@@ -140,11 +140,11 @@ Plans:
   3. Extension lifecycle reconciliation and catalog queries at boot time use the persistent client, not a throwaway connection
   4. The gateway sees all platform connections identified as the correct client ID -- no `openclaw-control-ui` or mismatched IDs appear in gateway logs
   5. All call sites that previously used `plugins.list` now use `tools.catalog` and `config.get` to query extension state
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 09-01: TBD
-- [ ] 09-02: TBD
+- [ ] 09-01-PLAN.md -- Queue-on-disconnect infrastructure, gatewayCall facade, extractPluginPresence utility
+- [ ] 09-02-PLAN.md -- Migrate all 24 call sites, replace plugins.list with tools.catalog, remove GatewayRPCClient
 
 ### Phase 10: Config Lifecycle
 **Goal**: Config mutations for running instances operate on the gateway first and sync results back to DB, with correct merge-patch format, optimistic concurrency, and rate-limit enforcement
@@ -224,7 +224,7 @@ Phases execute in numeric order: 9 -> 10 -> 11 -> 12 -> 13
 | 6. Offline Resilience | v1.1 | 1/1 | Complete | 2026-04-04 |
 | 7. Plugin & Extension Fixes | v1.2 | 2/2 | Complete | 2026-04-05 |
 | 8. Gateway Simplification | v1.2 | 1/1 | Complete | 2026-04-05 |
-| 9. RPC Consolidation | v1.3 | 0/? | Not started | - |
+| 9. RPC Consolidation | v1.3 | 0/2 | Not started | - |
 | 10. Config Lifecycle | v1.3 | 0/? | Not started | - |
 | 11. Restart Cycle & State Sync | v1.3 | 0/? | Not started | - |
 | 12. Extension Operations | v1.3 | 0/? | Not started | - |
