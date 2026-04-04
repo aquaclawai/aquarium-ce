@@ -1220,6 +1220,42 @@
       "close": "Chiudi",
       "retry": "Riprova attivazione"
     },
+    "oauth": {
+      "connectWith": "Connetti con {{provider}}",
+      "connecting": "Connessione in corso...",
+      "connected": "{{provider}} autenticato",
+      "failed": "Autorizzazione fallita",
+      "tryAgain": "Riprova",
+      "requiresReAuth": "Questa estensione richiede una nuova autenticazione. Connetti il tuo account per attivarla.",
+      "popupBlocked": "Il popup è stato bloccato. Consenti i popup per questo sito.",
+      "callbackError": "Il callback OAuth è fallito. Riprova."
+    },
+    "vault": {
+      "title": "Integrazione vault",
+      "configure": "Configura vault",
+      "edit": "Modifica",
+      "remove": "Rimuovi vault",
+      "removeConfirm": "Rimuovere la configurazione del vault? Le credenziali backed dal vault smetteranno di risolversi.",
+      "type": "Tipo di vault",
+      "onepassword": "1Password CLI (op)",
+      "hashicorp": "HashiCorp Vault",
+      "address": "Indirizzo vault",
+      "addressPlaceholder": "https://vault.example.com:8200",
+      "namespace": "Namespace",
+      "namespacePlaceholder": "admin",
+      "authMethod": "Metodo di autenticazione",
+      "authToken": "Token",
+      "authAppRole": "AppRole",
+      "authCli": "Accesso CLI",
+      "mountPath": "Percorso di montaggio",
+      "mountPathPlaceholder": "secret",
+      "save": "Salva configurazione vault",
+      "saving": "Salvataggio...",
+      "saved": "Vault configurato",
+      "removed": "Configurazione vault rimossa",
+      "opNote": "Assicurati che il CLI op sia disponibile nel container del gateway.",
+      "vaultNote": "Assicurati che il CLI vault sia disponibile nel container del gateway."
+    },
     "credentials": {
       "title": "Configura credenziali",
       "requiresCredentials": "Questa competenza richiede credenziali per attivarsi.",
@@ -1228,7 +1264,13 @@
       "save": "Salva credenziale",
       "saving": "Salvataggio...",
       "saved": "Credenziale salvata con successo",
-      "saveFailed": "Impossibile salvare la credenziale"
+      "saveFailed": "Impossibile salvare la credenziale",
+      "source": "Fonte delle credenziali",
+      "sourceDirect": "Valore diretto",
+      "sourceVault": "Dal vault",
+      "vaultPath": "Percorso vault",
+      "vaultPathPlaceholderOp": "op://vault/item/field",
+      "vaultPathPlaceholderHc": "secret/data/myapp/api-key"
     },
     "alerts": {
       "failed": "{{name}} non riuscito: {{error}}",

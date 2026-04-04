@@ -1220,6 +1220,42 @@
       "close": "Fermer",
       "retry": "Réessayer l'activation"
     },
+    "oauth": {
+      "connectWith": "Se connecter avec {{provider}}",
+      "connecting": "Connexion en cours...",
+      "connected": "{{provider}} authentifié",
+      "failed": "Autorisation échouée",
+      "tryAgain": "Réessayer",
+      "requiresReAuth": "Cette extension nécessite une ré-authentification. Connectez votre compte pour l'activer.",
+      "popupBlocked": "La fenêtre contextuelle a été bloquée. Veuillez autoriser les popups pour ce site.",
+      "callbackError": "Le rappel OAuth a échoué. Veuillez réessayer."
+    },
+    "vault": {
+      "title": "Intégration coffre-fort",
+      "configure": "Configurer le coffre-fort",
+      "edit": "Modifier",
+      "remove": "Supprimer le coffre-fort",
+      "removeConfirm": "Supprimer la configuration du coffre-fort ? Les identifiants sauvegardés dans le coffre-fort ne seront plus résolus.",
+      "type": "Type de coffre-fort",
+      "onepassword": "1Password CLI (op)",
+      "hashicorp": "HashiCorp Vault",
+      "address": "Adresse du coffre-fort",
+      "addressPlaceholder": "https://vault.example.com:8200",
+      "namespace": "Espace de noms",
+      "namespacePlaceholder": "admin",
+      "authMethod": "Méthode d'authentification",
+      "authToken": "Jeton",
+      "authAppRole": "AppRole",
+      "authCli": "Connexion CLI",
+      "mountPath": "Chemin de montage",
+      "mountPathPlaceholder": "secret",
+      "save": "Enregistrer la config du coffre-fort",
+      "saving": "Enregistrement...",
+      "saved": "Coffre-fort configuré",
+      "removed": "Configuration du coffre-fort supprimée",
+      "opNote": "Assurez-vous que le CLI op est disponible dans le conteneur de la passerelle.",
+      "vaultNote": "Assurez-vous que le CLI vault est disponible dans le conteneur de la passerelle."
+    },
     "credentials": {
       "title": "Configurer les identifiants",
       "requiresCredentials": "Cette compétence nécessite des identifiants pour s'activer.",
@@ -1228,7 +1264,13 @@
       "save": "Enregistrer l'identifiant",
       "saving": "Enregistrement...",
       "saved": "Identifiant enregistré avec succès",
-      "saveFailed": "Échec de l'enregistrement de l'identifiant"
+      "saveFailed": "Échec de l'enregistrement de l'identifiant",
+      "source": "Source des identifiants",
+      "sourceDirect": "Valeur directe",
+      "sourceVault": "Depuis le coffre-fort",
+      "vaultPath": "Chemin du coffre-fort",
+      "vaultPathPlaceholderOp": "op://vault/item/field",
+      "vaultPathPlaceholderHc": "secret/data/myapp/api-key"
     },
     "alerts": {
       "failed": "{{name}} a échoué : {{error}}",

@@ -1902,6 +1902,42 @@
       "close": "Close",
       "retry": "Retry Activation"
     },
+    "oauth": {
+      "connectWith": "Connect with {{provider}}",
+      "connecting": "Connecting...",
+      "connected": "{{provider}} authenticated",
+      "failed": "Authorization failed",
+      "tryAgain": "Try again",
+      "requiresReAuth": "This extension requires re-authentication. Connect your account to activate.",
+      "popupBlocked": "Popup was blocked. Please allow popups for this site.",
+      "callbackError": "OAuth callback failed. Please try again."
+    },
+    "vault": {
+      "title": "Vault Integration",
+      "configure": "Configure Vault",
+      "edit": "Edit",
+      "remove": "Remove Vault",
+      "removeConfirm": "Remove vault configuration? Existing vault-backed credentials will stop resolving.",
+      "type": "Vault Type",
+      "onepassword": "1Password CLI (op)",
+      "hashicorp": "HashiCorp Vault",
+      "address": "Vault Address",
+      "addressPlaceholder": "https://vault.example.com:8200",
+      "namespace": "Namespace",
+      "namespacePlaceholder": "admin",
+      "authMethod": "Auth Method",
+      "authToken": "Token",
+      "authAppRole": "AppRole",
+      "authCli": "CLI Login",
+      "mountPath": "Mount Path",
+      "mountPathPlaceholder": "secret",
+      "save": "Save Vault Config",
+      "saving": "Saving...",
+      "saved": "Vault configured",
+      "removed": "Vault configuration removed",
+      "opNote": "Ensure the op CLI is available in the gateway container.",
+      "vaultNote": "Ensure the vault CLI is available in the gateway container."
+    },
     "credentials": {
       "title": "Configure Credentials",
       "requiresCredentials": "This skill requires credentials to activate.",
@@ -1910,7 +1946,13 @@
       "save": "Save Credential",
       "saving": "Saving...",
       "saved": "Credential saved successfully",
-      "saveFailed": "Failed to save credential"
+      "saveFailed": "Failed to save credential",
+      "source": "Credential Source",
+      "sourceDirect": "Direct value",
+      "sourceVault": "From vault",
+      "vaultPath": "Vault Path",
+      "vaultPathPlaceholderOp": "op://vault/item/field",
+      "vaultPathPlaceholderHc": "secret/data/myapp/api-key"
     },
     "alerts": {
       "failed": "{{name}} failed: {{error}}",

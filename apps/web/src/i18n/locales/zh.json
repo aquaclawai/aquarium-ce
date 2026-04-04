@@ -1901,6 +1901,42 @@
       "close": "关闭",
       "retry": "重试激活"
     },
+    "oauth": {
+      "connectWith": "连接 {{provider}}",
+      "connecting": "连接中...",
+      "connected": "{{provider}} 已认证",
+      "failed": "授权失败",
+      "tryAgain": "重试",
+      "requiresReAuth": "此扩展需要重新认证。连接您的账户以激活。",
+      "popupBlocked": "弹出窗口被阻止。请允许此网站的弹出窗口。",
+      "callbackError": "OAuth 回调失败。请重试。"
+    },
+    "vault": {
+      "title": "密钥库集成",
+      "configure": "配置密钥库",
+      "edit": "编辑",
+      "remove": "删除密钥库",
+      "removeConfirm": "删除密钥库配置？现有的密钥库支持的凭证将停止解析。",
+      "type": "密钥库类型",
+      "onepassword": "1Password CLI (op)",
+      "hashicorp": "HashiCorp Vault",
+      "address": "Vault 地址",
+      "addressPlaceholder": "https://vault.example.com:8200",
+      "namespace": "命名空间",
+      "namespacePlaceholder": "admin",
+      "authMethod": "认证方式",
+      "authToken": "令牌",
+      "authAppRole": "AppRole",
+      "authCli": "CLI 登录",
+      "mountPath": "挂载路径",
+      "mountPathPlaceholder": "secret",
+      "save": "保存密钥库配置",
+      "saving": "保存中...",
+      "saved": "密钥库已配置",
+      "removed": "密钥库配置已删除",
+      "opNote": "确保 op CLI 在网关容器中可用。",
+      "vaultNote": "确保 vault CLI 在网关容器中可用。"
+    },
     "credentials": {
       "title": "配置凭证",
       "requiresCredentials": "此技能需要凭证才能激活。",
@@ -1909,7 +1945,13 @@
       "save": "保存凭证",
       "saving": "保存中...",
       "saved": "凭证保存成功",
-      "saveFailed": "保存凭证失败"
+      "saveFailed": "保存凭证失败",
+      "source": "凭证来源",
+      "sourceDirect": "直接输入",
+      "sourceVault": "来自密钥库",
+      "vaultPath": "密钥库路径",
+      "vaultPathPlaceholderOp": "op://vault/item/field",
+      "vaultPathPlaceholderHc": "secret/data/myapp/api-key"
     },
     "alerts": {
       "failed": "{{name}} 失败：{{error}}",

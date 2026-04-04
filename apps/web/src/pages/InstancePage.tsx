@@ -19,6 +19,7 @@ import { SecurityTimeline } from '../components/SecurityTimeline';
 import { SecurityStatusBadge } from '../components/SecurityStatusBadge';
 import { ChatTab } from '../components/chat/ChatTab';
 import { ExtensionsTab } from '../components/extensions/ExtensionsTab';
+import { VaultConfigSection } from '../components/extensions/VaultConfigSection';
 
 type TabId = 'overview' | 'ai' | 'chat' | 'extensions' | 'agent-management' | 'usage' | 'files' | 'logs' | 'events' | 'snapshots' | 'security';
 
@@ -272,7 +273,12 @@ export function InstancePage() {
       </div>
 
       <div className="tab-content">
-        {activeTab === 'overview' && <OverviewTab instance={instance} onInstanceUpdate={fetchInstance} onLifecycle={handleLifecycle} actionInProgress={actionInProgress} onClone={handleClone} cloning={cloning} />}
+        {activeTab === 'overview' && (
+          <>
+            <OverviewTab instance={instance} onInstanceUpdate={fetchInstance} onLifecycle={handleLifecycle} actionInProgress={actionInProgress} onClone={handleClone} cloning={cloning} />
+            <VaultConfigSection instanceId={instance.id} disabled={instance.status === 'starting' || instance.status === 'stopping'} />
+          </>
+        )}
         {activeTab === 'ai' && <AITab instance={instance} agentType={agentTypes.find(a => a.id === instance.agentType) ?? null} onInstanceUpdate={fetchInstance} />}
         {activeTab === 'chat' && <ChatTab instanceId={instance.id} instanceStatus={instance.status} />}
         {activeTab === 'extensions' && <ExtensionsTab instanceId={instance.id} instanceStatus={instance.status} />}

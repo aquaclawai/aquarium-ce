@@ -1220,6 +1220,42 @@
       "close": "Schließen",
       "retry": "Aktivierung wiederholen"
     },
+    "oauth": {
+      "connectWith": "Verbinden mit {{provider}}",
+      "connecting": "Verbindung wird hergestellt...",
+      "connected": "{{provider}} authentifiziert",
+      "failed": "Autorisierung fehlgeschlagen",
+      "tryAgain": "Erneut versuchen",
+      "requiresReAuth": "Diese Erweiterung erfordert eine erneute Authentifizierung. Verbinden Sie Ihr Konto zur Aktivierung.",
+      "popupBlocked": "Popup wurde blockiert. Bitte erlauben Sie Popups für diese Seite.",
+      "callbackError": "OAuth-Rückruf fehlgeschlagen. Bitte erneut versuchen."
+    },
+    "vault": {
+      "title": "Tresor-Integration",
+      "configure": "Tresor konfigurieren",
+      "edit": "Bearbeiten",
+      "remove": "Tresor entfernen",
+      "removeConfirm": "Tresorkonfiguration entfernen? Bestehende tresorgestützte Anmeldedaten werden nicht mehr aufgelöst.",
+      "type": "Tresortyp",
+      "onepassword": "1Password CLI (op)",
+      "hashicorp": "HashiCorp Vault",
+      "address": "Tresoradresse",
+      "addressPlaceholder": "https://vault.example.com:8200",
+      "namespace": "Namensraum",
+      "namespacePlaceholder": "admin",
+      "authMethod": "Authentifizierungsmethode",
+      "authToken": "Token",
+      "authAppRole": "AppRole",
+      "authCli": "CLI-Anmeldung",
+      "mountPath": "Einhängepfad",
+      "mountPathPlaceholder": "secret",
+      "save": "Tresorkonfiguration speichern",
+      "saving": "Wird gespeichert...",
+      "saved": "Tresor konfiguriert",
+      "removed": "Tresorkonfiguration entfernt",
+      "opNote": "Stellen Sie sicher, dass die op CLI im Gateway-Container verfügbar ist.",
+      "vaultNote": "Stellen Sie sicher, dass die vault CLI im Gateway-Container verfügbar ist."
+    },
     "credentials": {
       "title": "Anmeldedaten konfigurieren",
       "requiresCredentials": "Dieser Skill benötigt Anmeldedaten zur Aktivierung.",
@@ -1228,7 +1264,13 @@
       "save": "Anmeldedaten speichern",
       "saving": "Wird gespeichert...",
       "saved": "Anmeldedaten erfolgreich gespeichert",
-      "saveFailed": "Anmeldedaten konnten nicht gespeichert werden"
+      "saveFailed": "Anmeldedaten konnten nicht gespeichert werden",
+      "source": "Anmeldedatenquelle",
+      "sourceDirect": "Direkter Wert",
+      "sourceVault": "Aus dem Tresor",
+      "vaultPath": "Tresorpfad",
+      "vaultPathPlaceholderOp": "op://vault/item/field",
+      "vaultPathPlaceholderHc": "secret/data/myapp/api-key"
     },
     "alerts": {
       "failed": "{{name}} fehlgeschlagen: {{error}}",
