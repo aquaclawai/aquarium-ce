@@ -11,9 +11,9 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 
 - [x] **RPC-01**: All gateway RPC calls route through the persistent WebSocket connection instead of opening ephemeral connections
 - [x] **RPC-02**: RPC calls made while the persistent connection is unavailable are queued and retried when the connection re-establishes
-- [ ] **RPC-03**: The `plugins.list` RPC call (which does not exist in the gateway) is replaced with `tools.catalog` and `config.get` in all call sites
+- [x] **RPC-03**: The `plugins.list` RPC call (which does not exist in the gateway) is replaced with `tools.catalog` and `config.get` in all call sites
 - [x] **RPC-04**: The persistent client uses the correct gateway client ID (`openclaw-control-ui`) consistently across all connection paths
-- [ ] **RPC-05**: Extension lifecycle reconciliation and plugin/skill catalog queries use the persistent client instead of creating ephemeral connections
+- [x] **RPC-05**: Extension lifecycle reconciliation and plugin/skill catalog queries use the persistent client instead of creating ephemeral connections
 
 ### Config Lifecycle
 
@@ -77,9 +77,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | RPC-01 | Phase 9 | Complete |
 | RPC-02 | Phase 9 | Complete |
-| RPC-03 | Phase 9 | Pending |
+| RPC-03 | Phase 9 | Complete |
 | RPC-04 | Phase 9 | Complete |
-| RPC-05 | Phase 9 | Pending |
+| RPC-05 | Phase 9 | Complete |
 | CFG-01 | Phase 10 | Pending |
 | CFG-02 | Phase 10 | Pending |
 | CFG-03 | Phase 10 | Pending |

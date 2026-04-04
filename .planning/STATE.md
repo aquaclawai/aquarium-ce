@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Gateway Communication Overhaul
 status: executing
-stopped_at: Completed 09-01-PLAN.md
+stopped_at: Completed 09-02-PLAN.md
 last_updated: "2026-04-04T20:39:49.055Z"
-last_activity: 2026-04-04 -- Completed 09-01 RPC queue infrastructure
+last_activity: 2026-04-04 -- Completed 09-02 ephemeral client migration (phase 9 complete)
 progress:
   total_phases: 13
   completed_phases: 8
   total_plans: 30
-  completed_plans: 29
-  percent: 97
+  completed_plans: 30
+  percent: 100
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-04-05)
 ## Current Position
 
 Phase: 9 of 13 (RPC Consolidation) -- first phase of v1.3
-Plan: 1 of 2 complete
-Status: Executing phase 9
-Last activity: 2026-04-04 -- Completed 09-01 RPC queue infrastructure
+Plan: 2 of 2 complete
+Status: Phase 9 complete
+Last activity: 2026-04-04 -- Completed 09-02 ephemeral client migration
 
-Progress: [██████████] 97%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -43,12 +43,13 @@ Progress: [██████████] 97%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 9. RPC Consolidation | 1/2 | 3min | 3min |
+| 9. RPC Consolidation | 2/2 | 15min | 7.5min |
 | 10. Config Lifecycle | 0/? | — | — |
 | 11. Restart Cycle & State Sync | 0/? | — | — |
 | 12. Extension Operations | 0/? | — | — |
 | 13. Health Integration | 0/? | — | — |
 | Phase 09 P01 | 3min | 2 tasks | 2 files |
+| Phase 09 P02 | 12min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,9 @@ v1.3 research findings (HIGH confidence):
 - HTTP `/ready` endpoint available independently of WebSocket connection
 - [Phase 09]: Queue max depth 50 with oldest-reject overflow prevents memory issues
 - [Phase 09]: getGatewayClient returns non-closed clients (queue handles disconnected state); isGatewayConnected for sync checks
+- [Phase 09]: GatewayRPCClient removed -- all RPC through gatewayCall facade (persistent WebSocket only)
+- [Phase 09]: Service functions accept instanceId, not endpoint+token -- gateway routing is internal to gatewayCall
+- [Phase 09]: translateRPC throws on missing instanceId (no ephemeral fallback)
 
 ### Pending Todos
 
@@ -82,5 +86,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-04T20:39:29.377Z
-Stopped at: Completed 09-01-PLAN.md
+Stopped at: Completed 09-02-PLAN.md (Phase 9 complete)
 Resume file: None
