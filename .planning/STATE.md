@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Plugin & Skill Marketplace
 status: planning
-stopped_at: Completed 05-02-PLAN.md (vault config API + exec SecretRef)
-last_updated: "2026-04-04T06:34:42.430Z"
+stopped_at: Completed 05-oauth-advanced-auth-01-PLAN.md
+last_updated: "2026-04-04T06:34:56.370Z"
 last_activity: 2026-04-03 — Roadmap created, 52 requirements mapped across 6 phases
 progress:
   total_phases: 6
@@ -135,6 +135,9 @@ Recent decisions affecting current work:
 - [Phase 05-oauth-advanced-auth]: Vault config stored in instances.config JSON column under vaultConfig key — no schema migration needed
 - [Phase 05-oauth-advanced-auth]: exec SecretRef gated on supportsSecretRef(imageTag) — older gateways fall back gracefully without vault
 - [Phase 05-oauth-advanced-auth]: VAULT_ADDR/VAULT_NAMESPACE injected via resolveEnv; vault-backed credentials skip AQUARIUM_CRED_xxx env injection
+- [Phase 05-oauth-advanced-auth]: OAuth callback writes oauth_token sentinel row with value='GATEWAY_MANAGED' for template export OAuth detection without leaking actual tokens
+- [Phase 05-oauth-advanced-auth]: requiresReAuth=true forces initial status='installed' on template import, ensuring OAuth extensions await user re-auth before seedConfig loads them
+- [Phase 05-oauth-advanced-auth]: source/vaultPath vault metadata persisted in extension-credentials route so adapter.ts seedConfig can resolve vault credential references
 
 ### Pending Todos
 
@@ -146,6 +149,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T06:34:27.024Z
-Stopped at: Completed 05-02-PLAN.md (vault config API + exec SecretRef)
+Last session: 2026-04-04T06:34:56.368Z
+Stopped at: Completed 05-oauth-advanced-auth-01-PLAN.md
 Resume file: None
