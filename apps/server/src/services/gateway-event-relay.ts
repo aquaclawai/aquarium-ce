@@ -49,6 +49,15 @@ interface PendingRequest {
   timer: ReturnType<typeof setTimeout>;
 }
 
+interface QueuedRequest {
+  method: string;
+  params: Record<string, unknown>;
+  timeoutMs: number;
+  resolve: (result: unknown) => void;
+  reject: (error: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
 // ── Chat Event Callback System ──
 // Allows services (like group-chat-manager) to register one-time callbacks
 // for chat events matching a specific session key + completion condition.
@@ -141,12 +150,15 @@ async function getInstanceOwnerUserId(instanceId: string): Promise<string | null
 }
 
 class PersistentGatewayClient {
+  private static readonly MAX_QUEUE_DEPTH = 50;
+
   private ws: WebSocket | null = null;
   private connected = false;
   private closed = false;
   private retryCount = 0;
   private retryTimeout: ReturnType<typeof setTimeout> | null = null;
   private pendingRequests = new Map<string, PendingRequest>();
+  private requestQueue: QueuedRequest[] = [];
 
   constructor(
     private readonly instanceId: string,
@@ -216,6 +228,7 @@ class PersistentGatewayClient {
             this.connected = true;
             this.retryCount = 0;
             console.log(`[gateway-relay] Connected to gateway for instance ${this.instanceId}`);
+            this.drainQueue();
 
             // Gateway sends events to all authenticated connections automatically —
             // no explicit subscription required (verified: the gateway rejects the
@@ -377,7 +390,7 @@ class PersistentGatewayClient {
       });
 
       ws.on('close', () => {
-        // Reject all in-flight RPC calls
+        // Reject all in-flight RPC calls (these were already sent on the wire)
         for (const [, pending] of this.pendingRequests) {
           clearTimeout(pending.timer);
           pending.reject(new Error(`Gateway connection lost for instance ${this.instanceId}`));
@@ -396,7 +409,17 @@ class PersistentGatewayClient {
         this.connected = false;
         this.ws = null;
 
-        if (this.closed) return;
+        // If fully closed, reject queued requests too (they won't get a reconnect)
+        if (this.closed) {
+          for (const item of this.requestQueue) {
+            clearTimeout(item.timer);
+            item.reject(new Error(`Gateway connection closed for instance ${this.instanceId}`));
+          }
+          this.requestQueue = [];
+          return;
+        }
+        // If reconnecting, leave queued items -- they will drain after reconnect
+        // or timeout on their own 30s timers
 
         console.log(`[gateway-relay] Connection closed for instance ${this.instanceId}`);
         this.scheduleReconnect();
@@ -428,9 +451,35 @@ class PersistentGatewayClient {
   }
 
   async call(method: string, params: Record<string, unknown> = {}, timeoutMs = 30_000): Promise<unknown> {
-    if (!this.connected || !this.ws) {
-      throw new Error(`Gateway not connected for instance ${this.instanceId}`);
+    if (this.closed) {
+      throw new Error(`Gateway connection closed for instance ${this.instanceId}`);
     }
+
+    // If connected, send immediately
+    if (this.connected && this.ws) {
+      return this.sendRPC(method, params, timeoutMs);
+    }
+
+    // Queue the request for when connection is (re-)established
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        const idx = this.requestQueue.findIndex(q => q.timer === timer);
+        if (idx !== -1) this.requestQueue.splice(idx, 1);
+        reject(new Error(`Gateway RPC queue timeout: ${method} (${timeoutMs}ms)`));
+      }, timeoutMs);
+
+      // Enforce max queue depth -- reject oldest item on overflow
+      if (this.requestQueue.length >= PersistentGatewayClient.MAX_QUEUE_DEPTH) {
+        const oldest = this.requestQueue.shift()!;
+        clearTimeout(oldest.timer);
+        oldest.reject(new Error(`Gateway RPC queue overflow for instance ${this.instanceId}`));
+      }
+
+      this.requestQueue.push({ method, params, timeoutMs, resolve, reject, timer });
+    });
+  }
+
+  private sendRPC(method: string, params: Record<string, unknown>, timeoutMs: number): Promise<unknown> {
     const id = randomUUID();
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -442,8 +491,22 @@ class PersistentGatewayClient {
     });
   }
 
+  private drainQueue(): void {
+    const items = this.requestQueue.splice(0);
+    for (const item of items) {
+      clearTimeout(item.timer);
+      this.sendRPC(item.method, item.params, item.timeoutMs)
+        .then(item.resolve)
+        .catch(item.reject);
+    }
+  }
+
   get isConnected(): boolean {
     return this.connected;
+  }
+
+  get isClosed(): boolean {
+    return this.closed;
   }
 
   get isExhausted(): boolean {
@@ -462,6 +525,13 @@ class PersistentGatewayClient {
       pending.reject(new Error(`Gateway connection lost for instance ${this.instanceId}`));
     }
     this.pendingRequests.clear();
+
+    // Reject all queued RPC calls
+    for (const item of this.requestQueue) {
+      clearTimeout(item.timer);
+      item.reject(new Error(`Gateway connection closed for instance ${this.instanceId}`));
+    }
+    this.requestQueue = [];
 
     // Clean up any chat event callbacks for this instance
     for (const [key, cb] of chatEventCallbacks) {
@@ -578,7 +648,12 @@ export function disconnectGateway(instanceId: string): void {
 
 export function getGatewayClient(instanceId: string): PersistentGatewayClient | null {
   const client = connections.get(instanceId);
-  return (client && client.isConnected) ? client : null;
+  return (client && !client.isClosed) ? client : null;
+}
+
+export function isGatewayConnected(instanceId: string): boolean {
+  const client = connections.get(instanceId);
+  return !!(client && client.isConnected);
 }
 
 /**
