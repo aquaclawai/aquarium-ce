@@ -1,6 +1,11 @@
 #!/bin/sh
 set -e
 
+# docker-entrypoint.sh — CE platform entrypoint for alpine/openclaw image.
+# Handles first-boot setup (dirs, permissions, default config) and injects
+# the platform-bridge plugin path. The gateway's native bind:lan handles
+# network accessibility — no proxy injection needed.
+
 OPENCLAW_HOME="${HOME}/.openclaw"
 OPENCLAW_CONFIG="${OPENCLAW_HOME}/openclaw.json"
 
