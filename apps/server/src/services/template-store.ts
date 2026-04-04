@@ -3,6 +3,7 @@ import { db } from '../db/index.js';
 import { createInstance } from './instance-manager.js';
 import { addCredential } from './credential-store.js';
 import { addUserCredential, resolveCredential } from './user-credential-store.js';
+import { evaluateTrustPolicy } from './trust-store.js';
 import { getRuntimeEngine } from '../runtime/factory.js';
 import { reverseAdaptFromContainer } from '../agent-types/openclaw/reverse-adapter.js';
 import type { DeploymentTarget } from '@aquarium/shared';
@@ -28,6 +29,9 @@ import type {
   McpServerDeclaration,
   TemplateExtensionDeclaration,
   ExtensionStatus,
+  ExtensionKind,
+  PluginSource,
+  ExtensionSkillSource,
 } from '@aquarium/shared';
 
 interface TemplateRow {
@@ -928,11 +932,25 @@ export async function instantiateTemplate(
   const customImage = content ? ((content.custom_image as string) ?? null) : null;
   const templateSecurity = content ? parseJsonb<TemplateSecurityConfig | null>(content.security, null) : null;
 
-  const autoSetupCommands = generateDependencySetupCommands(
-    parseJsonb<SkillDeclaration[]>(template.skills, []),
-    parseJsonb<PluginDependency[]>(template.plugin_dependencies, []),
-    parseJsonb<Record<string, McpServerDeclaration>>(template.mcp_servers, {}),
-  );
+  // Discriminate between new TemplateExtensionDeclaration[] (has 'kind' field) and legacy PluginDependency[].
+  // New templates exported after Plan 04-01 store TemplateExtensionDeclaration[] in content.plugin_dependencies.
+  // Legacy templates store PluginDependency[] and are handled by generateDependencySetupCommands below.
+  const rawExtData = content
+    ? parseJsonb<unknown[]>(content.plugin_dependencies, [])
+    : [];
+  const templateExtensions: TemplateExtensionDeclaration[] = rawExtData
+    .filter((item): item is TemplateExtensionDeclaration =>
+      typeof item === 'object' && item !== null && 'kind' in item);
+
+  const autoSetupCommands = templateExtensions.length > 0
+    // New format: lifecycle rows handle plugin/skill installation; only generate MCP server setup commands
+    ? generateDependencySetupCommands([], [], parseJsonb<Record<string, McpServerDeclaration>>(template.mcp_servers, {}))
+    // Legacy format: generate setup commands for skills and plugin dependencies as before
+    : generateDependencySetupCommands(
+        parseJsonb<SkillDeclaration[]>(template.skills, []),
+        parseJsonb<PluginDependency[]>(template.plugin_dependencies, []),
+        parseJsonb<Record<string, McpServerDeclaration>>(template.mcp_servers, {}),
+      );
 
   const setupCommands = [...autoSetupCommands, ...explicitSetupCommands];
 
@@ -997,6 +1015,82 @@ export async function instantiateTemplate(
     template_version: template.version,
   });
 
+  // ─── Trust Re-evaluation and Lifecycle Row Insertion ─────────────────────────
+  // For each extension in the template (new format only), evaluate trust policy
+  // synchronously at import time. Only extensions that pass get lifecycle rows.
+  const blockedExtensions: Array<{ id: string; kind: ExtensionKind; reason: string }> = [];
+  const requiresTrustOverride: Array<{ id: string; kind: ExtensionKind; source: PluginSource | ExtensionSkillSource; reason: string }> = [];
+  let extensionsImported = 0;
+
+  for (const ext of templateExtensions) {
+    // evaluateTrustPolicy with null signals (no gateway running at import time):
+    //   bundled   → allow (tier=bundled)
+    //   non-bundled + null signals → tier=unscanned → block
+    //   community with existing DB override → allow
+    //   community without override → block (returned in requiresTrustOverride[])
+    const evaluation = await evaluateTrustPolicy(
+      instance.id,
+      ext.id,
+      ext.kind,
+      ext.source,
+      null, // No gateway running at import time — no ClawHub signals available
+    );
+
+    if (evaluation.decision === 'block') {
+      if (evaluation.tier === 'community') {
+        // Community extension without admin override on this instance
+        requiresTrustOverride.push({
+          id: ext.id,
+          kind: ext.kind,
+          source: ext.source,
+          reason: evaluation.blockReason ?? 'Community extension requires admin trust override',
+        });
+      } else {
+        // unscanned / scan-failed → hard block per trust policy: cannot instantiate
+        blockedExtensions.push({
+          id: ext.id,
+          kind: ext.kind,
+          reason: evaluation.blockReason ?? 'Extension blocked by trust policy',
+        });
+      }
+      continue; // Do NOT insert lifecycle row for blocked extensions
+    }
+
+    // evaluation.decision === 'allow' → insert lifecycle row
+    const now = new Date().toISOString();
+    if (ext.kind === 'plugin') {
+      await db('instance_plugins').insert({
+        id: randomUUID(),
+        instance_id: instance.id,
+        plugin_id: ext.id,
+        source: JSON.stringify(ext.source),
+        locked_version: ext.lockedVersion,
+        integrity_hash: ext.integrityHash,
+        enabled: ext.enabled,
+        config: JSON.stringify(ext.config ?? {}),
+        status: ext.enabled ? 'pending' : 'disabled',
+        installed_at: now,
+        updated_at: now,
+      });
+    } else {
+      // kind === 'skill'
+      await db('instance_skills').insert({
+        id: randomUUID(),
+        instance_id: instance.id,
+        skill_id: ext.id,
+        source: JSON.stringify(ext.source),
+        locked_version: ext.lockedVersion,
+        integrity_hash: ext.integrityHash,
+        enabled: ext.enabled,
+        config: JSON.stringify(ext.config ?? {}),
+        status: ext.enabled ? 'pending' : 'disabled',
+        installed_at: now,
+        updated_at: now,
+      });
+    }
+    extensionsImported += 1;
+  }
+
   for (const cred of credentialsToStore) {
     await addCredential(instance.id, cred.provider, cred.credentialType, cred.value);
   }
@@ -1006,6 +1100,9 @@ export async function instantiateTemplate(
   return {
     instance: { ...instance, templateId, templateVersion: template.version } as unknown as Instance,
     credentialStatus,
+    blockedExtensions: blockedExtensions.length > 0 ? blockedExtensions : undefined,
+    requiresTrustOverride: requiresTrustOverride.length > 0 ? requiresTrustOverride : undefined,
+    extensionsImported: extensionsImported > 0 ? extensionsImported : undefined,
   };
 }
 
