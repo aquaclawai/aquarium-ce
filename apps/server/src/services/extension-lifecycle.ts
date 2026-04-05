@@ -7,7 +7,7 @@ import {
 import type { PluginPresenceInfo, PluginConfigEntry } from '../agent-types/openclaw/gateway-rpc.js';
 import { cleanupOrphanedOperations } from './extension-lock.js';
 import { getSkillsForInstance, updateSkillStatus, installSkill } from './skill-store.js';
-import { getPluginsForInstance, updatePluginStatus, installPlugin } from './plugin-store.js';
+import { getPluginsForInstance, updatePluginStatus, installPlugin, activatePluginsBatch } from './plugin-store.js';
 import { isArtifactCached, getCachedArtifactPath } from './artifact-cache.js';
 import type { InstanceSkill, InstancePlugin, DeploymentTarget } from '@aquarium/shared';
 
@@ -383,6 +383,12 @@ export async function getPendingExtensionsForReplay(instanceId: string): Promise
  * Extensions in 'pending' state come from template instantiation or crash recovery.
  * Trust was already evaluated at import/instantiation time, so we replay
  * the install as-is (locked_version preserved from import).
+ *
+ * NOTE: This function currently installs and activates plugins individually via
+ * installPlugin (which auto-activates when no credentials are needed). For callers
+ * that pre-install artifacts separately, {@link activatePluginsBatch} is available
+ * to batch-activate multiple plugins with a single config.patch call, consuming
+ * only one rate-limit slot and triggering one SIGUSR1 restart.
  *
  * Returns observability counts for logging.
  */

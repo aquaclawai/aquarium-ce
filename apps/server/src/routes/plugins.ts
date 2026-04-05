@@ -6,6 +6,7 @@ import {
   getPluginById,
   installPlugin,
   activatePlugin,
+  activatePluginsBatch,
   enablePlugin,
   disablePlugin,
   uninstallPlugin,
@@ -332,6 +333,39 @@ router.post('/:id/plugins/install', async (req, res) => {
       ok: true,
       data: { plugin, requiredCredentials },
     } satisfies ApiResponse<{ plugin: InstancePlugin; requiredCredentials: typeof requiredCredentials }>);
+  } catch (err: unknown) {
+    if (err instanceof LockConflictError) {
+      res.status(409).json({ ok: false, error: err.message, activeOperation: err.activeOperation } as ApiResponse);
+      return;
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ ok: false, error: message } satisfies ApiResponse);
+  }
+});
+
+// ─── POST /:id/plugins/batch-activate ────────────────────────────────────────
+// Activate multiple installed plugins with a single config.patch call (EXT-03).
+// IMPORTANT: This route MUST be defined BEFORE /:id/plugins/:pluginId/activate
+// so Express does not match 'batch-activate' as a pluginId parameter.
+
+router.post('/:id/plugins/batch-activate', async (req, res) => {
+  try {
+    const instance = await getInstance(req.params.id, req.auth!.userId);
+    if (!instance) {
+      res.status(404).json({ ok: false, error: 'Instance not found' } satisfies ApiResponse);
+      return;
+    }
+
+    const { pluginIds } = req.body as { pluginIds: unknown };
+    if (!Array.isArray(pluginIds) || pluginIds.length === 0 || !pluginIds.every(id => typeof id === 'string')) {
+      res.status(400).json({ ok: false, error: 'Missing or invalid pluginIds -- must be a non-empty array of strings' } satisfies ApiResponse);
+      return;
+    }
+
+    const userId = req.auth!.userId;
+    const result = await activatePluginsBatch(instance.id, pluginIds as string[], userId);
+
+    res.json({ ok: true, data: result } satisfies ApiResponse<typeof result>);
   } catch (err: unknown) {
     if (err instanceof LockConflictError) {
       res.status(409).json({ ok: false, error: err.message, activeOperation: err.activeOperation } as ApiResponse);
