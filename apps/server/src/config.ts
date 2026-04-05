@@ -103,6 +103,7 @@ export const config = {
     clientId: process.env.SALEVOICE_CLIENT_ID || '84331702-f494-4d83-8366-740772115c03',
     apiUrl: process.env.SALEVOICE_API_URL || 'https://api.salevoice.ai',
   },
+  clawHubApiUrl: process.env.CLAWHUB_API_URL || '',
   /** Unique UUID generated fresh on each server startup — used for orphan detection
    *  (identifies which server session claimed a pending_owner lock). */
   serverSessionId: randomUUID(),
