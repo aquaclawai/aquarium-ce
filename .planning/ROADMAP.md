@@ -125,7 +125,7 @@ Plans:
 - [ ] **Phase 9: RPC Consolidation** - Route all gateway RPC through the persistent WebSocket client, eliminating ephemeral connections
 - [x] **Phase 10: Config Lifecycle** - Gateway-first config updates via config.patch with baseHash concurrency, rate limiting, and correct merge-patch format (completed 2026-04-05)
 - [x] **Phase 11: Restart Cycle & State Sync** - Shutdown event handling, reconnect-driven state reconciliation, and RPC queueing during disconnect windows (completed 2026-04-05)
-- [ ] **Phase 12: Extension Operations** - Plugin activate/deactivate and skill configure via config.patch with batching, post-restart verification, and rollback
+- [x] **Phase 12: Extension Operations** - Plugin activate/deactivate and skill configure via config.patch with batching, post-restart verification, and rollback (completed 2026-04-05)
 - [ ] **Phase 13: Health Integration** - Gateway HTTP /ready polling, WS ping/pong liveness, and gateway-authoritative config integrity checks
 
 ## Phase Details
@@ -188,7 +188,7 @@ Plans:
   3. After a plugin operation triggers a gateway restart, the dashboard shows the plugin as "restarting" until `tools.catalog` confirms it loaded, then transitions to "active" -- or marks it "failed" if the plugin is absent from the catalog
   4. When post-restart verification shows a plugin failed to load, the platform marks it as `failed` in DB and provides a rollback option that removes the failed plugin entry via another `config.patch`
   5. Skill enable/disable/configure operations use `config.patch` and take effect without a gateway restart -- the skill status updates immediately based on the patch response
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 12-01-PLAN.md -- waitForReconnect infrastructure, plugin merge-patch builders, refactor plugin-store.ts to use config.patch
@@ -227,5 +227,5 @@ Phases execute in numeric order: 9 -> 10 -> 11 -> 12 -> 13
 | 9. RPC Consolidation | v1.3 | 0/2 | Not started | - |
 | 10. Config Lifecycle | v1.3 | 2/2 | Complete | 2026-04-05 |
 | 11. Restart Cycle & State Sync | 2/2 | Complete    | 2026-04-05 | - |
-| 12. Extension Operations | v1.3 | 0/2 | Not started | - |
+| 12. Extension Operations | 2/2 | Complete   | 2026-04-05 | - |
 | 13. Health Integration | v1.3 | 0/? | Not started | - |

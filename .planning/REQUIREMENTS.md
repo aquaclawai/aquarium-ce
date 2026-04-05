@@ -40,7 +40,7 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 - [ ] **EXT-03**: Multiple plugin operations are batched into a single `config.patch` call to respect the 3/min rate limit
 - [ ] **EXT-04**: After a plugin operation triggers a gateway restart (via SIGUSR1), the platform waits for reconnection and verifies the operation succeeded via `tools.catalog`
 - [ ] **EXT-05**: If post-restart verification shows a plugin failed to load, the platform marks it as `failed` in DB and offers rollback
-- [ ] **EXT-06**: Skill enable/disable/configure uses `config.patch` without triggering a restart (skills are dynamically loaded)
+- [x] **EXT-06**: Skill enable/disable/configure uses `config.patch` without triggering a restart (skills are dynamically loaded)
 
 ### Health Integration
 
@@ -97,7 +97,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXT-03 | Phase 12 | Pending |
 | EXT-04 | Phase 12 | Pending |
 | EXT-05 | Phase 12 | Pending |
-| EXT-06 | Phase 12 | Pending |
+| EXT-06 | Phase 12 | Complete |
 | HLTH-01 | Phase 13 | Pending |
 | HLTH-02 | Phase 13 | Pending |
 | HLTH-03 | Phase 13 | Pending |

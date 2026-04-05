@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Gateway Communication Overhaul
 status: completed
-stopped_at: Phase 12 context gathered
-last_updated: "2026-04-05T04:00:47.055Z"
-last_activity: 2026-04-05 -- Completed 11-02 post-reconnect state reconciliation
+stopped_at: Completed 12-02-PLAN.md
+last_updated: "2026-04-05T04:23:40.839Z"
+last_activity: 2026-04-05 -- Completed 12-01 plugin lifecycle via config.patch
 progress:
   total_phases: 13
-  completed_phases: 11
-  total_plans: 34
-  completed_plans: 34
-  percent: 100
+  completed_phases: 12
+  total_plans: 36
+  completed_plans: 36
+  percent: 97
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-05)
 
 **Core value:** Gateway is the source of truth when containers are running; DB is the persistence layer for offline state and container initialization
-**Current focus:** Phase 11 -- Restart Cycle & State Sync
+**Current focus:** Phase 12 -- Extension Operations
 
 ## Current Position
 
-Phase: 11 of 13 (Restart Cycle & State Sync)
+Phase: 12 of 13 (Extension Operations)
 Plan: 2 of 2 complete
-Status: Phase 11 Complete
-Last activity: 2026-04-05 -- Completed 11-02 post-reconnect state reconciliation
+Status: Phase 12 Complete
+Last activity: 2026-04-05 -- Completed 12-01 plugin lifecycle via config.patch
 
-Progress: [██████████] 100%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -54,6 +54,8 @@ Progress: [██████████] 100%
 | Phase 10 P02 | 3min | 2 tasks | 2 files |
 | Phase 11 P01 | 5min | 2 tasks | 12 files |
 | Phase 11 P02 | 4min | 2 tasks | 3 files |
+| Phase 12 P02 | 4min | 1 tasks | 2 files |
+| Phase 12 P01 | 5min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -86,6 +88,10 @@ v1.3 research findings (HIGH confidence):
 - [Phase 11]: syncGatewayState runs on every reconnect (expected or not) -- any reconnect means state may have diverged
 - [Phase 11]: skills.status (not skills.list) is the correct RPC for skill reconciliation -- skills.list not in gateway whitelist
 - [Phase 11]: Gateway-first workspace sync via agents.files.list/get RPC, Docker exec fallback for graceful degradation
+- [Phase 12]: Skills use config.patch without waitForReconnect -- dynamically loaded, no SIGUSR1 restart
+- [Phase 12]: skills.status verification after config.patch is advisory (non-fatal) -- warns on mismatch but does not throw
+- [Phase 12]: Plugin lifecycle via config.patch + waitForReconnect instead of restartInstance -- container stays alive
+- [Phase 12]: waitForReconnect resolves after syncGatewayState (incl. reconcileExtensions) for post-reconnect DB verification
 
 ### Pending Todos
 
@@ -99,6 +105,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-05T04:00:47.048Z
-Stopped at: Phase 12 context gathered
-Resume file: .planning/phases/12-extension-operations/12-CONTEXT.md
+Last session: 2026-04-05T04:23:10.655Z
+Stopped at: Completed 12-02-PLAN.md
+Resume file: None
