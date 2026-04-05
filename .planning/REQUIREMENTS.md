@@ -35,11 +35,11 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 
 ### Extension Operations
 
-- [ ] **EXT-01**: Plugin activation uses `config.patch` to add the plugin to gateway config instead of restarting the entire Docker container
-- [ ] **EXT-02**: Plugin deactivation uses `config.patch` to remove the plugin from gateway config instead of restarting the container
-- [ ] **EXT-03**: Multiple plugin operations are batched into a single `config.patch` call to respect the 3/min rate limit
-- [ ] **EXT-04**: After a plugin operation triggers a gateway restart (via SIGUSR1), the platform waits for reconnection and verifies the operation succeeded via `tools.catalog`
-- [ ] **EXT-05**: If post-restart verification shows a plugin failed to load, the platform marks it as `failed` in DB and offers rollback
+- [x] **EXT-01**: Plugin activation uses `config.patch` to add the plugin to gateway config instead of restarting the entire Docker container
+- [x] **EXT-02**: Plugin deactivation uses `config.patch` to remove the plugin from gateway config instead of restarting the container
+- [x] **EXT-03**: Multiple plugin operations are batched into a single `config.patch` call to respect the 3/min rate limit
+- [x] **EXT-04**: After a plugin operation triggers a gateway restart (via SIGUSR1), the platform waits for reconnection and verifies the operation succeeded via `tools.catalog`
+- [x] **EXT-05**: If post-restart verification shows a plugin failed to load, the platform marks it as `failed` in DB and offers rollback
 - [x] **EXT-06**: Skill enable/disable/configure uses `config.patch` without triggering a restart (skills are dynamically loaded)
 
 ### Health Integration
@@ -92,11 +92,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SYNC-03 | Phase 11 | Complete |
 | SYNC-04 | Phase 11 | Complete |
 | SYNC-05 | Phase 11 | Complete |
-| EXT-01 | Phase 12 | Pending |
-| EXT-02 | Phase 12 | Pending |
-| EXT-03 | Phase 12 | Pending |
-| EXT-04 | Phase 12 | Pending |
-| EXT-05 | Phase 12 | Pending |
+| EXT-01 | Phase 12 | Complete |
+| EXT-02 | Phase 12 | Complete |
+| EXT-03 | Phase 12 | Complete |
+| EXT-04 | Phase 12 | Complete |
+| EXT-05 | Phase 12 | Complete |
 | EXT-06 | Phase 12 | Complete |
 | HLTH-01 | Phase 13 | Pending |
 | HLTH-02 | Phase 13 | Pending |
