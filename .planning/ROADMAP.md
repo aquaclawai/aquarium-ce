@@ -188,11 +188,11 @@ Plans:
   3. After a plugin operation triggers a gateway restart, the dashboard shows the plugin as "restarting" until `tools.catalog` confirms it loaded, then transitions to "active" -- or marks it "failed" if the plugin is absent from the catalog
   4. When post-restart verification shows a plugin failed to load, the platform marks it as `failed` in DB and provides a rollback option that removes the failed plugin entry via another `config.patch`
   5. Skill enable/disable/configure operations use `config.patch` and take effect without a gateway restart -- the skill status updates immediately based on the patch response
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 12-01: TBD
-- [ ] 12-02: TBD
+- [ ] 12-01-PLAN.md -- waitForReconnect infrastructure, plugin merge-patch builders, refactor plugin-store.ts to use config.patch
+- [ ] 12-02-PLAN.md -- Refactor skill enable/disable to use patchGatewayConfig with skills.status verification
 
 ### Phase 13: Health Integration
 **Goal**: The health monitor uses gateway-native signals (HTTP readiness and WebSocket liveness) alongside Docker container checks, and config integrity verification uses the gateway's authoritative state instead of fighting its file normalization
@@ -227,5 +227,5 @@ Phases execute in numeric order: 9 -> 10 -> 11 -> 12 -> 13
 | 9. RPC Consolidation | v1.3 | 0/2 | Not started | - |
 | 10. Config Lifecycle | v1.3 | 2/2 | Complete | 2026-04-05 |
 | 11. Restart Cycle & State Sync | 2/2 | Complete    | 2026-04-05 | - |
-| 12. Extension Operations | v1.3 | 0/? | Not started | - |
+| 12. Extension Operations | v1.3 | 0/2 | Not started | - |
 | 13. Health Integration | v1.3 | 0/? | Not started | - |
