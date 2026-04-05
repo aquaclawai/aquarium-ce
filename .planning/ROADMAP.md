@@ -204,11 +204,11 @@ Plans:
   2. The persistent WebSocket uses ping/pong frames to detect gateway unresponsiveness independently of network-level TCP keepalive -- a gateway that stops responding to pings is flagged within 60 seconds
   3. Config integrity checks compare the gateway's authoritative config hash (from `config.get`) against the DB record -- hash mismatches update the DB to match the gateway (not the other way around)
   4. The config integrity check never triggers `reseedConfigFiles` for a running instance -- the infinite reseed loop caused by gateway config normalization is eliminated
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 13-01: TBD
-- [ ] 13-02: TBD
+- [ ] 13-01-PLAN.md -- WS ping/pong liveness detection in PersistentGatewayClient (HLTH-02)
+- [ ] 13-02-PLAN.md -- HTTP /ready polling, gateway-authoritative config integrity, eliminate reseedConfigFiles (HLTH-01, HLTH-03, HLTH-04)
 
 ### Phase 14: Plugin Cleanup
 **Goal**: Remove dead RPC methods from the platform-bridge plugin and replace ClawHub marketplace calls with direct HTTP from the platform, leaving only `platform.ping` and `platform.runtime` in the plugin
@@ -242,6 +242,6 @@ Phases execute in numeric order: 9 -> 10 -> 11 -> 12 -> 13 -> 14
 | 9. RPC Consolidation | v1.3 | 0/2 | Not started | - |
 | 10. Config Lifecycle | v1.3 | 2/2 | Complete | 2026-04-05 |
 | 11. Restart Cycle & State Sync | v1.3 | 2/2 | Complete | 2026-04-05 |
-| 12. Extension Operations | 3/3 | Complete    | 2026-04-05 | - |
-| 13. Health Integration | v1.3 | 0/? | Not started | - |
+| 12. Extension Operations | v1.3 | 3/3 | Complete | 2026-04-05 |
+| 13. Health Integration | v1.3 | 0/2 | Not started | - |
 | 14. Plugin Cleanup | v1.3 | 0/? | Not started | - |
