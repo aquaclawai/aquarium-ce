@@ -1,10 +1,10 @@
-import { createHash } from 'crypto';
 import { db } from '../db/index.js';
 import { getRuntimeEngine } from '../runtime/factory.js';
 import { broadcast } from '../ws/index.js';
-import { syncWorkspaceFromContainer, reseedConfigFiles, stopInstance } from './instance-manager.js';
+import { syncWorkspaceFromContainer, syncGatewayState, stopInstance } from './instance-manager.js';
 import { createNotification } from './notification-store.js';
 import { getAgentType } from '../agent-types/registry.js';
+import { gatewayCall } from '../agent-types/openclaw/gateway-rpc.js';
 import type { DeploymentTarget, InstanceStatus } from '@aquarium/shared';
 
 // ── Disk usage monitoring constants ──
@@ -120,8 +120,8 @@ async function checkInstances(statusFilter: InstanceStatus[]): Promise<void> {
             instanceId: row.id,
             payload: { status: 'running', statusMessage: null },
           });
-          reseedConfigFiles(row.id).catch(err =>
-            console.error(`[health-monitor] reseedConfig failed for ${row.id}:`, err),
+          syncGatewayState(row.id).catch(err =>
+            console.error(`[health-monitor] syncGatewayState failed for ${row.id}:`, err),
           );
         } else if (status.phase === 'starting' && row.status === 'starting') {
           // Still starting — broadcast statusMessage so frontend shows progress
@@ -235,52 +235,82 @@ async function checkSecurityAudit(): Promise<void> {
   }
 }
 
-// §7.2 — Config integrity check (every slow loop)
+// §7.2a — Gateway HTTP /ready polling (every slow loop)
+async function checkGatewayHealth(): Promise<void> {
+  try {
+    const rows = await db('instances')
+      .where({ status: 'running' })
+      .whereNotNull('control_endpoint');
+
+    for (const row of rows) {
+      try {
+        // Derive HTTP URL from WS control_endpoint
+        // "ws://localhost:19001" -> "http://localhost:19001/ready"
+        const url = new URL(row.control_endpoint as string);
+        url.protocol = url.protocol === 'wss:' ? 'https:' : 'http:';
+        url.pathname = '/ready';
+
+        const res = await fetch(url.toString(), {
+          signal: AbortSignal.timeout(5_000),
+        });
+
+        const body = await res.json() as {
+          ready: boolean;
+          failing?: string[];
+          uptimeMs?: number;
+        };
+
+        if (!body.ready) {
+          const failingList = body.failing?.join(', ') || 'unknown';
+          console.warn(`[health-monitor] gateway not ready for ${row.id} (${row.name}): failing=[${failingList}]`);
+
+          // Broadcast degraded status to dashboard
+          broadcast(row.id, {
+            type: 'instance:status',
+            instanceId: row.id,
+            payload: {
+              status: 'running',
+              statusMessage: `Gateway degraded: ${failingList}`,
+            },
+          });
+        }
+      } catch {
+        // Gateway HTTP unreachable — skip (Docker status check handles container health)
+      }
+    }
+  } catch {
+    // DB query failed — skip this cycle
+  }
+}
+
+// §7.2b — Config integrity check via gateway-authoritative hash (every slow loop)
 async function checkConfigIntegrity(): Promise<void> {
   try {
     const rows = await db('instances')
       .where({ status: 'running' })
       .whereNotNull('config_hash')
-      .whereNotNull('runtime_id');
+      .whereNotNull('control_endpoint');
 
     for (const row of rows) {
       try {
-        const engine = getRuntimeEngine(row.deployment_target as DeploymentTarget);
-        if (!engine.readFile) continue;
+        const result = await gatewayCall(row.id, 'config.get', {}, 10_000) as {
+          hash?: string;
+        };
+        if (!result?.hash) continue;
 
-        const { manifest } = getAgentType(row.agent_type as string);
-        const volumeMountPath = manifest.volumes[0]?.mountPath || '/home/node/.openclaw';
-        const content = await engine.readFile(row.runtime_id, `${volumeMountPath}/openclaw.json`);
+        const gatewayHash = result.hash;
+        const dbHash = row.config_hash as string;
 
-        if (content === null) continue;
+        if (gatewayHash === dbHash) continue;
 
-        const currentHash = createHash('sha256').update(content).digest('hex');
-        const expectedHash = row.config_hash as string;
-
-        if (currentHash === expectedHash) continue;
-
-        console.warn(`[health-monitor] config integrity mismatch for ${row.id} (${row.name}): expected ${expectedHash.slice(0, 8)}… got ${currentHash.slice(0, 8)}…`);
-
-        await db('instance_events').insert({
-          instance_id: row.id,
-          event_type: 'config_integrity_violation',
-          metadata: JSON.stringify({ expectedHash, currentHash }),
+        // Gateway's hash is authoritative — update DB to match
+        await db('instances').where({ id: row.id }).update({
+          config_hash: gatewayHash,
+          updated_at: db.fn.now(),
         });
-
-        await createNotification({
-          userId: row.user_id,
-          instanceId: row.id,
-          type: 'config_integrity',
-          severity: 'warn',
-          title: 'Config integrity mismatch detected',
-          body: `The openclaw.json file in instance "${row.name}" has been modified. Re-seeding config files.`,
-        });
-
-        reseedConfigFiles(row.id).catch(err =>
-          console.error(`[health-monitor] config reseed after integrity violation failed for ${row.id}:`, err),
-        );
+        console.log(`[health-monitor] config hash synced for ${row.id}: DB ${dbHash.slice(0, 8)}... -> gateway ${gatewayHash.slice(0, 8)}...`);
       } catch {
-        // Skip this instance
+        // Gateway unreachable or RPC failed — skip
       }
     }
   } catch {
@@ -362,6 +392,7 @@ export function startHealthMonitor(fastMs = 5_000, slowMs = 30_000): void {
     checkInstances(['running', 'error']);
     checkDiskUsage();
     checkSecurityAudit();
+    checkGatewayHealth();
     checkConfigIntegrity();
     checkSkillPluginChanges();
   }, slowMs);
