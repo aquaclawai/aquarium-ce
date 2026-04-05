@@ -1,45 +1,48 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
-import { getInstance, reseedConfigFiles, patchGatewayConfig } from '../services/instance-manager.js';
+import { getInstance, patchGatewayConfig } from '../services/instance-manager.js';
 import { getAgentType } from '../agent-types/registry.js';
-import { addCredential, listCredentials, deleteCredential } from '../services/credential-store.js';
+import { addCredential, listCredentials, deleteCredential, getDecryptedCredentials } from '../services/credential-store.js';
 import type { ApiResponse, Instance, ChannelStatusDetail, ChannelEnableRequest, ChannelPolicyUpdate } from '@aquarium/shared';
 
 const router = Router();
 router.use(requireAuth);
 
 /**
- * Reseed config files and trigger a gateway SIGUSR1 restart via config.patch.
- * Used by channel configure/disconnect routes to apply credential changes
- * without a full pod restart (~5-10 sec vs 2-5 min).
+ * Push channel config changes to the gateway via patchGatewayConfig.
+ * Uses seedConfig to generate the full config, then extracts the channel-specific
+ * delta (channels + plugins entries) and sends as a merge-patch.
  */
-async function reseedAndPatch(instance: Instance, channel: string): Promise<void> {
-  await reseedConfigFiles(instance.id);
-  const { adapter } = getAgentType(instance.agentType);
-  if (!adapter?.translateRPC) return;
-
+async function pushChannelConfigToGateway(instance: Instance, channel: string, userId: string): Promise<void> {
   try {
-    const cfg = await adapter.translateRPC({
-      method: 'config.get',
-      params: {},
-      endpoint: instance.controlEndpoint!,
-      token: instance.authToken,
-      instanceId: instance.id,
-    }) as { hash?: string } | null;
-    if (cfg?.hash) {
-      await adapter.translateRPC({
-        method: 'config.patch',
-        params: {
-          patch: {},
-          baseHash: cfg.hash,
-          note: `Platform: configure ${channel}`,
-          restartDelayMs: 2000,
-        },
-        endpoint: instance.controlEndpoint!,
-        token: instance.authToken,
-        instanceId: instance.id,
-      });
+    let channelDelta: Record<string, unknown> = {};
+    const { adapter } = getAgentType(instance.agentType);
+    if (adapter?.seedConfig) {
+      try {
+        const creds = await getDecryptedCredentials(instance.id);
+        const configFiles = await adapter.seedConfig({
+          instance,
+          userConfig: instance.config || {},
+          credentials: creds,
+        });
+        const openclawJson = configFiles.get('openclaw.json');
+        if (openclawJson) {
+          const fullConfig = JSON.parse(openclawJson) as Record<string, unknown>;
+          const channels = fullConfig.channels as Record<string, unknown> | undefined;
+          if (channels?.[channel]) {
+            channelDelta.channels = { [channel]: channels[channel] };
+          }
+          const plugins = fullConfig.plugins as { entries?: Record<string, unknown> } | undefined;
+          if (plugins?.entries?.[channel]) {
+            channelDelta.plugins = { entries: { [channel]: plugins.entries[channel] } };
+          }
+        }
+      } catch (seedErr) {
+        console.warn(`[channel-config] seedConfig failed for ${instance.id}, sending empty delta:`, seedErr);
+        // Fall through with empty delta — patchGatewayConfig still triggers SIGUSR1 restart
+      }
     }
+    await patchGatewayConfig(instance.id, userId, channelDelta, `Platform: configure ${channel}`);
   } catch (err) {
     console.error(`[channel-config] config.patch failed for ${instance.id}:`, err);
   }
@@ -469,9 +472,9 @@ router.post('/:id/channels/:channel/configure', async (req, res) => {
       }));
     }
 
-    // Reseed config files and trigger gateway restart via config.patch
+    // Push channel config to gateway via merge-patch
     if (instance.status === 'running' && instance.controlEndpoint) {
-      await reseedAndPatch(instance, channel);
+      await pushChannelConfigToGateway(instance, channel, req.auth!.userId);
     }
 
     res.json({ ok: true, data: { message: `${channel} configured. Changes applied.` } } satisfies ApiResponse);
@@ -507,9 +510,9 @@ router.post('/:id/channels/:channel/disconnect', async (req, res) => {
       }
     }
 
-    // Reseed config files and trigger gateway restart via config.patch
+    // Push channel config to gateway via merge-patch
     if (instance.status === 'running' && instance.controlEndpoint) {
-      await reseedAndPatch(instance, channel);
+      await pushChannelConfigToGateway(instance, channel, req.auth!.userId);
     }
 
     res.json({ ok: true, data: { message: `${channel} disconnected. Changes applied.` } } satisfies ApiResponse);
@@ -544,9 +547,9 @@ router.post('/:id/channels/telegram/configure', async (req, res) => {
 
     await addCredential(instance.id, 'telegram', 'api_key', botToken.trim());
 
-    // Reseed config files and trigger gateway restart via config.patch
+    // Push channel config to gateway via merge-patch
     if (instance.status === 'running' && instance.controlEndpoint) {
-      await reseedAndPatch(instance, 'telegram');
+      await pushChannelConfigToGateway(instance, 'telegram', req.auth!.userId);
     }
 
     res.json({ ok: true, data: { message: 'Telegram bot token configured. Changes applied.' } } satisfies ApiResponse);
@@ -571,9 +574,9 @@ router.post('/:id/channels/telegram/disconnect', async (req, res) => {
       }
     }
 
-    // Reseed config files and trigger gateway restart via config.patch
+    // Push channel config to gateway via merge-patch
     if (instance.status === 'running' && instance.controlEndpoint) {
-      await reseedAndPatch(instance, 'telegram');
+      await pushChannelConfigToGateway(instance, 'telegram', req.auth!.userId);
     }
 
     res.json({ ok: true, data: { message: 'Telegram disconnected. Changes applied.' } } satisfies ApiResponse);
