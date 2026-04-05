@@ -876,17 +876,46 @@ export async function patchGatewayConfig(
   }
 
   // Running instances: gateway-first flow
+  // Strip platform-only fields that are NOT part of the gateway's config schema
+  // (additionalProperties: false rejects unknown keys like soulmd, agentName, etc.)
+  const PLATFORM_ONLY_KEYS = new Set([
+    'defaultProvider', 'defaultModel', 'provider', 'model',
+    'billingMode', 'imageTag', 'securityProfile', 'agentName',
+    'mcpServers', 'toolPermissions', 'vaultConfig',
+    '__setupCommands', '__templateSecurity',
+    // Workspace file keys (stored in DB config, not gateway config)
+    ...WORKSPACE_FILE_KEYS.map(wf => wf.key),
+  ]);
+
+  const gatewayPatch: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(configPatch)) {
+    if (!PLATFORM_ONLY_KEYS.has(key)) {
+      gatewayPatch[key] = value;
+    }
+  }
+
   const MAX_RETRIES = 3;
+  const hasGatewayFields = Object.keys(gatewayPatch).length > 0;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     // (a) Get current baseHash from gateway
     const cfgResult = await gatewayCall(instanceId, 'config.get', {}) as { hash?: string } | null;
     const baseHash = cfgResult?.hash;
 
+    // If no gateway-relevant fields changed, skip config.patch but still update DB
+    if (!hasGatewayFields) {
+      await updateInstanceConfig(instanceId, userId, mergedConfig);
+      if (baseHash) {
+        await db('instances').where({ id: instanceId }).update({ config_hash: baseHash });
+      }
+      console.log(`[config-patch] Platform-only config update for ${instanceId} (no gateway fields changed)`);
+      return;
+    }
+
     try {
       // (b) Send merge-patch to gateway with correct { raw, baseHash } format
       await gatewayCall(instanceId, 'config.patch', {
-        raw: JSON.stringify(configPatch),
+        raw: JSON.stringify(gatewayPatch),
         baseHash,
         note: note || 'Platform config update',
         restartDelayMs: 2000,
