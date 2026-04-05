@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Gateway Communication Overhaul
-status: completed
-stopped_at: Phase 11 context gathered
-last_updated: "2026-04-05T03:04:00.783Z"
-last_activity: 2026-04-05 -- Completed 10-02 remaining call-site migration
+status: executing
+stopped_at: Completed 11-01-PLAN.md
+last_updated: "2026-04-05T03:39:46.880Z"
+last_activity: 2026-04-05 -- Completed 11-01 restarting status + shutdown event handling
 progress:
   total_phases: 13
   completed_phases: 10
-  total_plans: 32
-  completed_plans: 32
-  percent: 100
+  total_plans: 34
+  completed_plans: 33
+  percent: 97
 ---
 
 # Project State
@@ -25,17 +25,17 @@ See: .planning/PROJECT.md (updated 2026-04-05)
 
 ## Current Position
 
-Phase: 10 of 13 (Config Lifecycle -- COMPLETE)
-Plan: 2 of 2 complete
-Status: Phase 10 complete, ready for Phase 11
-Last activity: 2026-04-05 -- Completed 10-02 remaining call-site migration
+Phase: 11 of 13 (Restart Cycle & State Sync)
+Plan: 1 of 2 complete
+Status: Executing Phase 11
+Last activity: 2026-04-05 -- Completed 11-01 restarting status + shutdown event handling
 
-Progress: [██████████] 100%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 25 (across v1.1 + v1.2 + v1.3)
+- Total plans completed: 26 (across v1.1 + v1.2 + v1.3)
 - Average duration: —
 - Total execution time: —
 
@@ -45,13 +45,14 @@ Progress: [██████████] 100%
 |-------|-------|-------|----------|
 | 9. RPC Consolidation | 2/2 | 15min | 7.5min |
 | 10. Config Lifecycle | 2/2 | 7min | 3.5min |
-| 11. Restart Cycle & State Sync | 0/? | — | — |
+| 11. Restart Cycle & State Sync | 1/2 | 5min | 5min |
 | 12. Extension Operations | 0/? | — | — |
 | 13. Health Integration | 0/? | — | — |
 | Phase 09 P01 | 3min | 2 tasks | 2 files |
 | Phase 09 P02 | 12min | 2 tasks | 12 files |
 | Phase 10 P01 | 4min | 2 tasks | 2 files |
 | Phase 10 P02 | 3min | 2 tasks | 2 files |
+| Phase 11 P01 | 5min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,8 @@ v1.3 research findings (HIGH confidence):
 - [Phase 10]: config_hash updated from gateway's authoritative hash after every successful config.patch
 - [Phase 10]: seedConfig used to extract targeted config deltas (security profile, channel) rather than empty merge-patches
 - [Phase 10]: reseedConfigFiles eliminated from all config update paths -- only boot and health-monitor recovery
+- [Phase 11]: Exported updateStatus from instance-manager.ts for cross-service use (no circular dependency)
+- [Phase 11]: Exponential backoff (1s, 2s, 4s... 30s cap) replaces fixed 5s reconnect for all reconnects, unlimited retries during restart window
 
 ### Pending Todos
 
@@ -92,6 +95,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-05T03:04:00.775Z
-Stopped at: Phase 11 context gathered
-Resume file: .planning/phases/11-restart-cycle-state-sync/11-CONTEXT.md
+Last session: 2026-04-05T03:39:46.878Z
+Stopped at: Completed 11-01-PLAN.md
+Resume file: None
