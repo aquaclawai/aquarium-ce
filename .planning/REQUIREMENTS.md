@@ -53,8 +53,8 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 
 - [ ] **CLEAN-01**: ClawHub marketplace search is a direct HTTP call from the platform to the ClawHub API, not routed through the gateway plugin RPC
 - [ ] **CLEAN-02**: ClawHub extension info is a direct HTTP call from the platform, not routed through the gateway plugin RPC
-- [ ] **CLEAN-03**: The `skills.list`, `plugins.list`, `agents.workspace.init`, `clawhub.search`, and `clawhub.info` methods are removed from the platform-bridge plugin
-- [ ] **CLEAN-04**: The platform-bridge plugin only contains `platform.ping` and `platform.runtime` methods
+- [x] **CLEAN-03**: The `skills.list`, `plugins.list`, `agents.workspace.init`, `clawhub.search`, and `clawhub.info` methods are removed from the platform-bridge plugin
+- [x] **CLEAN-04**: The platform-bridge plugin only contains `platform.ping` and `platform.runtime` methods
 
 ## v1.4 Requirements
 
@@ -111,8 +111,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HLTH-04 | Phase 13 | Complete |
 | CLEAN-01 | Phase 14 | Pending |
 | CLEAN-02 | Phase 14 | Pending |
-| CLEAN-03 | Phase 14 | Pending |
-| CLEAN-04 | Phase 14 | Pending |
+| CLEAN-03 | Phase 14 | Complete |
+| CLEAN-04 | Phase 14 | Complete |
 
 **Coverage:**
 - v1.3 requirements: 31 total
