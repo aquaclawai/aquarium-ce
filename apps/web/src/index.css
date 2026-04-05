@@ -1185,6 +1185,7 @@ select:focus {
 .status-stopped { color: var(--color-neutral); background: rgba(168, 162, 158, 0.1); }
 .status-created { color: var(--color-info); background: rgba(8, 145, 178, 0.1); }
 .status-starting, .status-stopping { color: var(--color-warning); background: rgba(217, 119, 6, 0.1); }
+.status-restarting { color: var(--color-warning); background: rgba(217, 119, 6, 0.1); }
 .status-error { color: var(--color-danger); background: rgba(239, 68, 68, 0.1); }
 
 .channels-status {

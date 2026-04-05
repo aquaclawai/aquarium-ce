@@ -79,6 +79,9 @@ async function checkInstances(statusFilter: InstanceStatus[]): Promise<void> {
     for (const row of rows) {
       if (!row.runtime_id) continue;
 
+      // Skip "restarting" instances -- they have their own 60s timeout in PersistentGatewayClient
+      if (row.status === 'restarting') continue;
+
       try {
         const engine = getRuntimeEngine(row.deployment_target as DeploymentTarget);
         const status = await engine.getStatus(row.runtime_id);

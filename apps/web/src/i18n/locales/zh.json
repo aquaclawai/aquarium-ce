@@ -56,6 +56,7 @@
       "created": "已创建",
       "starting": "启动中",
       "running": "运行中",
+      "restarting": "重启中",
       "stopping": "停止中",
       "stopped": "已停止",
       "error": "异常",
@@ -1694,6 +1695,7 @@
     "waitingStart": "正在启动...",
     "status": {
       "running": "在线",
+      "restarting": "重启中",
       "starting": "启动中",
       "stopping": "停止中",
       "stopped": "已停止",

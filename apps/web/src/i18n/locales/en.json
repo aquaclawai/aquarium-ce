@@ -56,6 +56,7 @@
       "created": "created",
       "starting": "starting",
       "running": "running",
+      "restarting": "restarting",
       "stopping": "stopping",
       "stopped": "stopped",
       "error": "error",
@@ -1695,6 +1696,7 @@
     "waitingStart": "Starting up...",
     "status": {
       "running": "Online",
+      "restarting": "Restarting",
       "starting": "Starting",
       "stopping": "Stopping",
       "stopped": "Offline",

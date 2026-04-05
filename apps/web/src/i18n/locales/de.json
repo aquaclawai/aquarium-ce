@@ -56,6 +56,7 @@
       "created": "Erstellt",
       "starting": "Wird gestartet",
       "running": "Läuft",
+      "restarting": "Neustart",
       "stopping": "Wird gestoppt",
       "stopped": "Gestoppt",
       "error": "Fehler",

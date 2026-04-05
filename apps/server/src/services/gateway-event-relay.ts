@@ -7,7 +7,7 @@ import { db } from '../db/index.js';
 import { broadcast, broadcastToUser, sendToChatSession } from '../ws/index.js';
 import { filterOutput } from './output-filter.js';
 import { getDlpConfig } from '../agent-types/openclaw/security-profiles.js';
-import { addOutputFilterEvent } from './instance-manager.js';
+import { addOutputFilterEvent, updateStatus } from './instance-manager.js';
 import type { ExecApprovalRequest, SecurityProfile, DlpConfig } from '@aquarium/shared';
 
 const PROTOCOL_VERSION = 3;
@@ -159,6 +159,8 @@ class PersistentGatewayClient {
   private retryTimeout: ReturnType<typeof setTimeout> | null = null;
   private pendingRequests = new Map<string, PendingRequest>();
   private requestQueue: QueuedRequest[] = [];
+  private expectedRestart = false;
+  private restartTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly instanceId: string,
@@ -227,6 +229,18 @@ class PersistentGatewayClient {
             }
             this.connected = true;
             this.retryCount = 0;
+            // Clear restart timeout on successful reconnect
+            if (this.restartTimer) {
+              clearTimeout(this.restartTimer);
+              this.restartTimer = null;
+            }
+            if (this.expectedRestart) {
+              this.expectedRestart = false;
+              // Transition to running (Plan 02 will replace this with syncGatewayState -> running)
+              updateStatus(this.instanceId, 'running', {}, undefined).catch(err =>
+                console.warn(`[gateway-relay] Failed to set running status for ${this.instanceId}:`, err)
+              );
+            }
             console.log(`[gateway-relay] Connected to gateway for instance ${this.instanceId}`);
             this.drainQueue();
 
@@ -247,6 +261,27 @@ class PersistentGatewayClient {
               pending.resolve(msg.result ?? msg.payload);
             }
             return;
+          }
+
+          // Detect shutdown event -- gateway is about to restart (e.g. SIGUSR1 from config.patch)
+          if (msg.type === 'event' && msg.event === 'shutdown') {
+            this.expectedRestart = true;
+            // Mark instance as "restarting" immediately -- broadcasts to browser
+            updateStatus(this.instanceId, 'restarting', {}, 'Restarting...').catch(err =>
+              console.warn(`[gateway-relay] Failed to set restarting status for ${this.instanceId}:`, err)
+            );
+            // Set 60s hard timeout -- if reconnect doesn't happen, mark error
+            if (this.restartTimer) clearTimeout(this.restartTimer);
+            this.restartTimer = setTimeout(() => {
+              this.restartTimer = null;
+              if (this.expectedRestart) {
+                this.expectedRestart = false;
+                updateStatus(this.instanceId, 'error', {}, 'Gateway restart timed out').catch(err =>
+                  console.warn(`[gateway-relay] Failed to set error status for ${this.instanceId}:`, err)
+                );
+              }
+            }, 60_000);
+            return; // Don't broadcast raw shutdown event to browser
           }
 
           // Step 3: Relay all gateway events to subscribed browser clients
@@ -439,15 +474,20 @@ class PersistentGatewayClient {
     if (this.closed) return;
 
     this.retryCount++;
-    if (this.retryCount > MAX_RECONNECT_RETRIES) {
+
+    // During expected restart: no retry limit (60s timeout handles the deadline)
+    if (!this.expectedRestart && this.retryCount > MAX_RECONNECT_RETRIES) {
       console.log(`[gateway-relay] Max retries reached for instance ${this.instanceId}, giving up until next poll`);
       return;
     }
 
+    // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s cap
+    const delay = Math.min(1000 * Math.pow(2, this.retryCount - 1), 30_000);
+
     this.retryTimeout = setTimeout(() => {
       this.retryTimeout = null;
       this.connect();
-    }, RECONNECT_DELAY_MS);
+    }, delay);
   }
 
   async call(method: string, params: Record<string, unknown> = {}, timeoutMs = 30_000): Promise<unknown> {
@@ -519,6 +559,11 @@ class PersistentGatewayClient {
       clearTimeout(this.retryTimeout);
       this.retryTimeout = null;
     }
+    if (this.restartTimer) {
+      clearTimeout(this.restartTimer);
+      this.restartTimer = null;
+    }
+    this.expectedRestart = false;
     // Reject all in-flight RPC calls
     for (const [, pending] of this.pendingRequests) {
       clearTimeout(pending.timer);
@@ -558,7 +603,7 @@ let pollIntervalId: ReturnType<typeof setInterval> | null = null;
 async function reconcileConnections(): Promise<void> {
   try {
     const runningInstances = await db('instances')
-      .where({ status: 'running' })
+      .whereIn('status', ['running', 'restarting'])
       .whereNotNull('control_endpoint')
       .select('id', 'control_endpoint', 'auth_token');
 
