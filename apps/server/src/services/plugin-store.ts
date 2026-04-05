@@ -122,6 +122,42 @@ function buildPluginTogglePatch(
   return patch;
 }
 
+/**
+ * Build a single merged config.patch object for multiple plugin operations.
+ * Combines additions, removals, and toggles into one RFC 7396 merge-patch
+ * so that a single patchGatewayConfig call can apply all changes.
+ *
+ * This consumes only ONE rate-limit slot and triggers ONE SIGUSR1 restart
+ * instead of one per plugin.
+ */
+export function buildBatchPluginPatch(
+  additions: Array<{ pluginId: string; config: Record<string, unknown> }>,
+  removals: Array<{ pluginId: string }>,
+  toggles: Array<{ pluginId: string; enabled: boolean }>,
+  currentLoadPaths: string[],
+): Record<string, unknown> {
+  const entries: Record<string, unknown> = {};
+  let paths = [...currentLoadPaths];
+
+  for (const add of additions) {
+    const loadPath = `/home/node/.openclaw/plugins/${add.pluginId}`;
+    entries[add.pluginId] = { enabled: true, ...add.config };
+    if (!paths.includes(loadPath)) paths.push(loadPath);
+  }
+  for (const rm of removals) {
+    const loadPath = `/home/node/.openclaw/plugins/${rm.pluginId}`;
+    entries[rm.pluginId] = null; // RFC 7396 null-deletion
+    paths = paths.filter(p => p !== loadPath);
+  }
+  for (const tog of toggles) {
+    const loadPath = `/home/node/.openclaw/plugins/${tog.pluginId}`;
+    entries[tog.pluginId] = { enabled: tog.enabled };
+    if (tog.enabled && !paths.includes(loadPath)) paths.push(loadPath);
+  }
+
+  return { plugins: { entries, load: { paths } } };
+}
+
 async function getCurrentLoadPaths(instanceId: string): Promise<string[]> {
   const cfgResult = await gatewayCall(instanceId, 'config.get', {}) as {
     config?: { plugins?: { load?: { paths?: string[] } } };
@@ -506,6 +542,196 @@ export async function activatePlugin(
       err instanceof Error ? err.message : String(err),
     ).catch(() => {}); // no-op if already released in rollback
 
+    throw err;
+  }
+}
+
+/**
+ * Activate multiple installed/pending plugins with a single config.patch call.
+ *
+ * This merges all plugin config changes into ONE patchGatewayConfig call,
+ * consuming ONE rate-limit slot and triggering ONE SIGUSR1 restart (instead
+ * of one per plugin). This is essential for batches of 4+ plugins where the
+ * 3-writes-per-60-seconds rate limit would otherwise cause failures.
+ *
+ * Flow:
+ * 1. Acquire a lock for each plugin
+ * 2. Validate all plugins are in 'installed' or 'pending' status
+ * 3. For each plugin with lockedVersion: verify/reinstall artifact
+ * 4. Update all plugin DB rows to status='active', enabled=1
+ * 5. Build one merged patch via buildBatchPluginPatch
+ * 6. Call patchGatewayConfig ONCE
+ * 7. Call waitForReconnect ONCE
+ * 8. Verify post-reconciliation status; rollback failed entries if any
+ * 9. Release all locks
+ *
+ * If pluginIds has one element, delegates to activatePlugin for simplicity.
+ */
+export async function activatePluginsBatch(
+  instanceId: string,
+  pluginIds: string[],
+  userId: string,
+): Promise<{ activated: InstancePlugin[]; failed: Array<{ pluginId: string; error: string }> }> {
+  // Single plugin: delegate to existing activatePlugin
+  if (pluginIds.length === 1) {
+    const plugin = await activatePlugin(instanceId, pluginIds[0], userId);
+    return { activated: [plugin], failed: [] };
+  }
+
+  // Acquire locks for all plugins — on any failure, release already-acquired and throw
+  const locks: Array<{ pluginId: string; fencingToken: string; operationId: string }> = [];
+  try {
+    for (const pluginId of pluginIds) {
+      const { fencingToken, operationId } = await acquireLock(
+        instanceId,
+        'batch-activate',
+        pluginId,
+        'plugin',
+      );
+      locks.push({ pluginId, fencingToken, operationId });
+    }
+  } catch (lockErr: unknown) {
+    // Release all already-acquired locks
+    for (const lock of locks) {
+      await releaseLock(lock.operationId, lock.fencingToken, 'failed', 'Lock acquisition failed for batch').catch(() => {});
+    }
+    throw lockErr;
+  }
+
+  const activated: InstancePlugin[] = [];
+  const failedPlugins: Array<{ pluginId: string; error: string }> = [];
+
+  try {
+    const adapter = getAdapter();
+    const instance = await getInstance(instanceId, userId);
+    if (!instance) throw new Error(`Instance ${instanceId} not found`);
+
+    // Validate all plugins are in activatable status and collect configs
+    const pluginConfigs: Array<{ pluginId: string; config: Record<string, unknown> }> = [];
+
+    for (const pluginId of pluginIds) {
+      const existing = await getPluginById(instanceId, pluginId);
+      if (!existing) {
+        throw new Error(`Plugin "${pluginId}" not found on instance ${instanceId}`);
+      }
+      if (existing.status !== 'installed' && existing.status !== 'pending') {
+        throw new Error(
+          `Plugin "${pluginId}" cannot be activated from status "${existing.status}" (must be installed or pending)`
+        );
+      }
+
+      // Verify/reinstall artifact if lockedVersion is set
+      if (existing.lockedVersion && instance.controlEndpoint) {
+        try {
+          const reinstallResult = await gatewayCall(
+            instanceId,
+            'plugins.install',
+            { pluginId, source: existing.source, version: existing.lockedVersion },
+            300_000,
+          );
+
+          // Integrity verification
+          if (existing.integrityHash !== null && isInstallPluginRPCResult(reinstallResult)) {
+            const newHash = reinstallResult.integrityHash;
+            if (newHash !== undefined && newHash !== existing.integrityHash) {
+              const integrityError = `Integrity mismatch -- registry returned different artifact for v${existing.lockedVersion}. Possible supply-chain tampering.`;
+              await db('instance_plugins')
+                .where({ instance_id: instanceId, plugin_id: pluginId })
+                .update({
+                  status: 'failed',
+                  error_message: integrityError,
+                  failed_at: db.fn.now(),
+                  updated_at: db.fn.now(),
+                });
+              throw new Error(integrityError);
+            }
+          }
+        } catch (reinstallErr: unknown) {
+          await db('instance_plugins')
+            .where({ instance_id: instanceId, plugin_id: pluginId })
+            .update({
+              status: 'failed',
+              error_message: `Artifact reinstall failed: ${reinstallErr instanceof Error ? reinstallErr.message : String(reinstallErr)}`,
+              failed_at: db.fn.now(),
+              updated_at: db.fn.now(),
+            });
+          throw reinstallErr;
+        }
+      }
+
+      pluginConfigs.push({ pluginId, config: existing.config || {} });
+    }
+
+    // Update all plugin DB rows to active
+    for (const pluginId of pluginIds) {
+      await db('instance_plugins')
+        .where({ instance_id: instanceId, plugin_id: pluginId })
+        .update({
+          status: 'active',
+          enabled: 1,
+          pending_owner: null,
+          updated_at: db.fn.now(),
+        });
+    }
+
+    // Build ONE merged config.patch for all plugins
+    const currentLoadPaths = await getCurrentLoadPaths(instanceId);
+    const patch = buildBatchPluginPatch(pluginConfigs, [], [], currentLoadPaths);
+
+    // Call patchGatewayConfig ONCE (one rate-limit slot, one SIGUSR1)
+    await patchGatewayConfig(instanceId, userId, patch, `Batch activate ${pluginIds.length} plugins: ${pluginIds.join(', ')}`);
+
+    // Call waitForReconnect ONCE
+    await waitForReconnect(instanceId, 60_000);
+
+    // Verify post-reconciliation status for each plugin
+    const failedPluginIds: string[] = [];
+    for (const pluginId of pluginIds) {
+      const updated = await getPluginById(instanceId, pluginId);
+      if (updated?.status === 'failed') {
+        failedPluginIds.push(pluginId);
+        failedPlugins.push({
+          pluginId,
+          error: updated.errorMessage ?? 'Plugin not found in gateway after restart',
+        });
+      } else if (updated) {
+        activated.push(updated);
+      }
+    }
+
+    // If any plugins failed, attempt a single batch rollback config.patch
+    if (failedPluginIds.length > 0) {
+      try {
+        const rollbackRemovals = failedPluginIds.map(pid => ({ pluginId: pid }));
+        const rollbackPatch = buildBatchPluginPatch([], rollbackRemovals, [], currentLoadPaths);
+        await patchGatewayConfig(instanceId, userId, rollbackPatch, `Rollback failed plugins: ${failedPluginIds.join(', ')}`);
+        await waitForReconnect(instanceId, 60_000);
+      } catch (rollbackErr: unknown) {
+        console.error(
+          `[plugin-store] Batch rollback config.patch failed for [${failedPluginIds.join(', ')}] on ${instanceId}:`,
+          rollbackErr,
+        );
+      }
+    }
+
+    // Release all locks
+    for (const lock of locks) {
+      const outcome = failedPluginIds.includes(lock.pluginId) ? 'rolled-back' : 'success';
+      const errMsg = failedPlugins.find(f => f.pluginId === lock.pluginId)?.error;
+      await releaseLock(lock.operationId, lock.fencingToken, outcome, errMsg).catch(() => {});
+    }
+
+    return { activated, failed: failedPlugins };
+  } catch (err: unknown) {
+    // Release all locks on unexpected error
+    for (const lock of locks) {
+      await releaseLock(
+        lock.operationId,
+        lock.fencingToken,
+        'failed',
+        err instanceof Error ? err.message : String(err),
+      ).catch(() => {});
+    }
     throw err;
   }
 }
