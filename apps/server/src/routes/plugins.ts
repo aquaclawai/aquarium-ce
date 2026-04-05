@@ -171,7 +171,6 @@ router.get('/:id/plugins/catalog', async (req, res) => {
     const clawHubEntries: PluginCatalogEntry[] = [];
     try {
       const clawHubResult = await searchClawHub(
-        instance.id,
         { query: search, category, kind: 'plugin', offset: page * limit, limit },
       );
       hasMore = clawHubResult.hasMore;
@@ -303,14 +302,10 @@ router.post('/:id/plugins/install', async (req, res) => {
     // (A) Server-side trust enforcement: block non-bundled installs that fail trust policy
     if (pluginSource.type !== 'bundled') {
       // Fetch ClawHub metadata for trust signals (soft-fails if unavailable)
-      let clawHubInfo = null;
-      if (instance.controlEndpoint) {
-        clawHubInfo = await getClawHubExtensionInfo(
-          instance.id,
-          pluginId,
-          'plugin',
-        );
-      }
+      const clawHubInfo = await getClawHubExtensionInfo(
+        pluginId,
+        'plugin',
+      );
       const signals = clawHubInfo?.trustSignals ?? null;
       const evaluation = await evaluateTrustPolicy(instance.id, pluginId, 'plugin', pluginSource, signals);
       if (evaluation.decision === 'block') {
@@ -442,7 +437,6 @@ router.put('/:id/plugins/:pluginId/upgrade', async (req, res) => {
 
     // Fetch latest version info from ClawHub
     const clawHubInfo = await getClawHubExtensionInfo(
-      instance.id,
       pluginId,
       'plugin',
     );

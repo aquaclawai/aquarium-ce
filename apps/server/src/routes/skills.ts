@@ -153,7 +153,6 @@ router.get('/:id/skills/catalog', async (req, res) => {
     const clawHubEntries: SkillCatalogEntry[] = [];
     try {
       const clawHubResult = await searchClawHub(
-        instance.id,
         { query: search, category, kind: 'skill', offset: page * limit, limit },
       );
       hasMore = clawHubResult.hasMore;
@@ -264,7 +263,6 @@ router.post('/:id/skills/install', async (req, res) => {
     if (skillSource.type !== 'bundled') {
       // Fetch ClawHub metadata for trust signals (soft-fails if unavailable)
       const clawHubInfo = await getClawHubExtensionInfo(
-        instance.id,
         skillId,
         'skill',
       );
@@ -338,7 +336,6 @@ router.put('/:id/skills/:skillId/upgrade', async (req, res) => {
 
     // Fetch latest version info from ClawHub
     const clawHubInfo = await getClawHubExtensionInfo(
-      instance.id,
       skillId,
       'skill',
     );
