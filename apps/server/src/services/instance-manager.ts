@@ -22,6 +22,7 @@ import { preloadDlpConfig, evictDlpConfig } from './gateway-event-relay.js';
 import { scanContent } from './dlp-scanner.js';
 import { createNotification } from './notification-store.js';
 import { reconcileExtensions, replayPendingExtensions } from './extension-lifecycle.js';
+import { gatewayCall } from '../agent-types/openclaw/gateway-rpc.js';
 
 // ── helpers ──
 
@@ -739,29 +740,20 @@ export async function patchGatewayConfig(
   configPatch: Record<string, unknown>,
   note?: string,
 ): Promise<void> {
-  // 1. DB-first: fetch instance, deep-merge config, persist
   const instance = await getInstance(instanceId, userId);
   if (!instance) throw new Error('Instance not found');
   await safeAutoSnapshot(instanceId, userId, '修改 Gateway 配置');
 
+  // Validate merged config before any writes
   const mergedConfig = deepMerge(
     (instance.config || {}) as Record<string, unknown>,
     configPatch,
   );
 
-  // Validate merged config against gateway schema before persisting to DB
   const fetchSchema = async (): Promise<object | null> => {
     if (instance.status !== 'running' || !instance.controlEndpoint) return null;
     try {
-      const { adapter } = getAgentType(instance.agentType);
-      if (!adapter?.translateRPC) return null;
-      const result = await adapter.translateRPC({
-        method: 'config.schema',
-        params: {},
-        endpoint: instance.controlEndpoint,
-        token: instance.authToken,
-        instanceId,
-      }) as { schema?: object } | null;
+      const result = await gatewayCall(instanceId, 'config.schema', {}) as { schema?: object } | null;
       return result?.schema ?? null;
     } catch { return null; }
   };
@@ -771,77 +763,85 @@ export async function patchGatewayConfig(
     throw new Error('Config validation failed: ' + (validation.errors?.join('; ') ?? 'Unknown error'));
   }
 
-  await updateInstanceConfig(instanceId, userId, mergedConfig);
-
-  // 2. Gateway push (only if running)
+  // Stopped instances: DB-only deep-merge, no gateway call
   if (instance.status !== 'running' || !instance.controlEndpoint) {
+    await updateInstanceConfig(instanceId, userId, mergedConfig);
     return;
   }
 
-  try {
-    const { adapter } = getAgentType(instance.agentType);
-    if (!adapter?.translateRPC) return;
+  // Running instances: gateway-first flow
+  const MAX_RETRIES = 3;
 
-    const endpoint = instance.controlEndpoint;
-    const token = instance.authToken;
-    const MAX_RETRIES = 3;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    // (a) Get current baseHash from gateway
+    const cfgResult = await gatewayCall(instanceId, 'config.get', {}) as { hash?: string } | null;
+    const baseHash = cfgResult?.hash;
 
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      // Fetch current config hash
-      const cfgResult = await adapter.translateRPC({
-        method: 'config.get',
-        params: {},
-        endpoint,
-        token,
-        instanceId,
-      }) as { hash?: string } | null;
+    try {
+      // (b) Send merge-patch to gateway with correct { raw, baseHash } format
+      await gatewayCall(instanceId, 'config.patch', {
+        raw: JSON.stringify(configPatch),
+        baseHash,
+        note: note || 'Platform config update',
+        restartDelayMs: 2000,
+      });
 
-      const baseHash = cfgResult?.hash;
+      console.log(`[config-patch] Gateway accepted config.patch for ${instanceId}`);
 
-      // Gateway 2026.3.13+ expects { raw: <full JSON string> } instead of { patch: <object> }.
-      // Re-seed config files to disk first, then read the full config to send as raw.
-      await reseedConfigFiles(instanceId);
-
-      // Read the seeded config file content
-      const { manifest: m2, adapter: a2 } = getAgentType(instance.agentType);
-      const engine2 = getRuntimeEngine(instance.deploymentTarget);
-      let rawConfig: string | null | undefined;
-      if (a2?.seedConfig && engine2.readFile && instance.runtimeId) {
-        const volumeMountPath = m2.volumes[0]?.mountPath || '/home/node/.openclaw';
-        try {
-          rawConfig = await engine2.readFile(instance.runtimeId, `${volumeMountPath}/openclaw.json`);
-        } catch { /* fallback: send without raw */ }
-      }
-
+      // (f) Read-back authoritative hash from gateway
+      let authoritativeHash = baseHash;
       try {
-        await adapter.translateRPC({
-          method: 'config.patch',
-          params: {
-            ...(rawConfig ? { raw: rawConfig } : { patch: configPatch }),
-            baseHash,
-            note: note || 'Platform config update',
-            restartDelayMs: 2000,
-          },
-          endpoint,
-          token,
-          instanceId,
-        });
-        console.log(`[config-patch] Pushed config.patch for ${instanceId}`);
-        return;
-      } catch (patchErr: unknown) {
-        const errMsg = patchErr instanceof Error ? patchErr.message : String(patchErr);
-        if ((errMsg.includes('config changed') || errMsg.includes('CONFLICT')) && attempt < MAX_RETRIES) {
-          console.warn(`[config-patch] baseHash conflict for ${instanceId}, retrying (${attempt}/${MAX_RETRIES})`);
-          continue;
+        const readBack = await gatewayCall(instanceId, 'config.get', {}) as { hash?: string } | null;
+        if (readBack?.hash) {
+          authoritativeHash = readBack.hash;
         }
-        throw patchErr;
+      } catch (readBackErr: unknown) {
+        // Gateway may be restarting due to SIGUSR1 — fall back to pre-patch hash
+        console.warn(`[config-patch] config.get read-back failed for ${instanceId}, using pre-patch hash:`, readBackErr);
       }
+
+      // (g) Deep-merge configPatch into platform's config (preserves credential placeholders)
+      // (h) Persist to DB synchronously
+      const patch: Record<string, unknown> = {
+        config: JSON.stringify(mergedConfig),
+        config_hash: authoritativeHash,
+        updated_at: db.fn.now(),
+      };
+
+      // Sync platform-level columns from config
+      if (mergedConfig.billingMode === 'platform' || mergedConfig.billingMode === 'byok') {
+        patch.billing_mode = mergedConfig.billingMode;
+      }
+      if (typeof mergedConfig.agentName === 'string' && (mergedConfig.agentName as string).trim()) {
+        patch.name = mergedConfig.agentName;
+      }
+
+      await db('instances').where({ id: instanceId }).update(patch);
+      return;
+    } catch (patchErr: unknown) {
+      const errMsg = patchErr instanceof Error ? patchErr.message : String(patchErr);
+
+      // (c) Stale hash conflict — retry from config.get
+      if ((errMsg.includes('config changed since last load') || errMsg.includes('CONFLICT')) && attempt < MAX_RETRIES) {
+        console.warn(`[config-patch] baseHash conflict for ${instanceId}, retrying (${attempt}/${MAX_RETRIES})`);
+        continue;
+      }
+
+      // (d) Rate limit — wait and retry
+      if (errMsg.includes('rate limit')) {
+        const match = errMsg.match(/retry after (\d+)s/);
+        const delayMs = match ? parseInt(match[1], 10) * 1000 + 1000 : 21_000;
+        console.warn(`[config-patch] Rate limited for ${instanceId}, waiting ${delayMs}ms before retry`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        continue;
+      }
+
+      // (e) Any other error: throw immediately (fail visibly)
+      throw patchErr;
     }
-  } catch (err: unknown) {
-    // Gateway push failure is non-critical -- DB is already updated.
-    // Config will be picked up on next reseedConfigFiles.
-    console.error(`[config-patch] Gateway push failed for ${instanceId}:`, err);
   }
+
+  throw new Error(`Config patch failed after ${MAX_RETRIES} retries for instance ${instanceId}`);
 }
 
 export async function deleteInstance(id: string, userId: string, purge = false): Promise<void> {
