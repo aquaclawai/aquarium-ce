@@ -9,6 +9,23 @@ import { db } from '../db/index.js';
 import { createHash } from 'node:crypto';
 import type { ApiResponse, ExtensionKind } from '@aquarium/shared';
 
+/**
+ * Convert a dot-delimited path like "skills.entries.mySkill.env.API_KEY"
+ * into a nested merge-patch object: { skills: { entries: { mySkill: { env: { API_KEY: value } } } } }
+ */
+function buildMergePatchFromPath(path: string, value: unknown): Record<string, unknown> {
+  const parts = path.split('.');
+  let current: Record<string, unknown> = {};
+  const root = current;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const nested: Record<string, unknown> = {};
+    current[parts[i]] = nested;
+    current = nested;
+  }
+  current[parts[parts.length - 1]] = value;
+  return root;
+}
+
 const router = Router();
 router.use(requireAuth);
 
@@ -145,9 +162,32 @@ router.post('/:id/extension-credentials', async (req, res) => {
       configPath = `plugins.entries.${validatedExtensionId}.config.${validatedTargetField}`;
     }
 
-    // 3. Inject credential into extension's scoped namespace via config.patch RPC (30s timeout)
+    // 3. Inject credential into extension's scoped namespace via config.patch RPC
     try {
-      await gatewayCall(instanceId, 'config.patch', { path: configPath, value: secretRef }, 30_000);
+      // Get baseHash from gateway
+      const cfgResult = await gatewayCall(instanceId, 'config.get', {}) as { hash?: string } | null;
+
+      // Build nested merge-patch object from dot-path
+      const patchObj = buildMergePatchFromPath(configPath, secretRef);
+
+      // Send config.patch with correct { raw, baseHash } format
+      await gatewayCall(instanceId, 'config.patch', {
+        raw: JSON.stringify(patchObj),
+        baseHash: cfgResult?.hash,
+        note: `Extension credential: ${validatedKind} ${validatedExtensionId}`,
+        restartDelayMs: 2000,
+      }, 30_000);
+
+      // Read-back authoritative hash and persist to DB
+      try {
+        const readBack = await gatewayCall(instanceId, 'config.get', {}) as { hash?: string } | null;
+        if (readBack?.hash) {
+          await db('instances').where({ id: instanceId }).update({ config_hash: readBack.hash });
+        }
+      } catch {
+        // Gateway may be restarting due to SIGUSR1 — hash update is best-effort
+      }
+
       configPatched = true;
     } catch (rpcErr: unknown) {
       const rpcMessage = rpcErr instanceof Error ? rpcErr.message : String(rpcErr);
