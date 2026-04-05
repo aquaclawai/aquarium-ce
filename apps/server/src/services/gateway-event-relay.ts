@@ -7,7 +7,7 @@ import { db } from '../db/index.js';
 import { broadcast, broadcastToUser, sendToChatSession } from '../ws/index.js';
 import { filterOutput } from './output-filter.js';
 import { getDlpConfig } from '../agent-types/openclaw/security-profiles.js';
-import { addOutputFilterEvent, updateStatus } from './instance-manager.js';
+import { addOutputFilterEvent, updateStatus, syncGatewayState } from './instance-manager.js';
 import type { ExecApprovalRequest, SecurityProfile, DlpConfig } from '@aquarium/shared';
 
 const PROTOCOL_VERSION = 3;
@@ -234,13 +234,28 @@ class PersistentGatewayClient {
               clearTimeout(this.restartTimer);
               this.restartTimer = null;
             }
-            if (this.expectedRestart) {
-              this.expectedRestart = false;
-              // Transition to running (Plan 02 will replace this with syncGatewayState -> running)
-              updateStatus(this.instanceId, 'running', {}, undefined).catch(err =>
-                console.warn(`[gateway-relay] Failed to set running status for ${this.instanceId}:`, err)
-              );
-            }
+            // Run full state sync after every reconnect (not just expected restarts).
+            // This blocks the "running" transition -- instance stays "restarting" until sync completes.
+            const wasExpectedRestart = this.expectedRestart;
+            this.expectedRestart = false;
+
+            syncGatewayState(this.instanceId)
+              .then(() => {
+                if (wasExpectedRestart) {
+                  updateStatus(this.instanceId, 'running', {}, undefined).catch(err =>
+                    console.warn(`[gateway-relay] Failed to set running status for ${this.instanceId}:`, err)
+                  );
+                }
+              })
+              .catch((err) => {
+                console.warn(`[gateway-relay] State sync failed for ${this.instanceId}:`, err);
+                // Still transition to running -- stale DB is better than stuck "restarting"
+                if (wasExpectedRestart) {
+                  updateStatus(this.instanceId, 'running', {}, undefined).catch(syncErr =>
+                    console.warn(`[gateway-relay] Failed to set running status for ${this.instanceId}:`, syncErr)
+                  );
+                }
+              });
             console.log(`[gateway-relay] Connected to gateway for instance ${this.instanceId}`);
             this.drainQueue();
 
