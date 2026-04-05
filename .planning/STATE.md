@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Gateway Communication Overhaul
 status: executing
-stopped_at: Completed 11-01-PLAN.md
-last_updated: "2026-04-05T03:39:46.880Z"
-last_activity: 2026-04-05 -- Completed 11-01 restarting status + shutdown event handling
+stopped_at: Completed 11-02-PLAN.md
+last_updated: "2026-04-05T03:45:20.000Z"
+last_activity: 2026-04-05 -- Completed 11-02 post-reconnect state reconciliation
 progress:
   total_phases: 13
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 34
-  completed_plans: 33
-  percent: 97
+  completed_plans: 34
+  percent: 100
 ---
 
 # Project State
@@ -26,16 +26,16 @@ See: .planning/PROJECT.md (updated 2026-04-05)
 ## Current Position
 
 Phase: 11 of 13 (Restart Cycle & State Sync)
-Plan: 1 of 2 complete
-Status: Executing Phase 11
-Last activity: 2026-04-05 -- Completed 11-01 restarting status + shutdown event handling
+Plan: 2 of 2 complete
+Status: Phase 11 Complete
+Last activity: 2026-04-05 -- Completed 11-02 post-reconnect state reconciliation
 
-Progress: [██████████] 97%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 26 (across v1.1 + v1.2 + v1.3)
+- Total plans completed: 27 (across v1.1 + v1.2 + v1.3)
 - Average duration: —
 - Total execution time: —
 
@@ -45,7 +45,7 @@ Progress: [██████████] 97%
 |-------|-------|-------|----------|
 | 9. RPC Consolidation | 2/2 | 15min | 7.5min |
 | 10. Config Lifecycle | 2/2 | 7min | 3.5min |
-| 11. Restart Cycle & State Sync | 1/2 | 5min | 5min |
+| 11. Restart Cycle & State Sync | 2/2 | 9min | 4.5min |
 | 12. Extension Operations | 0/? | — | — |
 | 13. Health Integration | 0/? | — | — |
 | Phase 09 P01 | 3min | 2 tasks | 2 files |
@@ -53,6 +53,7 @@ Progress: [██████████] 97%
 | Phase 10 P01 | 4min | 2 tasks | 2 files |
 | Phase 10 P02 | 3min | 2 tasks | 2 files |
 | Phase 11 P01 | 5min | 2 tasks | 12 files |
+| Phase 11 P02 | 4min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,9 @@ v1.3 research findings (HIGH confidence):
 - [Phase 10]: reseedConfigFiles eliminated from all config update paths -- only boot and health-monitor recovery
 - [Phase 11]: Exported updateStatus from instance-manager.ts for cross-service use (no circular dependency)
 - [Phase 11]: Exponential backoff (1s, 2s, 4s... 30s cap) replaces fixed 5s reconnect for all reconnects, unlimited retries during restart window
+- [Phase 11]: syncGatewayState runs on every reconnect (expected or not) -- any reconnect means state may have diverged
+- [Phase 11]: skills.status (not skills.list) is the correct RPC for skill reconciliation -- skills.list not in gateway whitelist
+- [Phase 11]: Gateway-first workspace sync via agents.files.list/get RPC, Docker exec fallback for graceful degradation
 
 ### Pending Todos
 
@@ -95,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-05T03:39:46.878Z
-Stopped at: Completed 11-01-PLAN.md
+Last session: 2026-04-05T03:45:20.000Z
+Stopped at: Completed 11-02-PLAN.md (Phase 11 complete)
 Resume file: None

@@ -28,9 +28,9 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 ### Restart Cycle & State Sync
 
 - [x] **SYNC-01**: The platform detects the gateway `shutdown` event and marks the instance as "restarting" (not "stopped" or "error")
-- [ ] **SYNC-02**: After a WebSocket reconnection, the platform queries gateway state (`config.get`, `tools.catalog`, `skills.status`) and reconciles DB records
-- [ ] **SYNC-03**: Extension reconciliation runs on every reconnect (not just at boot), promoting/demoting skills and plugins based on actual gateway state
-- [ ] **SYNC-04**: After a `config.patch`-triggered restart, the platform verifies success by checking `tools.catalog` for expected plugins/skills
+- [x] **SYNC-02**: After a WebSocket reconnection, the platform queries gateway state (`config.get`, `tools.catalog`, `skills.status`) and reconciles DB records
+- [x] **SYNC-03**: Extension reconciliation runs on every reconnect (not just at boot), promoting/demoting skills and plugins based on actual gateway state
+- [x] **SYNC-04**: After a `config.patch`-triggered restart, the platform verifies success by checking `tools.catalog` for expected plugins/skills
 - [x] **SYNC-05**: The persistent WebSocket connection auto-reconnects after a gateway restart with full state reconciliation
 
 ### Extension Operations
@@ -88,9 +88,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CFG-06 | Phase 10 | Complete |
 | CFG-07 | Phase 10 | Complete |
 | SYNC-01 | Phase 11 | Complete |
-| SYNC-02 | Phase 11 | Pending |
-| SYNC-03 | Phase 11 | Pending |
-| SYNC-04 | Phase 11 | Pending |
+| SYNC-02 | Phase 11 | Complete |
+| SYNC-03 | Phase 11 | Complete |
+| SYNC-04 | Phase 11 | Complete |
 | SYNC-05 | Phase 11 | Complete |
 | EXT-01 | Phase 12 | Pending |
 | EXT-02 | Phase 12 | Pending |

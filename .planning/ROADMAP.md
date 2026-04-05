@@ -124,7 +124,7 @@ Plans:
 
 - [ ] **Phase 9: RPC Consolidation** - Route all gateway RPC through the persistent WebSocket client, eliminating ephemeral connections
 - [x] **Phase 10: Config Lifecycle** - Gateway-first config updates via config.patch with baseHash concurrency, rate limiting, and correct merge-patch format (completed 2026-04-05)
-- [ ] **Phase 11: Restart Cycle & State Sync** - Shutdown event handling, reconnect-driven state reconciliation, and RPC queueing during disconnect windows
+- [x] **Phase 11: Restart Cycle & State Sync** - Shutdown event handling, reconnect-driven state reconciliation, and RPC queueing during disconnect windows (completed 2026-04-05)
 - [ ] **Phase 12: Extension Operations** - Plugin activate/deactivate and skill configure via config.patch with batching, post-restart verification, and rollback
 - [ ] **Phase 13: Health Integration** - Gateway HTTP /ready polling, WS ping/pong liveness, and gateway-authoritative config integrity checks
 
@@ -172,7 +172,7 @@ Plans:
   3. Extension reconciliation runs on every WebSocket reconnect (not just server boot), promoting or demoting plugin/skill status based on what the gateway actually reports
   4. After a config.patch that adds or removes plugins, the platform verifies the operation succeeded by checking `tools.catalog` post-restart -- it does not assume success based on the patch response alone
   5. The persistent WebSocket auto-reconnects after any gateway restart with exponential backoff, and full state reconciliation completes before the instance is marked "running" again
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 11-01-PLAN.md -- Restarting status type, shutdown event handling, exponential backoff, health monitor exclusion, frontend status badge
@@ -226,6 +226,6 @@ Phases execute in numeric order: 9 -> 10 -> 11 -> 12 -> 13
 | 8. Gateway Simplification | v1.2 | 1/1 | Complete | 2026-04-05 |
 | 9. RPC Consolidation | v1.3 | 0/2 | Not started | - |
 | 10. Config Lifecycle | v1.3 | 2/2 | Complete | 2026-04-05 |
-| 11. Restart Cycle & State Sync | 1/2 | In Progress|  | - |
+| 11. Restart Cycle & State Sync | 2/2 | Complete   | 2026-04-05 | - |
 | 12. Extension Operations | v1.3 | 0/? | Not started | - |
 | 13. Health Integration | v1.3 | 0/? | Not started | - |
