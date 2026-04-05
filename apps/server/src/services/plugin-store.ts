@@ -2,7 +2,8 @@ import { db } from '../db/index.js';
 import { getAdapter } from '../db/adapter.js';
 import { config } from '../config.js';
 import { gatewayCall } from '../agent-types/openclaw/gateway-rpc.js';
-import { getInstance, restartInstance } from './instance-manager.js';
+import { getInstance, patchGatewayConfig } from './instance-manager.js';
+import { waitForReconnect } from './gateway-event-relay.js';
 import {
   acquireLock,
   releaseLock,
@@ -59,6 +60,75 @@ function isInstallPluginRPCResult(val: unknown): val is InstallPluginRPCResult {
   return true;
 }
 
+// ─── Config Merge-Patch Builders ─────────────────────────────────────────────
+
+function buildPluginAddPatch(
+  pluginId: string,
+  pluginConfig: Record<string, unknown>,
+  currentLoadPaths: string[],
+): Record<string, unknown> {
+  const loadPath = `/home/node/.openclaw/plugins/${pluginId}`;
+  return {
+    plugins: {
+      entries: {
+        [pluginId]: { enabled: true, ...pluginConfig },
+      },
+      load: {
+        paths: currentLoadPaths.includes(loadPath)
+          ? currentLoadPaths
+          : [...currentLoadPaths, loadPath],
+      },
+    },
+  };
+}
+
+function buildPluginRemovePatch(
+  pluginId: string,
+  currentLoadPaths: string[],
+): Record<string, unknown> {
+  const loadPath = `/home/node/.openclaw/plugins/${pluginId}`;
+  return {
+    plugins: {
+      entries: {
+        [pluginId]: null, // RFC 7396: null deletes the key
+      },
+      load: {
+        paths: currentLoadPaths.filter(p => p !== loadPath),
+      },
+    },
+  };
+}
+
+function buildPluginTogglePatch(
+  pluginId: string,
+  enabled: boolean,
+  currentLoadPaths: string[],
+): Record<string, unknown> {
+  const loadPath = `/home/node/.openclaw/plugins/${pluginId}`;
+  const patch: Record<string, unknown> = {
+    plugins: {
+      entries: {
+        [pluginId]: { enabled },
+      },
+      load: {
+        // When enabling, ensure load path is present. When disabling, keep load path
+        // (plugin artifact stays on disk; enabled flag controls loading).
+        paths: enabled && !currentLoadPaths.includes(loadPath)
+          ? [...currentLoadPaths, loadPath]
+          : currentLoadPaths,
+      },
+    },
+  };
+  return patch;
+}
+
+async function getCurrentLoadPaths(instanceId: string): Promise<string[]> {
+  const cfgResult = await gatewayCall(instanceId, 'config.get', {}) as {
+    config?: { plugins?: { load?: { paths?: string[] } } };
+  } | null;
+  return cfgResult?.config?.plugins?.load?.paths ?? [];
+}
+
 // ─── Exported Functions ───────────────────────────────────────────────────────
 
 /**
@@ -93,12 +163,12 @@ export async function getPluginById(
  * PLUG-06: Verifies artifact exists; reinstalls from lockedVersion if missing.
  * PLUG-07: On health check failure, rolls back config and marks plugin failed.
  *
- * Revised flow (DB-first so seedConfig picks up the plugin):
- * 1. UPDATE status -> 'active' in DB (seedConfig now includes this plugin)
- * 2. restartInstance (seedConfig reads DB and includes active plugin)
- * 3. platform.ping health check
+ * Revised flow (gateway-first via config.patch):
+ * 1. UPDATE status -> 'active' in DB
+ * 2. config.patch to add plugin entry (triggers SIGUSR1 restart)
+ * 3. waitForReconnect (syncGatewayState runs reconcileExtensions)
  * 4. ON SUCCESS: done (status already 'active')
- * 5. ON FAILURE: UPDATE status -> 'failed'; restartInstance again (seedConfig excludes failed); return error
+ * 5. ON FAILURE: single rollback config.patch to remove entry
  */
 async function _activatePluginWithLock(
   instanceId: string,
@@ -196,45 +266,31 @@ async function _activatePluginWithLock(
       updated_at: db.fn.now(),
     });
 
-  // Restart the instance — seedConfig now includes this plugin
-  await restartInstance(instanceId, userId);
+  // Get current load paths from gateway for merge-patch
+  const currentLoadPaths = await getCurrentLoadPaths(instanceId);
+  const pluginConfig = existing.config || {};
+  const patch = buildPluginAddPatch(pluginId, pluginConfig, currentLoadPaths);
 
-  // Health check: wait for gateway to come back up
-  const instanceAfterRestart = await getInstance(instanceId, userId);
-  let healthCheckError: string | null = null;
+  // Gateway-first config.patch (triggers SIGUSR1 restart)
+  await patchGatewayConfig(instanceId, userId, patch, `Activate plugin: ${pluginId}`);
 
-  if (instanceAfterRestart?.controlEndpoint) {
+  // Wait for gateway restart + reconnect + syncGatewayState (includes reconcileExtensions)
+  await waitForReconnect(instanceId, 60_000);
+
+  // Verify: re-read DB status (reconcileExtensions may have demoted to 'failed')
+  const updatedPlugin = await getPluginById(instanceId, pluginId);
+  if (updatedPlugin?.status === 'failed') {
+    // EXT-05: Single rollback config.patch to remove the failed entry
     try {
-      await gatewayCall(instanceId, 'platform.ping', {}, 120_000);
-    } catch (pingErr: unknown) {
-      healthCheckError = pingErr instanceof Error ? pingErr.message : String(pingErr);
-    }
-  }
-
-  // PLUG-07: Rollback on health check failure
-  if (healthCheckError !== null) {
-    // Mark plugin as failed
-    await db('instance_plugins')
-      .where({ instance_id: instanceId, plugin_id: pluginId })
-      .update({
-        status: 'failed',
-        error_message: `Health check failed after activation: ${healthCheckError}`,
-        failed_at: db.fn.now(),
-        updated_at: db.fn.now(),
-      });
-
-    // Restart again — seedConfig now excludes the failed plugin
-    try {
-      await restartInstance(instanceId, userId);
+      const rollbackPatch = buildPluginRemovePatch(pluginId, currentLoadPaths);
+      await patchGatewayConfig(instanceId, userId, rollbackPatch, `Rollback plugin: ${pluginId}`);
+      await waitForReconnect(instanceId, 60_000);
     } catch (rollbackErr: unknown) {
-      console.error(
-        `[plugin-store] Rollback restart failed for ${pluginId} on ${instanceId}:`,
-        rollbackErr,
-      );
+      // Rollback failed (rate limit, network error) -- mark failed, user retries manually
+      console.error(`[plugin-store] Rollback config.patch failed for ${pluginId} on ${instanceId}:`, rollbackErr);
     }
-
-    await releaseLock(operationId, fencingToken, 'rolled-back', healthCheckError);
-    throw new Error(`Plugin activation failed and was rolled back: ${healthCheckError}`);
+    await releaseLock(operationId, fencingToken, 'rolled-back', updatedPlugin.errorMessage ?? 'Plugin failed to load');
+    throw new Error(`Plugin activation failed and was rolled back: ${updatedPlugin.errorMessage ?? 'Plugin not found in gateway after restart'}`);
   }
 
   const plugin = await getPluginById(instanceId, pluginId);
@@ -456,7 +512,7 @@ export async function activatePlugin(
 
 /**
  * Enable a previously disabled plugin.
- * Updates DB and restarts instance so seedConfig picks up the change.
+ * Updates DB and sends config.patch to toggle the plugin on.
  */
 export async function enablePlugin(
   instanceId: string,
@@ -487,13 +543,17 @@ export async function enablePlugin(
       return existing;
     }
 
-    // DB-first: update so seedConfig picks up the enabled plugin on restart
+    // DB-first: update so seedConfig picks up the enabled plugin
     await db('instance_plugins')
       .where({ instance_id: instanceId, plugin_id: pluginId })
       .update({ enabled: 1, status: 'active', updated_at: db.fn.now() });
 
-    // Restart: seedConfig reads from DB and includes active, enabled plugin
-    await restartInstance(instanceId, userId);
+    // Config.patch: toggle enabled flag in gateway config
+    const currentLoadPaths = await getCurrentLoadPaths(instanceId);
+    const patch = buildPluginTogglePatch(pluginId, true, currentLoadPaths);
+    await patchGatewayConfig(instanceId, userId, patch, `Enable plugin: ${pluginId}`);
+    // Plugin enable triggers SIGUSR1 -- wait for reconnect + reconciliation
+    await waitForReconnect(instanceId, 60_000);
 
     await releaseLock(operationId, fencingToken, 'success');
 
@@ -512,7 +572,7 @@ export async function enablePlugin(
 
 /**
  * Disable an active plugin.
- * Updates DB and restarts instance so seedConfig excludes the disabled plugin.
+ * Updates DB and sends config.patch to toggle the plugin off.
  */
 export async function disablePlugin(
   instanceId: string,
@@ -543,13 +603,17 @@ export async function disablePlugin(
       return existing;
     }
 
-    // DB-first: update so seedConfig excludes plugin on restart
+    // DB-first: update so reconciliation sees disabled status
     await db('instance_plugins')
       .where({ instance_id: instanceId, plugin_id: pluginId })
       .update({ enabled: 0, status: 'disabled', updated_at: db.fn.now() });
 
-    // Restart: seedConfig reads from DB and omits disabled plugin
-    await restartInstance(instanceId, userId);
+    // Config.patch: toggle enabled flag off in gateway config
+    const currentLoadPaths = await getCurrentLoadPaths(instanceId);
+    const patch = buildPluginTogglePatch(pluginId, false, currentLoadPaths);
+    await patchGatewayConfig(instanceId, userId, patch, `Disable plugin: ${pluginId}`);
+    // Plugin disable triggers SIGUSR1 -- wait for reconnect + reconciliation
+    await waitForReconnect(instanceId, 60_000);
 
     await releaseLock(operationId, fencingToken, 'success');
 
@@ -568,7 +632,7 @@ export async function disablePlugin(
 
 /**
  * Uninstall a plugin from an instance.
- * Deletes the DB row and restarts so seedConfig no longer includes the plugin.
+ * Deletes the DB row and sends config.patch to remove the plugin from gateway config.
  */
 export async function uninstallPlugin(
   instanceId: string,
@@ -588,19 +652,25 @@ export async function uninstallPlugin(
       throw new Error(`Plugin "${pluginId}" not found on instance ${instanceId}`);
     }
 
-    // Check cancel before long operation (restart)
+    // Check cancel before long operation
     if (await checkCancelRequested(operationId)) {
       await releaseLock(operationId, fencingToken, 'cancelled');
       return;
     }
 
-    // Delete from DB — seedConfig will no longer include this plugin on next restart
+    // Get current load paths BEFORE delete for merge-patch building
+    const currentLoadPaths = await getCurrentLoadPaths(instanceId);
+
+    // Delete from DB
     await db('instance_plugins')
       .where({ instance_id: instanceId, plugin_id: pluginId })
       .delete();
 
-    // Restart: seedConfig reads from DB and omits the deleted plugin
-    await restartInstance(instanceId, userId);
+    // Remove plugin from gateway config via config.patch
+    const patch = buildPluginRemovePatch(pluginId, currentLoadPaths);
+    await patchGatewayConfig(instanceId, userId, patch, `Uninstall plugin: ${pluginId}`);
+    // Plugin removal triggers SIGUSR1 -- wait for reconnect
+    await waitForReconnect(instanceId, 60_000);
 
     await releaseLock(operationId, fencingToken, 'success');
   } catch (err: unknown) {
