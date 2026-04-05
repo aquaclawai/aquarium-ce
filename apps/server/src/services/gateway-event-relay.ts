@@ -206,6 +206,8 @@ class PersistentGatewayClient {
   private requestQueue: QueuedRequest[] = [];
   private expectedRestart = false;
   private restartTimer: ReturnType<typeof setTimeout> | null = null;
+  private pingTimer: ReturnType<typeof setInterval> | null = null;
+  private lastPongAt: number = 0;
 
   constructor(
     private readonly instanceId: string,
@@ -215,8 +217,30 @@ class PersistentGatewayClient {
     this.connect();
   }
 
+  private startPingLoop(): void {
+    this.stopPingLoop();
+    this.pingTimer = setInterval(() => {
+      if (!this.ws || !this.connected) return;
+      const elapsed = Date.now() - this.lastPongAt;
+      if (elapsed > 60_000) {
+        console.warn(`[gateway-relay] No pong from ${this.instanceId} for ${elapsed}ms, forcing reconnect`);
+        this.ws.terminate();
+        return;
+      }
+      this.ws.ping();
+    }, 30_000);
+  }
+
+  private stopPingLoop(): void {
+    if (this.pingTimer) {
+      clearInterval(this.pingTimer);
+      this.pingTimer = null;
+    }
+  }
+
   private connect(): void {
     if (this.closed) return;
+    this.stopPingLoop();
 
     try {
       const ws = new WebSocket(this.endpoint, {
@@ -274,6 +298,9 @@ class PersistentGatewayClient {
             }
             this.connected = true;
             this.retryCount = 0;
+            this.lastPongAt = Date.now();
+            ws.on('pong', () => { this.lastPongAt = Date.now(); });
+            this.startPingLoop();
             // Clear restart timeout on successful reconnect
             if (this.restartTimer) {
               clearTimeout(this.restartTimer);
@@ -487,6 +514,7 @@ class PersistentGatewayClient {
       });
 
       ws.on('close', () => {
+        this.stopPingLoop();
         // Reject all in-flight RPC calls (these were already sent on the wire)
         for (const [, pending] of this.pendingRequests) {
           clearTimeout(pending.timer);
@@ -625,6 +653,7 @@ class PersistentGatewayClient {
       clearTimeout(this.restartTimer);
       this.restartTimer = null;
     }
+    this.stopPingLoop();
     this.expectedRestart = false;
     // Reject all in-flight RPC calls
     for (const [, pending] of this.pendingRequests) {
