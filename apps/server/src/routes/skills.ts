@@ -451,8 +451,8 @@ router.put('/:id/skills/:skillId', async (req, res) => {
     const { skillId } = req.params;
 
     const skill = enabled
-      ? await enableSkill(instance.id, skillId)
-      : await disableSkill(instance.id, skillId);
+      ? await enableSkill(instance.id, skillId, req.auth!.userId)
+      : await disableSkill(instance.id, skillId, req.auth!.userId);
 
     res.json({ ok: true, data: skill } satisfies ApiResponse<InstanceSkill>);
   } catch (err: unknown) {

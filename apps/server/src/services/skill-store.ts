@@ -2,6 +2,7 @@ import { db } from '../db/index.js';
 import { getAdapter } from '../db/adapter.js';
 import { config } from '../config.js';
 import { gatewayCall } from '../agent-types/openclaw/gateway-rpc.js';
+import { patchGatewayConfig } from './instance-manager.js';
 import {
   acquireLock,
   releaseLock,
@@ -57,6 +58,21 @@ function isInstallRPCResult(val: unknown): val is InstallRPCResult {
   if ('version' in obj && obj.version !== undefined && typeof obj.version !== 'string') return false;
   if ('integrityHash' in obj && obj.integrityHash !== undefined && typeof obj.integrityHash !== 'string') return false;
   return true;
+}
+
+// ─── Skill Patch Builder ─────────────────────────────────────────────────────
+
+function buildSkillTogglePatch(
+  skillId: string,
+  enabled: boolean,
+): Record<string, unknown> {
+  return {
+    skills: {
+      entries: {
+        [skillId]: { enabled },
+      },
+    },
+  };
 }
 
 // ─── Exported Functions ───────────────────────────────────────────────────────
@@ -248,11 +264,13 @@ export async function installSkill(
 
 /**
  * Enable a previously disabled skill.
+ * Uses gateway-first config.patch pattern -- skills are dynamically loaded (no SIGUSR1 restart).
  * Verifies skill is in 'disabled' state before proceeding.
  */
 export async function enableSkill(
   instanceId: string,
   skillId: string,
+  userId: string,
 ): Promise<InstanceSkill> {
   const { fencingToken, operationId } = await acquireLock(
     instanceId,
@@ -270,8 +288,23 @@ export async function enableSkill(
       throw new Error(`Skill "${skillId}" is not disabled (current status: ${existing.status})`);
     }
 
-    // Call RPC: skills.update (30s deadline per INFRA-07)
-    await gatewayCall(instanceId, 'skills.update', { skillId, enabled: true }, 30_000);
+    // Gateway-first: config.patch to enable the skill (no SIGUSR1 -- skills are dynamically loaded)
+    const patch = buildSkillTogglePatch(skillId, true);
+    await patchGatewayConfig(instanceId, userId, patch, `Enable skill: ${skillId}`);
+
+    // Verify immediately via skills.status RPC (no reconnect wait needed -- no restart)
+    try {
+      const statusResult = await gatewayCall(instanceId, 'skills.status', {}, 15_000) as {
+        skills?: Array<{ name?: string; enabled?: boolean }>;
+      } | null;
+      const skillInGateway = statusResult?.skills?.find(s => s.name === skillId);
+      if (skillInGateway && !skillInGateway.enabled) {
+        console.warn(`[skill-store] Skill ${skillId} still disabled in gateway after enable config.patch`);
+      }
+    } catch (verifyErr: unknown) {
+      // Verification failure is non-fatal -- config.patch succeeded
+      console.warn(`[skill-store] skills.status verification failed after enable for ${skillId}:`, verifyErr);
+    }
 
     await db('instance_skills')
       .where({ instance_id: instanceId, skill_id: skillId })
@@ -294,11 +327,13 @@ export async function enableSkill(
 
 /**
  * Disable an active skill.
+ * Uses gateway-first config.patch pattern -- skills are dynamically loaded (no SIGUSR1 restart).
  * Verifies skill is in 'active' or 'degraded' state before proceeding.
  */
 export async function disableSkill(
   instanceId: string,
   skillId: string,
+  userId: string,
 ): Promise<InstanceSkill> {
   const { fencingToken, operationId } = await acquireLock(
     instanceId,
@@ -318,8 +353,23 @@ export async function disableSkill(
       );
     }
 
-    // Call RPC: skills.update (30s deadline per INFRA-07)
-    await gatewayCall(instanceId, 'skills.update', { skillId, enabled: false }, 30_000);
+    // Gateway-first: config.patch to disable the skill (no SIGUSR1 -- skills are dynamically loaded)
+    const patch = buildSkillTogglePatch(skillId, false);
+    await patchGatewayConfig(instanceId, userId, patch, `Disable skill: ${skillId}`);
+
+    // Verify immediately via skills.status RPC (no reconnect wait needed -- no restart)
+    try {
+      const statusResult = await gatewayCall(instanceId, 'skills.status', {}, 15_000) as {
+        skills?: Array<{ name?: string; enabled?: boolean }>;
+      } | null;
+      const skillInGateway = statusResult?.skills?.find(s => s.name === skillId);
+      if (skillInGateway && skillInGateway.enabled) {
+        console.warn(`[skill-store] Skill ${skillId} still enabled in gateway after disable config.patch`);
+      }
+    } catch (verifyErr: unknown) {
+      // Verification failure is non-fatal -- config.patch succeeded
+      console.warn(`[skill-store] skills.status verification failed after disable for ${skillId}:`, verifyErr);
+    }
 
     await db('instance_skills')
       .where({ instance_id: instanceId, skill_id: skillId })
