@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Gateway Communication Overhaul
 status: in-progress
-stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-04-05T02:40:13Z"
-last_activity: 2026-04-05 -- Completed 10-01 gateway-first config patch
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-04-05T02:47:03Z"
+last_activity: 2026-04-05 -- Completed 10-02 remaining call-site migration
 progress:
   total_phases: 13
-  completed_phases: 9
-  total_plans: 30
-  completed_plans: 31
-  percent: 100
+  completed_phases: 10
+  total_plans: 32
+  completed_plans: 32
+  percent: 95
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-05)
 
 **Core value:** Gateway is the source of truth when containers are running; DB is the persistence layer for offline state and container initialization
-**Current focus:** Phase 10 -- Config Lifecycle
+**Current focus:** Phase 11 -- Restart Cycle & State Sync
 
 ## Current Position
 
-Phase: 10 of 13 (Config Lifecycle)
-Plan: 1 of 2 complete
-Status: In progress
-Last activity: 2026-04-05 -- Completed 10-01 gateway-first config patch
+Phase: 10 of 13 (Config Lifecycle -- COMPLETE)
+Plan: 2 of 2 complete
+Status: Phase 10 complete, ready for Phase 11
+Last activity: 2026-04-05 -- Completed 10-02 remaining call-site migration
 
-Progress: [█████████░] 95%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -44,13 +44,14 @@ Progress: [█████████░] 95%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 9. RPC Consolidation | 2/2 | 15min | 7.5min |
-| 10. Config Lifecycle | 1/2 | 4min | 4min |
+| 10. Config Lifecycle | 2/2 | 7min | 3.5min |
 | 11. Restart Cycle & State Sync | 0/? | — | — |
 | 12. Extension Operations | 0/? | — | — |
 | 13. Health Integration | 0/? | — | — |
 | Phase 09 P01 | 3min | 2 tasks | 2 files |
 | Phase 09 P02 | 12min | 2 tasks | 12 files |
 | Phase 10 P01 | 4min | 2 tasks | 2 files |
+| Phase 10 P02 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,8 @@ v1.3 research findings (HIGH confidence):
 - [Phase 10]: Gateway-first config write: config.get -> config.patch -> config.get read-back -> DB persist (running instances only)
 - [Phase 10]: Gateway failure in patchGatewayConfig propagates (no swallowed errors) -- correct semantic under gateway-first
 - [Phase 10]: config_hash updated from gateway's authoritative hash after every successful config.patch
+- [Phase 10]: seedConfig used to extract targeted config deltas (security profile, channel) rather than empty merge-patches
+- [Phase 10]: reseedConfigFiles eliminated from all config update paths -- only boot and health-monitor recovery
 
 ### Pending Todos
 
@@ -89,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-05T02:40:13Z
-Stopped at: Completed 10-01-PLAN.md
-Resume file: .planning/phases/10-config-lifecycle/10-01-SUMMARY.md
+Last session: 2026-04-05T02:47:03Z
+Stopped at: Completed 10-02-PLAN.md
+Resume file: .planning/phases/10-config-lifecycle/10-02-SUMMARY.md

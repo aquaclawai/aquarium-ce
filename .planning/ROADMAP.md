@@ -123,7 +123,7 @@ Plans:
 **Milestone Goal:** Redesign platform-to-gateway communication so the gateway is the source of truth when containers are running, replacing the current DB-first pattern with gateway-first operations and reconnect-driven state sync.
 
 - [ ] **Phase 9: RPC Consolidation** - Route all gateway RPC through the persistent WebSocket client, eliminating ephemeral connections
-- [ ] **Phase 10: Config Lifecycle** - Gateway-first config updates via config.patch with baseHash concurrency, rate limiting, and correct merge-patch format
+- [x] **Phase 10: Config Lifecycle** - Gateway-first config updates via config.patch with baseHash concurrency, rate limiting, and correct merge-patch format (completed 2026-04-05)
 - [ ] **Phase 11: Restart Cycle & State Sync** - Shutdown event handling, reconnect-driven state reconciliation, and RPC queueing during disconnect windows
 - [ ] **Phase 12: Extension Operations** - Plugin activate/deactivate and skill configure via config.patch with batching, post-restart verification, and rollback
 - [ ] **Phase 13: Health Integration** - Gateway HTTP /ready polling, WS ping/pong liveness, and gateway-authoritative config integrity checks
@@ -156,7 +156,7 @@ Plans:
   3. Config patches use the `{ raw: "<json5>" }` merge-patch format with a valid `baseHash` -- stale-hash conflicts are retried automatically (up to 3 times with re-read)
   4. Multiple config changes within a short window are batched into a single `config.patch` call, never exceeding 3 writes per 60 seconds per instance
   5. After a successful `config.patch`, the platform reads back the actual config from the gateway via `config.get` and persists it to DB -- the DB never contains a config the gateway has not confirmed
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 10-01-PLAN.md -- Gateway-first patchGatewayConfig with retry/rate-limit/hash-readback, fix extension-credentials config.patch format
@@ -225,7 +225,7 @@ Phases execute in numeric order: 9 -> 10 -> 11 -> 12 -> 13
 | 7. Plugin & Extension Fixes | v1.2 | 2/2 | Complete | 2026-04-05 |
 | 8. Gateway Simplification | v1.2 | 1/1 | Complete | 2026-04-05 |
 | 9. RPC Consolidation | v1.3 | 0/2 | Not started | - |
-| 10. Config Lifecycle | 1/2 | In Progress|  | - |
+| 10. Config Lifecycle | 2/2 | Complete   | 2026-04-05 | - |
 | 11. Restart Cycle & State Sync | v1.3 | 0/? | Not started | - |
 | 12. Extension Operations | v1.3 | 0/? | Not started | - |
 | 13. Health Integration | v1.3 | 0/? | Not started | - |
