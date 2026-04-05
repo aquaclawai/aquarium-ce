@@ -44,10 +44,10 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 
 ### Health Integration
 
-- [ ] **HLTH-01**: The health monitor polls the gateway's HTTP `/ready` endpoint alongside Docker container status checks
+- [x] **HLTH-01**: The health monitor polls the gateway's HTTP `/ready` endpoint alongside Docker container status checks
 - [ ] **HLTH-02**: The persistent WebSocket connection uses ping/pong frames for liveness detection (gateway unresponsive vs network down)
-- [ ] **HLTH-03**: The config integrity check uses the gateway's authoritative config hash (from `config.get`) instead of comparing file hashes on disk
-- [ ] **HLTH-04**: The config integrity check does not trigger `reseedConfigFiles` for running instances (eliminates the infinite reseed loop)
+- [x] **HLTH-03**: The config integrity check uses the gateway's authoritative config hash (from `config.get`) instead of comparing file hashes on disk
+- [x] **HLTH-04**: The config integrity check does not trigger `reseedConfigFiles` for running instances (eliminates the infinite reseed loop)
 
 ### Plugin Cleanup
 
@@ -105,10 +105,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXT-04 | Phase 12 | Complete |
 | EXT-05 | Phase 12 | Complete |
 | EXT-06 | Phase 12 | Complete |
-| HLTH-01 | Phase 13 | Pending |
+| HLTH-01 | Phase 13 | Complete |
 | HLTH-02 | Phase 13 | Pending |
-| HLTH-03 | Phase 13 | Pending |
-| HLTH-04 | Phase 13 | Pending |
+| HLTH-03 | Phase 13 | Complete |
+| HLTH-04 | Phase 13 | Complete |
 | CLEAN-01 | Phase 14 | Pending |
 | CLEAN-02 | Phase 14 | Pending |
 | CLEAN-03 | Phase 14 | Pending |

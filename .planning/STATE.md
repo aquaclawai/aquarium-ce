@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Gateway Communication Overhaul
-status: completed
-stopped_at: Phase 13 context gathered
-last_updated: "2026-04-05T05:03:12.891Z"
-last_activity: 2026-04-05 -- Completed 12-03 multi-plugin batch activation (EXT-03 gap closure)
+status: verifying
+stopped_at: Completed 13-02-PLAN.md
+last_updated: "2026-04-05T05:19:20.950Z"
+last_activity: 2026-04-05
 progress:
-  total_phases: 14
-  completed_phases: 12
-  total_plans: 37
-  completed_plans: 37
+  total_phases: 6
+  completed_phases: 5
+  total_plans: 11
+  completed_plans: 11
   percent: 100
 ---
 
@@ -27,14 +27,15 @@ See: .planning/PROJECT.md (updated 2026-04-05)
 
 Phase: 12 of 13 (Extension Operations)
 Plan: 3 of 3 complete
-Status: Phase 12 Complete
-Last activity: 2026-04-05 -- Completed 12-03 multi-plugin batch activation (EXT-03 gap closure)
+Status: Phase complete — ready for verification
+Last activity: 2026-04-05
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 27 (across v1.1 + v1.2 + v1.3)
 - Average duration: —
 - Total execution time: —
@@ -57,17 +58,21 @@ Progress: [██████████] 100%
 | Phase 12 P02 | 4min | 1 tasks | 2 files |
 | Phase 12 P01 | 5min | 2 tasks | 2 files |
 | Phase 12 P03 | 3min | 2 tasks | 3 files |
+| Phase 13-02 P02 | 2min | 1 tasks | 1 files |
+| Phase 13-01 P01 | 2min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
 ### Decisions
 
 Carried from v1.2:
+
 - DB as single writer, chat commands disabled -- prevents state divergence
 - Official OpenClaw gateway supports `gateway.bind` natively -- TCP proxy removed
 - Platform-bridge plugin only registers methods the gateway doesn't already have
 
 v1.3 research findings (HIGH confidence):
+
 - Gateway emits ZERO events for config/plugin/skill changes -- must use shutdown/reconnect/query pattern
 - `config.patch` uses `{ raw: "<json5>" }` merge-patch format -- NOT `{ patch: {...} }`
 - Rate limit: 3 config writes per 60 seconds -- batching mandatory for multi-plugin ops
@@ -94,6 +99,10 @@ v1.3 research findings (HIGH confidence):
 - [Phase 12]: Plugin lifecycle via config.patch + waitForReconnect instead of restartInstance -- container stays alive
 - [Phase 12]: waitForReconnect resolves after syncGatewayState (incl. reconcileExtensions) for post-reconnect DB verification
 - [Phase 12]: Batch activation delegates single-element batches to existing activatePlugin; batch rollback removes only failed plugins
+- [Phase 13-02]: Gateway hash authoritative on config mismatch -- DB updated to match, no reseed or notification
+- [Phase 13-02]: HTTP /ready polling alongside Docker checks for process-level gateway health
+- [Phase 13]: Use ws.terminate() for frozen-peer disconnect -- destroys immediately without close handshake
+- [Phase 13]: 30s ping interval with 60s pong timeout for frozen gateway detection
 
 ### Pending Todos
 
@@ -107,6 +116,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-05T05:03:12.886Z
-Stopped at: Phase 13 context gathered
-Resume file: .planning/phases/13-health-integration/13-CONTEXT.md
+Last session: 2026-04-05T05:19:10.829Z
+Stopped at: Completed 13-02-PLAN.md
+Resume file: None
