@@ -237,6 +237,120 @@ export async function syncWorkspaceFromContainer(instanceId: string): Promise<vo
   }
 }
 
+/**
+ * Sync workspace files from gateway via RPC (agents.files.list + agents.files.get).
+ * Falls back to Docker exec (syncWorkspaceFromContainer) if gateway RPC fails.
+ * Gateway files are authoritative for running instances (gateway is source of truth).
+ */
+export async function syncWorkspaceViaGateway(instanceId: string): Promise<void> {
+  try {
+    const listResult = await gatewayCall(instanceId, 'agents.files.list', { agentId: 'main' }, 15_000) as {
+      files?: Array<{ name: string; path: string; missing: boolean }>;
+    };
+
+    const row = await db('instances').where({ id: instanceId }).first();
+    if (!row) return;
+
+    const currentConfig = typeof row.config === 'string'
+      ? JSON.parse(row.config) as Record<string, unknown>
+      : (row.config as Record<string, unknown> || {});
+    let changed = false;
+
+    // Build mapping from gateway file names to config keys
+    // Gateway returns names like "AGENTS.md", WORKSPACE_FILE_KEYS has filenames like "workspace/AGENTS.md"
+    const fileKeyMap = new Map<string, string>();
+    for (const wf of WORKSPACE_FILE_KEYS) {
+      // Extract just the filename part (e.g., "AGENTS.md" from "workspace/AGENTS.md")
+      const basename = wf.filename.split('/').pop()!;
+      fileKeyMap.set(basename, wf.key);
+      // Also map the full path in case gateway returns it
+      fileKeyMap.set(wf.filename, wf.key);
+    }
+
+    for (const file of listResult.files ?? []) {
+      if (file.missing) continue;
+
+      const configKey = fileKeyMap.get(file.name) ?? fileKeyMap.get(file.path);
+      if (!configKey) continue;
+
+      try {
+        const fileResult = await gatewayCall(instanceId, 'agents.files.get', {
+          agentId: 'main',
+          name: file.name,
+        }, 15_000) as { file?: { content?: string } };
+
+        if (fileResult?.file?.content !== undefined && fileResult.file.content !== currentConfig[configKey]) {
+          // Gateway wins -- overwrite DB with gateway's authoritative content
+          currentConfig[configKey] = fileResult.file.content;
+          changed = true;
+        }
+      } catch {
+        // Skip individual file errors
+      }
+    }
+
+    if (changed) {
+      await db('instances').where({ id: instanceId }).update({
+        config: JSON.stringify(currentConfig),
+        updated_at: db.fn.now(),
+      });
+    }
+  } catch (err) {
+    console.warn(`[syncWorkspaceViaGateway] RPC failed for ${instanceId}, falling back to container sync:`, err);
+    // Graceful degradation: fall back to Docker exec approach
+    await syncWorkspaceFromContainer(instanceId);
+  }
+}
+
+/**
+ * Full state reconciliation after gateway WebSocket reconnect.
+ * Runs: extension reconciliation + config hash sync + workspace file sync.
+ * Called from PersistentGatewayClient after every successful reconnect.
+ */
+export async function syncGatewayState(instanceId: string): Promise<void> {
+  console.log(`[syncGatewayState] Starting state sync for ${instanceId}`);
+
+  // 1. Extension reconciliation (calls tools.catalog + config.get + skills.status internally)
+  try {
+    // reconcileExtensions still accepts controlEndpoint/authToken params but uses gatewayCall internally.
+    // Pass empty strings -- they are unused since Phase 9 migration.
+    const result = await reconcileExtensions(instanceId, '', '');
+    console.log(
+      `[syncGatewayState] Extension reconciliation for ${instanceId}: promoted=${result.promoted.length}, demoted=${result.demoted.length}`,
+    );
+  } catch (err) {
+    console.warn(`[syncGatewayState] Extension reconciliation failed for ${instanceId}:`, err);
+    // Non-fatal -- continue with remaining sync steps
+  }
+
+  // 2. Config hash sync from gateway's authoritative state
+  try {
+    const configResult = await gatewayCall(instanceId, 'config.get', {}, 15_000) as {
+      hash?: string;
+      config?: unknown;
+    };
+    if (configResult?.hash) {
+      await db('instances').where({ id: instanceId }).update({
+        config_hash: configResult.hash,
+        updated_at: db.fn.now(),
+      });
+    }
+  } catch (err) {
+    console.warn(`[syncGatewayState] Config hash sync failed for ${instanceId}:`, err);
+    // Non-fatal -- hash will be stale until next config operation
+  }
+
+  // 3. Workspace file sync via gateway RPC
+  try {
+    await syncWorkspaceViaGateway(instanceId);
+  } catch (err) {
+    console.warn(`[syncGatewayState] Workspace sync failed for ${instanceId}:`, err);
+    // Non-fatal -- files will sync on next health monitor cycle
+  }
+
+  console.log(`[syncGatewayState] State sync complete for ${instanceId}`);
+}
+
 export async function reseedConfigFiles(instanceId: string): Promise<void> {
   const row = await db('instances').where({ id: instanceId }).first();
   if (!row) return;

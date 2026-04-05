@@ -34,7 +34,8 @@ async function getInstanceRuntimeInfo(
 // ─── RPC Response Types ───────────────────────────────────────────────────────
 
 interface GatewaySkillInfo {
-  skillId: string;
+  name: string;
+  skillKey?: string;
   status?: string;
   [key: string]: unknown;
 }
@@ -120,7 +121,7 @@ export async function recoverOrphanedOperations(): Promise<void> {
 }
 
 /**
- * Phase 2 reconciliation: compare gateway skills.list with DB state and
+ * Phase 2 reconciliation: compare gateway skills.status with DB state and
  * promote/demote skills accordingly.
  *
  * Called after the gateway boots successfully (health check passed).
@@ -144,14 +145,14 @@ export async function reconcileExtensions(
   const demoted: string[] = [];
   const unchanged: string[] = [];
 
-  // Fetch current gateway skill state via skills.list
+  // Fetch current gateway skill state via skills.status
   let skillsRpcResult: unknown;
   try {
-    skillsRpcResult = await gatewayCall(instanceId, 'skills.list', {}, 15_000);
+    skillsRpcResult = await gatewayCall(instanceId, 'skills.status', {}, 15_000);
   } catch (skillListErr: unknown) {
-    // skills.list may not exist in older gateway versions — log and skip
+    // skills.status may fail if gateway is in a degraded state — log and skip
     console.warn(
-      `[extension-lifecycle] skills.list RPC failed for ${instanceId} (gateway may not support it):`,
+      `[extension-lifecycle] skills.status RPC failed for ${instanceId}:`,
       skillListErr,
     );
     skillsRpcResult = undefined;
@@ -160,14 +161,14 @@ export async function reconcileExtensions(
   if (skillsRpcResult !== undefined) {
     if (!isSkillsListResult(skillsRpcResult)) {
       console.warn(
-        `[extension-lifecycle] Unexpected skills.list RPC response for ${instanceId}: ${JSON.stringify(skillsRpcResult)}`
+        `[extension-lifecycle] Unexpected skills.status RPC response for ${instanceId}: ${JSON.stringify(skillsRpcResult)}`
       );
     } else {
-      // Build gateway skills map: skillId -> gatewaySkillInfo
+      // Build gateway skills map: name -> gatewaySkillInfo
       const gatewaySkills = new Map<string, GatewaySkillInfo>();
       for (const skill of skillsRpcResult.skills ?? []) {
-        if (skill.skillId) {
-          gatewaySkills.set(skill.skillId, skill);
+        if (skill.name) {
+          gatewaySkills.set(skill.name, skill);
         }
       }
 
