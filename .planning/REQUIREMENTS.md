@@ -17,13 +17,13 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 
 ### Config Lifecycle
 
-- [ ] **CFG-01**: Config updates for running instances operate on the gateway first (via `config.patch`), then sync the result back to DB on success
-- [ ] **CFG-02**: Config updates for stopped instances write to DB only (correct degradation when no gateway is available)
-- [ ] **CFG-03**: The platform tracks the gateway's `baseHash` from `config.get` and uses it for optimistic concurrency in `config.patch` calls
-- [ ] **CFG-04**: Config patches use the correct `{ raw: "<json5>" }` merge-patch format (RFC 7396) instead of `{ patch: {...} }` or full file overwrite
-- [ ] **CFG-05**: The platform enforces the 3-writes-per-60-seconds rate limit by batching multiple config changes into a single `config.patch` call
+- [x] **CFG-01**: Config updates for running instances operate on the gateway first (via `config.patch`), then sync the result back to DB on success
+- [x] **CFG-02**: Config updates for stopped instances write to DB only (correct degradation when no gateway is available)
+- [x] **CFG-03**: The platform tracks the gateway's `baseHash` from `config.get` and uses it for optimistic concurrency in `config.patch` calls
+- [x] **CFG-04**: Config patches use the correct `{ raw: "<json5>" }` merge-patch format (RFC 7396) instead of `{ patch: {...} }` or full file overwrite
+- [x] **CFG-05**: The platform enforces the 3-writes-per-60-seconds rate limit by batching multiple config changes into a single `config.patch` call
 - [ ] **CFG-06**: `reseedConfigFiles` is only used during initial container startup (seed), not for running instances (running instances use `config.patch`)
-- [ ] **CFG-07**: After a successful `config.patch`, the platform reads back the actual config from the gateway (`config.get`) and persists it to DB as the authoritative state
+- [x] **CFG-07**: After a successful `config.patch`, the platform reads back the actual config from the gateway (`config.get`) and persists it to DB as the authoritative state
 
 ### Restart Cycle & State Sync
 
@@ -80,13 +80,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RPC-03 | Phase 9 | Complete |
 | RPC-04 | Phase 9 | Complete |
 | RPC-05 | Phase 9 | Complete |
-| CFG-01 | Phase 10 | Pending |
-| CFG-02 | Phase 10 | Pending |
-| CFG-03 | Phase 10 | Pending |
-| CFG-04 | Phase 10 | Pending |
-| CFG-05 | Phase 10 | Pending |
+| CFG-01 | Phase 10 | Complete |
+| CFG-02 | Phase 10 | Complete |
+| CFG-03 | Phase 10 | Complete |
+| CFG-04 | Phase 10 | Complete |
+| CFG-05 | Phase 10 | Complete |
 | CFG-06 | Phase 10 | Pending |
-| CFG-07 | Phase 10 | Pending |
+| CFG-07 | Phase 10 | Complete |
 | SYNC-01 | Phase 11 | Pending |
 | SYNC-02 | Phase 11 | Pending |
 | SYNC-03 | Phase 11 | Pending |

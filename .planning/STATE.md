@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Gateway Communication Overhaul
-status: completed
-stopped_at: Phase 10 context gathered
-last_updated: "2026-04-05T02:08:52.041Z"
-last_activity: 2026-04-04 -- Completed 09-02 ephemeral client migration
+status: in-progress
+stopped_at: Completed 10-01-PLAN.md
+last_updated: "2026-04-05T02:40:13Z"
+last_activity: 2026-04-05 -- Completed 10-01 gateway-first config patch
 progress:
   total_phases: 13
   completed_phases: 9
   total_plans: 30
-  completed_plans: 30
+  completed_plans: 31
   percent: 100
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-05)
 
 **Core value:** Gateway is the source of truth when containers are running; DB is the persistence layer for offline state and container initialization
-**Current focus:** Phase 9 -- RPC Consolidation
+**Current focus:** Phase 10 -- Config Lifecycle
 
 ## Current Position
 
-Phase: 9 of 13 (RPC Consolidation) -- first phase of v1.3
-Plan: 2 of 2 complete
-Status: Phase 9 complete
-Last activity: 2026-04-04 -- Completed 09-02 ephemeral client migration
+Phase: 10 of 13 (Config Lifecycle)
+Plan: 1 of 2 complete
+Status: In progress
+Last activity: 2026-04-05 -- Completed 10-01 gateway-first config patch
 
-Progress: [██████████] 100%
+Progress: [█████████░] 95%
 
 ## Performance Metrics
 
@@ -44,12 +44,13 @@ Progress: [██████████] 100%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 9. RPC Consolidation | 2/2 | 15min | 7.5min |
-| 10. Config Lifecycle | 0/? | — | — |
+| 10. Config Lifecycle | 1/2 | 4min | 4min |
 | 11. Restart Cycle & State Sync | 0/? | — | — |
 | 12. Extension Operations | 0/? | — | — |
 | 13. Health Integration | 0/? | — | — |
 | Phase 09 P01 | 3min | 2 tasks | 2 files |
 | Phase 09 P02 | 12min | 2 tasks | 12 files |
+| Phase 10 P01 | 4min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,9 @@ v1.3 research findings (HIGH confidence):
 - [Phase 09]: GatewayRPCClient removed -- all RPC through gatewayCall facade (persistent WebSocket only)
 - [Phase 09]: Service functions accept instanceId, not endpoint+token -- gateway routing is internal to gatewayCall
 - [Phase 09]: translateRPC throws on missing instanceId (no ephemeral fallback)
+- [Phase 10]: Gateway-first config write: config.get -> config.patch -> config.get read-back -> DB persist (running instances only)
+- [Phase 10]: Gateway failure in patchGatewayConfig propagates (no swallowed errors) -- correct semantic under gateway-first
+- [Phase 10]: config_hash updated from gateway's authoritative hash after every successful config.patch
 
 ### Pending Todos
 
@@ -85,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-05T02:08:52.038Z
-Stopped at: Phase 10 context gathered
-Resume file: .planning/phases/10-config-lifecycle/10-CONTEXT.md
+Last session: 2026-04-05T02:40:13Z
+Stopped at: Completed 10-01-PLAN.md
+Resume file: .planning/phases/10-config-lifecycle/10-01-SUMMARY.md
