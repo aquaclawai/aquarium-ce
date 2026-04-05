@@ -156,11 +156,11 @@ Plans:
   3. Config patches use the `{ raw: "<json5>" }` merge-patch format with a valid `baseHash` -- stale-hash conflicts are retried automatically (up to 3 times with re-read)
   4. Multiple config changes within a short window are batched into a single `config.patch` call, never exceeding 3 writes per 60 seconds per instance
   5. After a successful `config.patch`, the platform reads back the actual config from the gateway via `config.get` and persists it to DB -- the DB never contains a config the gateway has not confirmed
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 10-01: TBD
-- [ ] 10-02: TBD
+- [ ] 10-01-PLAN.md -- Gateway-first patchGatewayConfig with retry/rate-limit/hash-readback, fix extension-credentials config.patch format
+- [ ] 10-02-PLAN.md -- Convert updateSecurityProfile and channels.ts reseedAndPatch to use patchGatewayConfig
 
 ### Phase 11: Restart Cycle & State Sync
 **Goal**: The platform correctly handles gateway restarts triggered by config changes -- detecting shutdown, maintaining connection continuity, and reconciling actual gateway state with DB records after every reconnect
@@ -225,7 +225,7 @@ Phases execute in numeric order: 9 -> 10 -> 11 -> 12 -> 13
 | 7. Plugin & Extension Fixes | v1.2 | 2/2 | Complete | 2026-04-05 |
 | 8. Gateway Simplification | v1.2 | 1/1 | Complete | 2026-04-05 |
 | 9. RPC Consolidation | v1.3 | 0/2 | Not started | - |
-| 10. Config Lifecycle | v1.3 | 0/? | Not started | - |
+| 10. Config Lifecycle | v1.3 | 0/2 | Not started | - |
 | 11. Restart Cycle & State Sync | v1.3 | 0/? | Not started | - |
 | 12. Extension Operations | v1.3 | 0/? | Not started | - |
 | 13. Health Integration | v1.3 | 0/? | Not started | - |
