@@ -210,10 +210,24 @@ Plans:
 - [ ] 13-01: TBD
 - [ ] 13-02: TBD
 
+### Phase 14: Plugin Cleanup
+**Goal**: Remove dead RPC methods from the platform-bridge plugin and replace ClawHub marketplace calls with direct HTTP from the platform, leaving only `platform.ping` and `platform.runtime` in the plugin
+**Depends on**: Phase 9
+**Requirements**: CLEAN-01, CLEAN-02, CLEAN-03, CLEAN-04
+**Success Criteria** (what must be TRUE):
+  1. The platform's marketplace-client.ts calls the ClawHub API directly via HTTP (not through gateway RPC) for both search and extension info
+  2. The platform-bridge plugin source contains only `platform.ping` and `platform.runtime` method registrations — all other methods (`skills.list`, `plugins.list`, `agents.workspace.init`, `clawhub.search`, `clawhub.info`) are deleted
+  3. The gateway loads the plugin without errors after the method removal
+  4. ClawHub catalog browsing works end-to-end (search + trust signals + install) with direct HTTP calls
+**Plans**: TBD
+
+Plans:
+- [ ] 14-01: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 9 -> 10 -> 11 -> 12 -> 13
+Phases execute in numeric order: 9 -> 10 -> 11 -> 12 -> 13 -> 14
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -230,3 +244,4 @@ Phases execute in numeric order: 9 -> 10 -> 11 -> 12 -> 13
 | 11. Restart Cycle & State Sync | v1.3 | 2/2 | Complete | 2026-04-05 |
 | 12. Extension Operations | 3/3 | Complete    | 2026-04-05 | - |
 | 13. Health Integration | v1.3 | 0/? | Not started | - |
+| 14. Plugin Cleanup | v1.3 | 0/? | Not started | - |
