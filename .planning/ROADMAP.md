@@ -219,10 +219,10 @@ Plans:
   2. The platform-bridge plugin source contains only `platform.ping` and `platform.runtime` method registrations — all other methods (`skills.list`, `plugins.list`, `agents.workspace.init`, `clawhub.search`, `clawhub.info`) are deleted
   3. The gateway loads the plugin without errors after the method removal
   4. ClawHub catalog browsing works end-to-end (search + trust signals + install) with direct HTTP calls
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 14-01-PLAN.md -- Direct HTTP for ClawHub search/info, BUILTIN_REGISTRY fallback, config.ts clawHubApiUrl, route call site updates (CLEAN-01, CLEAN-02)
+- [x] 14-01-PLAN.md -- Direct HTTP for ClawHub search/info, BUILTIN_REGISTRY fallback, config.ts clawHubApiUrl, route call site updates (CLEAN-01, CLEAN-02)
 - [x] 14-02-PLAN.md -- Strip platform-bridge plugin to platform.ping + platform.runtime only (CLEAN-03, CLEAN-04)
 
 ## Progress
@@ -245,4 +245,4 @@ Phases execute in numeric order: 9 -> 10 -> 11 -> 12 -> 13 -> 14
 | 11. Restart Cycle & State Sync | v1.3 | 2/2 | Complete | 2026-04-05 |
 | 12. Extension Operations | v1.3 | 3/3 | Complete | 2026-04-05 |
 | 13. Health Integration | v1.3 | 2/2 | Complete    | 2026-04-05 |
-| 14. Plugin Cleanup | v1.3 | 1/2 | In Progress|  |
+| 14. Plugin Cleanup | v1.3 | 2/2 | Complete   | 2026-04-05 |

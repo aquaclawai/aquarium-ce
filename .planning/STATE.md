@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Gateway Communication Overhaul
-status: executing
-stopped_at: Completed 14-02-PLAN.md
-last_updated: "2026-04-05T05:42:17.668Z"
+status: verifying
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-04-05T05:44:48.008Z"
 last_activity: 2026-04-05
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 13
-  completed_plans: 12
-  percent: 92
+  completed_plans: 13
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-05)
 
 Phase: 14 of 13 (plugin cleanup)
 Plan: 2 of 2
-Status: Executing phase 14
+Status: Phase complete — ready for verification
 Last activity: 2026-04-05
 
 Progress: [█████████░] 92%
@@ -62,6 +62,7 @@ Progress: [█████████░] 92%
 | Phase 13-01 P01 | 2min | 1 tasks | 1 files |
 | 13 | 2 | - | - |
 | Phase 14 P02 | 1min | 1 tasks | 1 files |
+| Phase 14 P01 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,8 @@ v1.3 research findings (HIGH confidence):
 - [Phase 13]: Use ws.terminate() for frozen-peer disconnect -- destroys immediately without close handshake
 - [Phase 13]: 30s ping interval with 60s pong timeout for frozen gateway detection
 - [Phase 14]: Stripped platform-bridge plugin to minimal 27-line file with only ping and runtime methods
+- [Phase 14]: BUILTIN_REGISTRY moved from openclaw plugin into marketplace-client.ts -- platform owns fallback catalog
+- [Phase 14]: Direct HTTP + in-memory fallback pattern: try remote ClawHub API first, fall back to built-in registry on any failure
 
 ### Pending Todos
 
@@ -119,6 +122,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-05T05:42:16.378Z
-Stopped at: Completed 14-02-PLAN.md
+Last session: 2026-04-05T05:44:48.005Z
+Stopped at: Completed 14-01-PLAN.md
 Resume file: None
