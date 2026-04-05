@@ -66,7 +66,7 @@ function toInstance(row: Record<string, unknown>): Instance {
   };
 }
 
-async function updateStatus(id: string, status: InstanceStatus, extra: Record<string, unknown> = {}, statusMessage?: string): Promise<void> {
+export async function updateStatus(id: string, status: InstanceStatus, extra: Record<string, unknown> = {}, statusMessage?: string): Promise<void> {
   await db('instances').where({ id }).update({ status, status_message: statusMessage ?? null, updated_at: db.fn.now(), ...extra });
   broadcast(id, { type: 'instance:status', instanceId: id, payload: { status, statusMessage: statusMessage ?? null } });
 }

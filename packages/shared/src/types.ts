@@ -1,6 +1,6 @@
 // === Status Types ===
 
-export type InstanceStatus = 'created' | 'starting' | 'running' | 'stopping' | 'stopped' | 'error';
+export type InstanceStatus = 'created' | 'starting' | 'running' | 'restarting' | 'stopping' | 'stopped' | 'error';
 export type DeploymentTarget = 'docker' | 'kubernetes';
 export type CredentialType = 'api_key' | 'oauth_token';
 export type BillingMode = 'platform' | 'byok';
