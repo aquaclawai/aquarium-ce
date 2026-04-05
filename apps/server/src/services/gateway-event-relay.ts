@@ -17,6 +17,51 @@ const POLL_INTERVAL_MS = 10_000;
 
 const instanceDlpCache = new Map<string, DlpConfig | null>();
 
+// ── Reconnect Waiters ──
+// Allows callers (e.g. plugin-store) to await the completion of a gateway
+// restart cycle (SIGUSR1 -> reconnect -> syncGatewayState).
+
+interface ReconnectWaiter {
+  resolve: () => void;
+  reject: (err: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
+const reconnectWaiters = new Map<string, ReconnectWaiter>();
+
+/**
+ * Wait for a gateway reconnect cycle to complete for a given instance.
+ * Resolves after the gateway reconnects and syncGatewayState finishes
+ * (which includes reconcileExtensions).
+ */
+export function waitForReconnect(instanceId: string, timeoutMs = 60_000): Promise<void> {
+  // If an existing waiter exists, supersede it
+  const existing = reconnectWaiters.get(instanceId);
+  if (existing) {
+    clearTimeout(existing.timer);
+    reconnectWaiters.delete(instanceId);
+    existing.reject(new Error('Superseded'));
+  }
+
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reconnectWaiters.delete(instanceId);
+      reject(new Error(`Reconnect timeout for instance ${instanceId} (${timeoutMs}ms)`));
+    }, timeoutMs);
+
+    reconnectWaiters.set(instanceId, { resolve, reject, timer });
+  });
+}
+
+function notifyReconnectWaiter(instanceId: string): void {
+  const waiter = reconnectWaiters.get(instanceId);
+  if (waiter) {
+    clearTimeout(waiter.timer);
+    reconnectWaiters.delete(instanceId);
+    waiter.resolve();
+  }
+}
+
 export function preloadDlpConfig(instanceId: string, profile: SecurityProfile): void {
   instanceDlpCache.set(instanceId, getDlpConfig(profile));
 }
@@ -241,6 +286,7 @@ class PersistentGatewayClient {
 
             syncGatewayState(this.instanceId)
               .then(() => {
+                notifyReconnectWaiter(this.instanceId);
                 if (wasExpectedRestart) {
                   updateStatus(this.instanceId, 'running', {}, undefined).catch(err =>
                     console.warn(`[gateway-relay] Failed to set running status for ${this.instanceId}:`, err)
@@ -249,6 +295,7 @@ class PersistentGatewayClient {
               })
               .catch((err) => {
                 console.warn(`[gateway-relay] State sync failed for ${this.instanceId}:`, err);
+                notifyReconnectWaiter(this.instanceId);
                 // Still transition to running -- stale DB is better than stuck "restarting"
                 if (wasExpectedRestart) {
                   updateStatus(this.instanceId, 'running', {}, undefined).catch(syncErr =>
@@ -600,6 +647,14 @@ class PersistentGatewayClient {
         cb.reject(new Error(`Gateway connection closed for instance ${this.instanceId}`));
         chatEventCallbacks.delete(key);
       }
+    }
+
+    // Clean up any reconnect waiter for this instance
+    const waiter = reconnectWaiters.get(this.instanceId);
+    if (waiter) {
+      clearTimeout(waiter.timer);
+      reconnectWaiters.delete(this.instanceId);
+      waiter.reject(new Error(`Gateway connection closed for instance ${this.instanceId}`));
     }
 
     if (this.ws) {
