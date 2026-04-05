@@ -383,45 +383,37 @@ export async function updateSecurityProfile(
   const updated = await getInstance(id, userId);
   if (!updated) throw new Error('Instance not found after update');
 
-  if (updated.status === 'running') {
-    await reseedConfigFiles(id);
-    const { adapter } = getAgentType(updated.agentType);
-    if (adapter?.translateRPC && updated.controlEndpoint) {
-      try {
-        const cfg = await adapter.translateRPC({
-          method: 'config.get',
-          params: {},
-          endpoint: updated.controlEndpoint,
-          token: updated.authToken,
-          instanceId: id,
-        }) as { hash?: string } | null;
-        if (cfg?.hash) {
-          // Gateway 2026.3.13+ expects { raw: <full JSON string> }
-          const engine2 = getRuntimeEngine(updated.deploymentTarget);
-          const { manifest: m2 } = getAgentType(updated.agentType);
-          let rawConfig: string | null | undefined;
-          if (engine2.readFile && updated.runtimeId) {
-            const volPath = m2.volumes[0]?.mountPath || '/home/node/.openclaw';
-            try {
-              rawConfig = await engine2.readFile(updated.runtimeId, `${volPath}/openclaw.json`);
-            } catch { /* fallback */ }
-          }
-          await adapter.translateRPC({
-            method: 'config.patch',
-            params: {
-              ...(rawConfig ? { raw: rawConfig } : { patch: {} }),
-              baseHash: cfg.hash,
-              note: `Platform: security profile → ${profile}`,
-              restartDelayMs: 2000,
-            },
-            endpoint: updated.controlEndpoint,
-            token: updated.authToken,
-            instanceId: id,
+  if (updated.status === 'running' && updated.controlEndpoint) {
+    try {
+      // Build a security config delta using seedConfig to extract the
+      // security-profile-dependent keys (hooks, cron, models, approval).
+      let securityDelta: Record<string, unknown> = {};
+      const { adapter } = getAgentType(updated.agentType);
+      if (adapter?.seedConfig) {
+        try {
+          const creds = await getDecryptedCredentials(id);
+          const configFiles = await adapter.seedConfig({
+            instance: updated,
+            userConfig: updated.config || {},
+            credentials: creds,
           });
+          const openclawJson = configFiles.get('openclaw.json');
+          if (openclawJson) {
+            const fullConfig = JSON.parse(openclawJson) as Record<string, unknown>;
+            // Extract security-profile-dependent sections
+            if (fullConfig.hooks !== undefined) securityDelta.hooks = fullConfig.hooks;
+            if (fullConfig.cron !== undefined) securityDelta.cron = fullConfig.cron;
+            if (fullConfig.models !== undefined) securityDelta.models = fullConfig.models;
+            if (fullConfig.approval !== undefined) securityDelta.approval = fullConfig.approval;
+          }
+        } catch (seedErr) {
+          console.warn(`[security-profile] seedConfig failed for ${id}, sending empty delta:`, seedErr);
+          // Fall through with empty delta — patchGatewayConfig still triggers SIGUSR1 restart
         }
-      } catch (err) {
-        console.error(`[security-profile] config.patch failed for ${id}:`, err);
       }
+      await patchGatewayConfig(id, userId, securityDelta, `Security profile \u2192 ${profile}`);
+    } catch (err) {
+      console.error(`[security-profile] config.patch failed for ${id}:`, err);
     }
   }
 
