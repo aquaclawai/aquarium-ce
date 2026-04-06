@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api';
 import type { GatewayModel, InstanceModelsResponse } from '@aquarium/shared';
 
@@ -12,36 +12,34 @@ export function useInstanceModels(
   instanceId: string,
   instanceStatus: string,
 ): UseInstanceModelsResult {
-  const [models, setModels] = useState<GatewayModel[]>([]);
-  const [configuredProviders, setConfiguredProviders] = useState<string[]>([]);
+  const [data, setData] = useState<{ models: GatewayModel[]; configuredProviders: string[] } | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (instanceStatus !== 'running') {
-      setModels([]);
-      setConfiguredProviders([]);
-      return;
-    }
+  const isRunning = instanceStatus === 'running';
 
-    let cancelled = false;
+  const fetchModels = useCallback(async () => {
     setLoading(true);
+    try {
+      const result = await api.get<InstanceModelsResponse>(`/instances/${instanceId}/models`);
+      setData({ models: result.models, configuredProviders: result.configuredProviders });
+    } catch {
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [instanceId]);
 
-    api.get<InstanceModelsResponse>(`/instances/${instanceId}/models`)
-      .then(data => {
-        if (!cancelled) {
-          setModels(data.models);
-          setConfiguredProviders(data.configuredProviders);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setModels([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+  useEffect(() => {
+    if (isRunning) {
+      fetchModels();
+    } else {
+      setData(null);
+    }
+  }, [isRunning, fetchModels]);
 
-    return () => { cancelled = true; };
-  }, [instanceId, instanceStatus]);
-
-  return { models, configuredProviders, loading };
+  return {
+    models: data?.models ?? [],
+    configuredProviders: data?.configuredProviders ?? [],
+    loading,
+  };
 }
