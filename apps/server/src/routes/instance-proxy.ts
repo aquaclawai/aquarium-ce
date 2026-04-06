@@ -19,7 +19,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { createServer as createHttpServer, request as httpRequest, IncomingMessage } from 'node:http';
+import { request as httpRequest, IncomingMessage } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { requireAuth } from '../middleware/auth.js';
 import { getInstance } from '../services/instance-manager.js';
@@ -43,6 +43,18 @@ function checkRateLimit(userId: string): boolean {
   if (entry.count >= RATE_LIMIT) return false;
   entry.count++;
   return true;
+}
+
+// ── WebSocket close code sanitisation ────────────────────────────────────────
+// The `ws` library only accepts 1000, 1001-1003, 1007-1014, or 3000-4999 in
+// close(). Reserved codes like 1004-1006 and 1015, plus unassigned 1016-2999,
+// throw a TypeError. Map any unsendable code to 1000 (Normal Closure).
+
+function toSendableCloseCode(code: number): number {
+  if (code === 1000 || (code >= 1001 && code <= 1003) || (code >= 1007 && code <= 1014) || (code >= 3000 && code <= 4999)) {
+    return code;
+  }
+  return 1000;
 }
 
 // ── Path sanitisation ─────────────────────────────────────────────────────────
@@ -218,6 +230,10 @@ export function attachWebSocketProxy(
   // avoid interference with the existing WebSocket server on the same HTTP server.
   httpServer.on('upgrade', (req, socket, head) => {
     const url = req.url ?? '';
+    // Debug: log all upgrade requests targeting instance paths
+    if (url.startsWith('/api/instances/')) {
+      console.log(`[instance-proxy] Upgrade request: ${url}`);
+    }
     const match = url.match(/^\/api\/instances\/([^/?]+)\/ui(-ws)?(\/.*)?(?:\?.*)?$/);
     if (!match) return; // not our route
 
@@ -239,12 +255,14 @@ export function attachWebSocketProxy(
         // value (including '') as a valid first-user auto-login, which would
         // allow unauthenticated WebSocket clients to bypass auth entirely.
         if (!jwtToken) {
+          console.warn(`[instance-proxy] No JWT token found for ${instanceId}. cookies: ${req.headers.cookie ? 'present' : 'none'}, origin: ${req.headers.origin ?? 'none'}, headers: ${JSON.stringify(Object.keys(req.headers))}`);
           socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
           socket.destroy();
           return;
         }
         const auth = await verifyJwt(jwtToken);
         if (!auth) {
+          console.warn(`[instance-proxy] JWT verification failed for ${instanceId}`);
           socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
           socket.destroy();
           return;
@@ -252,6 +270,7 @@ export function attachWebSocketProxy(
 
         const instance = await getInstanceFn(instanceId, auth.userId);
         if (!instance || instance.status !== 'running' || !instance.controlEndpoint) {
+          console.warn(`[instance-proxy] Instance unavailable for ${instanceId}: status=${instance?.status} endpoint=${instance?.controlEndpoint}`);
           socket.write('HTTP/1.1 503 Service Unavailable\r\n\r\n');
           socket.destroy();
           return;
@@ -278,14 +297,40 @@ export function attachWebSocketProxy(
           if (typeof value === 'string') upgradeHeaders[key] = value;
         }
 
+        // Track whether the browser socket has been upgraded so the
+        // error handler below knows whether to send raw HTTP or close WS.
+        let upgraded = false;
+
         const upstreamWs = new WebSocket(targetUrl, {
           headers: upgradeHeaders,
+          handshakeTimeout: 10_000,
         });
 
         upstreamWs.on('open', () => {
+          console.log(`[instance-proxy] Upstream opened for ${instanceId}, upgrading browser socket`);
           // Now perform handshake with the browser socket
           const wss = new WebSocketServer({ noServer: true });
           wss.handleUpgrade(req, socket, head, (browserWs) => {
+            upgraded = true;
+            console.log(`[instance-proxy] Browser WS established for ${instanceId}`);
+
+            // Keepalive: ping upstream every 30s, terminate if no pong for 60s
+            let lastPong = Date.now();
+            upstreamWs.on('pong', () => { lastPong = Date.now(); });
+            const pingInterval = setInterval(() => {
+              if (upstreamWs.readyState !== WebSocket.OPEN) {
+                clearInterval(pingInterval);
+                return;
+              }
+              if (Date.now() - lastPong > 60_000) {
+                console.warn(`[instance-proxy] No pong from upstream for ${instanceId}, terminating`);
+                clearInterval(pingInterval);
+                upstreamWs.terminate();
+                return;
+              }
+              upstreamWs.ping();
+            }, 30_000);
+
             // Bidirectional pipe
             browserWs.on('message', (data, isBinary) => {
               if (upstreamWs.readyState !== WebSocket.OPEN) return;
@@ -319,12 +364,18 @@ export function attachWebSocketProxy(
               upstreamWs.send(data, { binary: isBinary });
             });
             browserWs.on('close', (code, reason) => {
-              const safeCode = code >= 1000 && code <= 4999 ? code : 1000;
+              console.log(`[instance-proxy] Browser closed for ${instanceId}: code=${code} reason=${reason?.toString() || ''}`);
+              clearInterval(pingInterval);
+              const safeCode = toSendableCloseCode(code);
               if (upstreamWs.readyState === WebSocket.OPEN || upstreamWs.readyState === WebSocket.CONNECTING) {
                 upstreamWs.close(safeCode, reason);
               }
             });
-            browserWs.on('error', () => upstreamWs.close());
+            browserWs.on('error', (err) => {
+              console.error(`[instance-proxy] Browser WS error for ${instanceId}:`, err.message);
+              clearInterval(pingInterval);
+              upstreamWs.close();
+            });
 
             upstreamWs.on('message', (data, isBinary) => {
               if (browserWs.readyState === WebSocket.OPEN) {
@@ -332,20 +383,32 @@ export function attachWebSocketProxy(
               }
             });
             upstreamWs.on('close', (code, reason) => {
-              const safeCode = code >= 1000 && code <= 4999 ? code : 1000;
+              console.log(`[instance-proxy] Upstream closed for ${instanceId}: code=${code} reason=${reason?.toString() || ''}`);
+              clearInterval(pingInterval);
+              const safeCode = toSendableCloseCode(code);
               if (browserWs.readyState === WebSocket.OPEN || browserWs.readyState === WebSocket.CONNECTING) {
                 browserWs.close(safeCode, reason);
               }
             });
-            upstreamWs.on('error', () => browserWs.close());
+            upstreamWs.on('error', (err) => {
+              console.error(`[instance-proxy] Upstream inner error for ${instanceId}:`, err.message);
+              clearInterval(pingInterval);
+              browserWs.close();
+            });
           });
         });
 
         upstreamWs.on('error', (err: Error) => {
-          socket.write('HTTP/1.1 502 Bad Gateway\r\n\r\n');
-          socket.destroy();
+          console.error(`[instance-proxy] Upstream WS error for ${instanceId}:`, err.message);
+          if (!upgraded) {
+            // Socket hasn't been upgraded yet — safe to send raw HTTP
+            socket.write('HTTP/1.1 502 Bad Gateway\r\n\r\n');
+            socket.destroy();
+          }
+          // If already upgraded, the inner error/close handlers take care of it
         });
-      } catch {
+      } catch (err) {
+        console.error(`[instance-proxy] Unhandled error in upgrade handler:`, err);
         socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
         socket.destroy();
       }

@@ -7,6 +7,8 @@ import type {
   AdminKeyCreateResponse,
   AdminUser,
 } from '@aquarium/shared';
+import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui';
+import { TableSkeleton } from '@/components/skeletons/TableSkeleton';
 
 interface LlmKeysTabProps {
   users: AdminUser[];
@@ -136,7 +138,7 @@ export function LlmKeysTab({ users }: LlmKeysTabProps) {
   const truncate = (str: string, max: number): string =>
     str.length > max ? str.slice(0, max) + '...' : str;
 
-  if (loading) return <div>Loading keys...</div>;
+  if (loading) return <TableSkeleton rows={5} columns={4} />;
 
   return (
     <div className="admin-keys-tab">
@@ -150,17 +152,18 @@ export function LlmKeysTab({ users }: LlmKeysTabProps) {
         <div className="admin-key-created-banner">
           <strong>New key created!</strong> Copy it now — it won&apos;t be shown again:
           <code className="admin-key-value">{createdKey}</code>
-          <button
-            className="btn-small btn-secondary"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => {
               void navigator.clipboard.writeText(createdKey);
             }}
           >
             Copy
-          </button>
-          <button className="btn-small btn-secondary" onClick={() => setCreatedKey(null)}>
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => setCreatedKey(null)}>
             Dismiss
-          </button>
+          </Button>
         </div>
       )}
 
@@ -171,16 +174,16 @@ export function LlmKeysTab({ users }: LlmKeysTabProps) {
       )}
 
       <div className="admin-keys-toolbar">
-        <input
+        <Input
           type="text"
           placeholder="Filter by user email..."
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           className="admin-keys-search"
         />
-        <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
+        <Button onClick={() => setShowCreateModal(true)}>
           Create Key
-        </button>
+        </Button>
       </div>
 
       {allKeys.length === 0 ? (
@@ -221,7 +224,7 @@ export function LlmKeysTab({ users }: LlmKeysTabProps) {
                     <td style={{ fontFamily: 'var(--font-mono)' }}>
                       {editingKeyHash === key.token ? (
                         <div className="inline-edit">
-                          <input
+                          <Input
                             type="number"
                             step="0.01"
                             min="0"
@@ -229,22 +232,23 @@ export function LlmKeysTab({ users }: LlmKeysTabProps) {
                             onChange={e => setEditBudgetValue(e.target.value)}
                             autoFocus
                           />
-                          <button
-                            className="btn-small btn-primary"
+                          <Button
+                            size="sm"
                             disabled={editSaving}
                             onClick={() => void handleEditBudgetSave(key.token)}
                           >
                             Save
-                          </button>
-                          <button
-                            className="btn-small btn-secondary"
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={() => {
                               setEditingKeyHash(null);
                               setEditBudgetValue('');
                             }}
                           >
                             Cancel
-                          </button>
+                          </Button>
                         </div>
                       ) : key.maxBudget != null ? (
                         '$' + key.maxBudget.toFixed(2)
@@ -265,8 +269,9 @@ export function LlmKeysTab({ users }: LlmKeysTabProps) {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                        <button
-                          className="btn-small btn-secondary"
+                        <Button
+                          variant="secondary"
+                          size="sm"
                           onClick={() => {
                             setEditingKeyHash(key.token);
                             setEditBudgetValue(
@@ -275,14 +280,15 @@ export function LlmKeysTab({ users }: LlmKeysTabProps) {
                           }}
                         >
                           Edit Budget
-                        </button>
-                        <button
-                          className="btn-small btn-danger"
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
                           disabled={key.status !== 'active'}
                           onClick={() => void handleRevoke(key)}
                         >
                           Revoke
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -293,93 +299,90 @@ export function LlmKeysTab({ users }: LlmKeysTabProps) {
         </div>
       )}
 
-      {showCreateModal && (
-        <div
-          className="modal-overlay"
-          onClick={() => {
-            setShowCreateModal(false);
-            setCreateError(null);
-          }}
-        >
-          <div
-            className="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="create-key-modal-title"
-            onClick={e => e.stopPropagation()}
-          >
-            <h2 id="create-key-modal-title">Create Virtual Key</h2>
-            <form onSubmit={e => void handleCreateSubmit(e)}>
-              <div className="form-group">
-                <label htmlFor="key-user-select">User *</label>
-                <select
-                  id="key-user-select"
-                  value={createForm.userId}
-                  onChange={e => setCreateForm(f => ({ ...f, userId: e.target.value }))}
-                  required
-                >
+      <Dialog open={showCreateModal} onOpenChange={(open) => {
+        setShowCreateModal(open);
+        if (!open) setCreateError(null);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Virtual Key</DialogTitle>
+            <DialogDescription>
+              Create a new virtual LLM API key for a user.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={e => void handleCreateSubmit(e)}>
+            <div className="form-group">
+              <label htmlFor="key-user-select">User *</label>
+              <Select
+                value={createForm.userId}
+                onValueChange={(val) => setCreateForm(f => ({ ...f, userId: val }))}
+              >
+                <SelectTrigger id="key-user-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
                   {users.map(u => (
-                    <option key={u.id} value={u.id}>
+                    <SelectItem key={u.id} value={u.id}>
                       {u.email} ({u.displayName})
-                    </option>
+                    </SelectItem>
                   ))}
-                </select>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="form-group">
+              <label htmlFor="key-alias-input">Key Alias (optional)</label>
+              <Input
+                id="key-alias-input"
+                type="text"
+                value={createForm.keyAlias}
+                onChange={e => setCreateForm(f => ({ ...f, keyAlias: e.target.value }))}
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="key-models-input">Models (optional)</label>
+              <Input
+                id="key-models-input"
+                type="text"
+                placeholder="e.g. gpt-4o, claude-3.5-sonnet (leave empty for all)"
+                value={createForm.models}
+                onChange={e => setCreateForm(f => ({ ...f, models: e.target.value }))}
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="key-budget-input">Max Budget (optional)</label>
+              <Input
+                id="key-budget-input"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="No limit"
+                value={createForm.maxBudget}
+                onChange={e => setCreateForm(f => ({ ...f, maxBudget: e.target.value }))}
+              />
+            </div>
+            {createError && (
+              <div className="error-message" role="alert">
+                {createError}
               </div>
-              <div className="form-group">
-                <label htmlFor="key-alias-input">Key Alias (optional)</label>
-                <input
-                  id="key-alias-input"
-                  type="text"
-                  value={createForm.keyAlias}
-                  onChange={e => setCreateForm(f => ({ ...f, keyAlias: e.target.value }))}
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="key-models-input">Models (optional)</label>
-                <input
-                  id="key-models-input"
-                  type="text"
-                  placeholder="e.g. gpt-4o, claude-3.5-sonnet (leave empty for all)"
-                  value={createForm.models}
-                  onChange={e => setCreateForm(f => ({ ...f, models: e.target.value }))}
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="key-budget-input">Max Budget (optional)</label>
-                <input
-                  id="key-budget-input"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="No limit"
-                  value={createForm.maxBudget}
-                  onChange={e => setCreateForm(f => ({ ...f, maxBudget: e.target.value }))}
-                />
-              </div>
-              {createError && (
-                <div className="error-message" role="alert">
-                  {createError}
-                </div>
-              )}
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    setCreateError(null);
-                  }}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary" disabled={creating}>
-                  {creating ? 'Creating...' : 'Create Key'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            )}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setCreateError(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={creating}>
+                {creating ? 'Creating...' : 'Create Key'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

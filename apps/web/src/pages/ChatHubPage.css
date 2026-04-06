@@ -1,15 +1,20 @@
+/* ═══════════════════════════════════════════════════════════════
+   Chat Hub — Main chat page layout with agent sidebar
+   ═══════════════════════════════════════════════════════════════ */
+
+/* The chat hub must fill its container exactly — no more, no less.
+   app-layout__content is a flex child with overflow:auto; we use
+   height:100% + flex layout to pin header/input and scroll only messages. */
 .chat-hub {
   display: flex;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
-.chat-hub--loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+/* ─── Loading / Empty States ─── */
 
+.chat-hub--loading,
 .chat-hub--empty {
   display: flex;
   align-items: center;
@@ -20,8 +25,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
-  padding: 2.5rem;
+  gap: var(--space-3);
+  padding: var(--space-8);
   max-width: 380px;
   text-align: center;
 }
@@ -33,7 +38,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: var(--color-primary-bg, var(--color-light));
+  background: rgba(255, 107, 53, 0.08);
   color: var(--color-primary);
 }
 
@@ -51,41 +56,43 @@
   line-height: 1.5;
 }
 
+/* ─── Main chat area (left of agent sidebar) ─── */
+
 .chat-hub__main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: hidden;        /* boundary for chat scroll */
 }
 
+/* Force chat-container to fill the main area */
 .chat-hub__main .chat-container {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding-bottom: 0;
+  flex: 1;
+  min-height: 0;
 }
 
+/* Center messages within the hub */
 .chat-hub__main .chat-messages {
-  flex: 1;
   max-width: 900px;
   width: 100%;
   margin-left: auto;
   margin-right: auto;
 }
 
+/* Centered input with breathing room at bottom */
 .chat-hub__main .chat-input-row {
   max-width: 900px;
   width: 100%;
-  margin: 0 auto 15vh;
-  padding: 0.5rem 1.5rem;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-4) var(--space-4);
   box-sizing: border-box;
+  background: transparent;
+  border-top: none;
 }
 
-.chat-hub__main .chat-input-row textarea {
-  min-height: 3.2rem !important;
-}
+/* ─── No-selection / Offline states ─── */
 
 .chat-hub__no-selection {
   flex: 1;
@@ -93,7 +100,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
   color: var(--color-text-secondary);
 }
 
@@ -113,8 +120,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  padding: 2rem;
+  gap: var(--space-2);
+  padding: var(--space-8);
   text-align: center;
   max-width: 340px;
 }
@@ -146,10 +153,12 @@
 .chat-hub__offline-spinner {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   font-size: 0.82rem;
   color: var(--color-text-secondary);
 }
+
+/* ─── Responsive ─── */
 
 @media (max-width: 768px) {
   .chat-hub {

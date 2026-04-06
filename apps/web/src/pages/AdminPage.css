@@ -1,0 +1,230 @@
+/* ─── Admin ─── */
+
+.admin-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-xl);
+}
+
+.admin-back-link {
+  display: inline-block;
+  font-size: 0.875rem;
+  color: var(--color-secondary);
+  margin-bottom: var(--spacing-md);
+}
+.admin-back-link:hover { color: var(--color-primary); }
+
+.admin-page__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+.admin-stat-card {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg) var(--spacing-md);
+  text-align: center;
+  transition: border-color var(--transition-fast);
+}
+
+.admin-stat-value { font-size: 2rem; font-weight: 800; line-height: 1; margin-bottom: var(--spacing-xs); }
+.admin-stat-label { font-size: 0.78rem; color: var(--color-secondary); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }
+.admin-stat-running { color: var(--color-success); }
+.admin-stat-stopped { color: var(--color-secondary); }
+.admin-stat-error { color: var(--color-danger); }
+
+.admin-targets { margin-bottom: var(--spacing-xl); }
+.admin-targets h3 { font-size: 1rem; margin-bottom: var(--spacing-sm); }
+.admin-target-badges { display: flex; gap: var(--spacing-sm); flex-wrap: wrap; }
+
+.admin-target-badge {
+  background: var(--color-light);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.admin-users-section { margin-bottom: var(--spacing-xl); }
+.admin-users-section h2 { font-size: 1.2rem; margin-bottom: var(--spacing-md); }
+.admin-users-table-wrapper { overflow-x: auto; }
+
+.admin-users-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.admin-users-table th, .admin-users-table td {
+  text-align: left;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.admin-users-table th {
+  font-weight: 700;
+  color: var(--color-secondary);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--color-light);
+}
+
+.admin-users-table tbody tr:hover { background-color: var(--color-light); }
+.admin-row-expanded { background-color: var(--color-primary-light); }
+.admin-user-name { font-weight: 600; }
+
+.admin-running-badge {
+  display: inline-block;
+  background: var(--color-success);
+  color: white;
+  border-radius: var(--radius-full);
+  padding: 0.1rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.admin-instances-row td { padding: 0; background: var(--color-light); }
+.admin-instances-loading { padding: var(--spacing-md); color: var(--color-secondary); }
+.admin-instances-list { display: flex; flex-direction: column; }
+
+.admin-instance-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: background var(--transition-fast);
+}
+
+.admin-instance-item:hover { background: var(--color-primary-light); text-decoration: none; }
+.admin-instance-item:last-child { border-bottom: none; }
+.admin-instance-name { font-weight: 600; min-width: 120px; }
+.admin-instance-meta { color: var(--color-secondary); font-size: 0.82rem; }
+.admin-no-instances { padding: var(--spacing-md); color: var(--color-secondary); font-style: italic; }
+
+/* ─── Admin LLM Keys Tab ─── */
+
+.admin-keys-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.admin-keys-search {
+  flex: 1;
+  max-width: 360px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.admin-keys-search:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.admin-key-created-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  background: var(--color-success-subtle-bg);
+  border: 1px solid var(--color-success-subtle-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-success-subtle-text);
+  font-size: 0.875rem;
+  flex-wrap: wrap;
+}
+
+.admin-key-value {
+  font-family: var(--font-mono);
+  background: var(--color-surface);
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  font-size: 0.8rem;
+  word-break: break-all;
+  color: var(--color-text);
+}
+
+.admin-keys-empty {
+  text-align: center;
+  padding: var(--spacing-2xl);
+  color: var(--color-secondary);
+  font-style: italic;
+}
+
+.admin-keys-table .inline-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.admin-keys-table .inline-edit input {
+  width: 80px;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.8rem;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+}
+
+.admin-keys-table .models-cell {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Key Status Badge Variants ─── */
+/* These extend the existing .status-badge base class for LLM key statuses.
+   Pattern mirrors .status-running/.status-stopped/.status-error from instance statuses. */
+
+.status-active { color: var(--color-success); background: var(--color-success-subtle-bg); }
+.status-expired { color: var(--color-warning); background: var(--color-warning-subtle-bg); }
+.status-revoked { color: var(--color-danger); background: var(--color-danger-subtle-bg); }
+
+/* ─── Admin LiteLLM UI Tab ─── */
+
+.admin-litellm-iframe-wrapper {
+  margin: calc(-1 * var(--spacing-lg));
+  height: calc(100vh - 280px);
+  min-height: 500px;
+}
+
+.admin-litellm-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  background: var(--color-surface);
+}
+
+/* ─── Dark Mode Overrides (Admin Page specific) ─── */
+
+:root.dark .admin-row-expanded { background-color: var(--color-primary-light); }
+:root.dark .admin-instances-row td { background: var(--color-surface); }
+:root.dark .admin-instance-item:hover { background: var(--color-primary-light); }

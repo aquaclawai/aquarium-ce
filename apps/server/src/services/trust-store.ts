@@ -85,12 +85,24 @@ export async function evaluateTrustPolicy(
   signals: TrustSignals | null
 ): Promise<TrustEvaluation> {
   const tier = computeTrustTier(source, signals);
+  const isCE = process.env.VITE_EDITION === 'ce' || !process.env.VITE_EDITION;
 
   if (tier === 'bundled' || tier === 'verified') {
     return {
       tier,
       decision: 'allow',
       signals: tier === 'bundled' ? null : signals,
+      override: null,
+      blockReason: null,
+    };
+  }
+
+  // CE: trust all extensions — single-admin self-hosted, no ClawHub trust API
+  if (isCE) {
+    return {
+      tier,
+      decision: 'allow',
+      signals,
       override: null,
       blockReason: null,
     };

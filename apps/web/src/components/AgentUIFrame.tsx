@@ -1,6 +1,9 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Instance, AgentTypeInfo } from '@aquarium/shared';
+import { Button } from '@/components/ui';
+import { AuthContext } from '@/context/AuthContext';
+import './AgentUIFrame.css';
 
 interface AgentUIFrameProps {
   instance: Instance;
@@ -21,6 +24,7 @@ interface AgentUIFrameProps {
  */
 export function AgentUIFrame({ instance, agentType }: AgentUIFrameProps) {
   const { t } = useTranslation();
+  const auth = useContext(AuthContext);
   const [iframeError, setIframeError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -30,6 +34,9 @@ export function AgentUIFrame({ instance, agentType }: AgentUIFrameProps) {
   // key 'openclaw.control.settings.v1'. Because all instance iframes share
   // the same origin, switching instances would connect to a stale URL.
   // We patch localStorage BEFORE the iframe loads so it reads the correct URL.
+  //
+  // The WebSocket proxy authenticates via ?token= query param because
+  // browser WebSocket connections from iframes don't carry cookies.
   const iframeSrcReady = instance.status === 'running';
 
   useEffect(() => {
@@ -37,19 +44,24 @@ export function AgentUIFrame({ instance, agentType }: AgentUIFrameProps) {
 
     const SETTINGS_KEY = 'openclaw.control.settings.v1';
     const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const correctGatewayUrl = `${wsProto}//${window.location.host}/api/instances/${instance.id}/ui`;
 
-    try {
-      const raw = localStorage.getItem(SETTINGS_KEY);
-      const existing: Record<string, unknown> = raw ? JSON.parse(raw) as Record<string, unknown> : {};
-      if (existing.gatewayUrl !== correctGatewayUrl) {
-        existing.gatewayUrl = correctGatewayUrl;
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(existing));
+    void (async () => {
+      const token = await auth?.getToken();
+      const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
+      const correctGatewayUrl = `${wsProto}//${window.location.host}/api/instances/${instance.id}/ui${tokenParam}`;
+
+      try {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        const existing: Record<string, unknown> = raw ? JSON.parse(raw) as Record<string, unknown> : {};
+        if (existing.gatewayUrl !== correctGatewayUrl) {
+          existing.gatewayUrl = correctGatewayUrl;
+          localStorage.setItem(SETTINGS_KEY, JSON.stringify(existing));
+        }
+      } catch {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify({ gatewayUrl: correctGatewayUrl }));
       }
-    } catch {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ gatewayUrl: correctGatewayUrl }));
-    }
-  }, [instance.id, instance.status]);
+    })();
+  }, [instance.id, instance.status, auth]);
 
   const handleLoad = useCallback(() => {
     setIsLoading(false);
@@ -118,9 +130,9 @@ export function AgentUIFrame({ instance, agentType }: AgentUIFrameProps) {
           <p className="agent-ui-frame-subtitle">
             {t('agentUI.loadFailed.description')}
           </p>
-          <button onClick={handleReload} className="btn-secondary">
+          <Button variant="secondary" onClick={handleReload}>
             {t('common.buttons.retry')}
-          </button>
+          </Button>
         </div>
       )}
 

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Search, X } from 'lucide-react';
 import { AgentAvatar } from './AgentAvatar';
 import type { InstancePublic } from '@aquarium/shared';
+import { Button, Input } from '@/components/ui';
 import './AgentSidebar.css';
 
 interface AgentSidebarProps {
@@ -43,24 +44,28 @@ export function AgentSidebar({ instances, selectedId, onSelect, collapsed, onTog
   if (collapsed) {
     return (
       <aside className="agent-sidebar agent-sidebar--collapsed">
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           className="agent-sidebar__toggle"
           onClick={onToggle}
           title={t('chatHub.showAgents')}
         >
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M13 4l-6 6 6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        </button>
+        </Button>
         <div className="agent-sidebar__avatars-only">
           {sorted.slice(0, 10).map(inst => (
-            <button
+            <Button
               key={inst.id}
+              variant="ghost"
+              size="icon"
               className={`agent-sidebar__avatar-btn ${selectedId === inst.id ? 'agent-sidebar__avatar-btn--active' : ''}`}
               onClick={() => onSelect(inst.id)}
               title={inst.name}
             >
               <AgentAvatar avatar={inst.avatar} name={inst.name} size="sm" />
               <span className={`agent-sidebar__dot agent-sidebar__dot--${inst.status}`} />
-            </button>
+            </Button>
           ))}
         </div>
       </aside>
@@ -71,18 +76,20 @@ export function AgentSidebar({ instances, selectedId, onSelect, collapsed, onTog
     <aside className="agent-sidebar">
       <div className="agent-sidebar__header">
         <h3 className="agent-sidebar__title">{t('chatHub.agents')}</h3>
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           className="agent-sidebar__toggle"
           onClick={onToggle}
           title={t('chatHub.hideAgents')}
         >
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M7 4l6 6-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        </button>
+        </Button>
       </div>
 
       <div className="agent-sidebar__search">
         <Search size={14} className="agent-sidebar__search-icon" />
-        <input
+        <Input
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -90,9 +97,9 @@ export function AgentSidebar({ instances, selectedId, onSelect, collapsed, onTog
           className="agent-sidebar__search-input"
         />
         {search && (
-          <button className="agent-sidebar__search-clear" onClick={() => setSearch('')}>
+          <Button variant="ghost" size="icon" className="agent-sidebar__search-clear" onClick={() => setSearch('')}>
             <X size={14} />
-          </button>
+          </Button>
         )}
       </div>
 
@@ -101,8 +108,9 @@ export function AgentSidebar({ instances, selectedId, onSelect, collapsed, onTog
           <div className="agent-sidebar__empty">{t('chatHub.noMatch')}</div>
         )}
         {sorted.map(inst => (
-          <button
+          <Button
             key={inst.id}
+            variant="ghost"
             className={`agent-sidebar__item ${selectedId === inst.id ? 'agent-sidebar__item--active' : ''} ${inst.status !== 'running' ? 'agent-sidebar__item--offline' : ''}`}
             onClick={() => onSelect(inst.id)}
           >
@@ -116,14 +124,14 @@ export function AgentSidebar({ instances, selectedId, onSelect, collapsed, onTog
                 {t(`chatHub.status.${inst.status}`, inst.status)}
               </span>
             </div>
-          </button>
+          </Button>
         ))}
       </div>
 
-      <button className="agent-sidebar__create" onClick={() => navigate('/create')}>
+      <Button className="agent-sidebar__create" onClick={() => navigate('/create')}>
         <Plus size={16} />
         <span>{t('chatHub.createAgent')}</span>
-      </button>
+      </Button>
     </aside>
   );
 }

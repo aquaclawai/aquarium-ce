@@ -113,12 +113,8 @@ export function useDashboardData(): DashboardData {
         const [instances, groupChats, timeseries, burnRate, activityData] = await Promise.all([
           api.get<InstancePublic[]>('/instances').catch(() => []),
           api.get<GroupChat[]>('/group-chats').catch(() => []),
-          import.meta.env.VITE_EDITION !== 'ce'
-            ? api.get<UsageTimeseries[]>(`/usage/timeseries?startDate=${startDate}`).catch(() => [])
-            : Promise.resolve([]),
-          import.meta.env.VITE_EDITION !== 'ce'
-            ? api.get<BurnRateApiData>('/usage/burn-rate').catch(() => null)
-            : Promise.resolve(null),
+          api.get<UsageTimeseries[]>(`/usage/timeseries?startDate=${startDate}`).catch(() => []),
+          api.get<BurnRateApiData>('/usage/burn-rate').catch(() => null),
           api.get<ActivityItem[]>('/dashboard/activity').catch(() => []),
         ]);
 

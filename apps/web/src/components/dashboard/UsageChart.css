@@ -45,7 +45,7 @@
 
 .usage-chart__trend--negative {
   color: var(--dashboard-kpi-trend-negative);
-  background: rgba(239, 68, 68, 0.08);
+  background: color-mix(in srgb, var(--color-danger) 8%, transparent);
 }
 
 .usage-chart__body {

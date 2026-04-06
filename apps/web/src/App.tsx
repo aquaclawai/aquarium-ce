@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { Toaster } from './components/ui/sonner';
 
 const hasClerk = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const isEE = import.meta.env.VITE_EDITION !== 'ce';
@@ -69,6 +70,7 @@ const DocsAboutPage = lazy(() => import('./pages/docs/DocsAboutPage').then(m => 
 function App() {
   return (
     <Suspense fallback={<div className="page-loading" />}>
+      <Toaster />
       <Routes>
         {isEE && <Route path="/login" element={<LoginPage />} />}
         {isEE && <Route path="/waitlist" element={<WaitlistPage />} />}

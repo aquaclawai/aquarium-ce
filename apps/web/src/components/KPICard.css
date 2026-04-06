@@ -1,16 +1,29 @@
 /* ═══════════════════════════════════════════════════════════════
    KPI Card — Reusable metric card with trend indicator
+   Built on shadcn Card primitive
    ═══════════════════════════════════════════════════════════════ */
 
 .kpi-card {
   background: var(--color-card-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: 0;
   transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+/* Override shadcn CardHeader/CardContent default padding */
+.kpi-card .kpi-card__header {
+  padding: var(--spacing-md) var(--spacing-md) 0;
+}
+
+.kpi-card .kpi-card__content {
+  padding: var(--spacing-xs) var(--spacing-md) var(--spacing-md);
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
 }
 
 .kpi-card:hover {
@@ -34,7 +47,7 @@
 }
 
 .kpi-card--highlight {
-  background: #0052FF;
+  background: var(--color-primary);
   border: none;
 }
 
@@ -43,11 +56,12 @@
 .kpi-card--highlight .kpi-card__unit,
 .kpi-card--highlight .kpi-card__sub-text,
 .kpi-card--highlight .kpi-card__icon {
-  color: #fff;
+  color: var(--color-on-primary);
 }
 
 .kpi-card__header {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: var(--spacing-xs);
 }
@@ -55,6 +69,7 @@
 .kpi-card__icon {
   font-size: 1.1rem;
   line-height: 1;
+  color: var(--color-text-secondary);
 }
 
 .kpi-card__label {
@@ -103,7 +118,7 @@
 
 .kpi-card__trend--up {
   color: var(--color-danger);
-  background: rgba(239, 68, 68, 0.08);
+  background: color-mix(in srgb, var(--color-danger) 8%, transparent);
 }
 
 .kpi-card__trend--down {

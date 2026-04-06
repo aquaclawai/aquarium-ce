@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { rpc } from '../utils/rpc.js';
 import type { Instance } from '@aquarium/shared';
+import { Button, Input } from '@/components/ui';
 
 type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
@@ -151,7 +152,7 @@ export function LogsTab({ instanceId, instanceStatus }: LogsTabProps) {
   return (
     <div className="instance-logs">
       <div className="logs-toolbar">
-        <input
+        <Input
           type="text"
           className="logs-filter-input"
           placeholder={t('instance.logs.filterPlaceholder')}
@@ -171,9 +172,9 @@ export function LogsTab({ instanceId, instanceStatus }: LogsTabProps) {
             <input type="checkbox" checked={autoFollow} onChange={e => setAutoFollow(e.target.checked)} />
             <span>{t('instance.logs.autoFollow')}</span>
           </label>
-          <button className="btn-small" onClick={() => { cursorRef.current = null; fetchLogs(true); }} disabled={loading}>
+          <Button size="sm" onClick={() => { cursorRef.current = null; fetchLogs(true); }} disabled={loading}>
             {loading ? t('common.labels.loading') : t('common.buttons.refresh')}
-          </button>
+          </Button>
         </div>
       </div>
       {error && <div className="error-message" role="alert">{error}</div>}

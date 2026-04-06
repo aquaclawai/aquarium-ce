@@ -1,0 +1,114 @@
+/* ─── Security Status Badge / Sidebar ─── */
+
+.security-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.security-status-card {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+}
+
+.security-status-card h4 {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.security-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-sm);
+}
+
+.security-stat {
+  text-align: center;
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+}
+
+.security-stat-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  display: block;
+}
+
+.security-stat-value--critical { color: var(--color-danger); }
+.security-stat-value--warning { color: var(--color-warning); }
+.security-stat-value--info { color: var(--color-info); }
+.security-stat-value--total { color: var(--color-text); }
+
+.security-stat-label {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.security-protection-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.security-protection-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-xs) 0;
+  font-size: 0.85rem;
+}
+
+.security-protection-item span:first-child {
+  color: var(--color-text);
+}
+
+.security-protection-badge {
+  padding: 2px var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.security-protection-badge--enabled {
+  background: color-mix(in srgb, var(--color-success) 15%, transparent);
+  color: var(--color-success);
+}
+
+.security-protection-badge--disabled {
+  background: color-mix(in srgb, var(--color-text-secondary) 10%, transparent);
+  color: var(--color-text-secondary);
+}
+
+/* --- Dashboard Security Panel --- */
+
+.dashboard-security-panel {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.dashboard-security-panel h3 {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.dashboard-security-stats {
+  display: flex;
+  gap: var(--spacing-lg);
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.dashboard-security-empty {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}

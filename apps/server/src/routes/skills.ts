@@ -12,7 +12,7 @@ import {
 import { gatewayCall } from '../agent-types/openclaw/gateway-rpc.js';
 import { LockConflictError } from '../services/extension-lock.js';
 import { evaluateTrustPolicy } from '../services/trust-store.js';
-import { searchClawHub, getClawHubExtensionInfo } from '../services/marketplace-client.js';
+import { getClawHubExtensionInfo } from '../services/marketplace-client.js';
 import type {
   ApiResponse,
   InstanceSkill,
@@ -57,9 +57,9 @@ router.get('/:id/skills', async (req, res) => {
             id: entryId,
             name: entryId,
             description: (entry.description as string) ?? '',
-            version: '0.0.0',
+            version: (entry.version as string) || '',
             source: 'bundled',
-            enabled: entry.enabled !== false,
+            enabled: entry.eligible === true && entry.disabled !== true,
           });
         }
       } catch (rpcErr: unknown) {
@@ -105,40 +105,41 @@ router.get('/:id/skills/catalog', async (req, res) => {
       limit?: string;
     };
 
-    const page = parseInt(pageStr ?? '0', 10) || 0;
-    const limit = parseInt(limitStr ?? '20', 10) || 20;
+    // page/limit reserved for future ClawHub pagination
+    void pageStr; void limitStr;
 
-    // 1. Fetch bundled catalog from gateway RPC
-    let rawList: unknown;
+    // 1. Fetch bundled catalog from gateway RPC (skills.status returns { skills: [...] })
+    let rawList: unknown[];
     try {
-      rawList = await gatewayCall(instance.id, 'skills.list', {}, 30_000);
+      const result = await gatewayCall(instance.id, 'skills.status', {}, 30_000) as Record<string, unknown> | null;
+      rawList = result && Array.isArray(result.skills) ? result.skills : [];
     } catch (rpcErr: unknown) {
-      // Soft-log: older gateway versions may not support skills.list
       console.warn(
-        '[skills] skills.list RPC failed in catalog (older gateway?):',
+        '[skills] skills.status RPC failed in catalog:',
         rpcErr instanceof Error ? rpcErr.message : String(rpcErr),
       );
-      rawList = undefined;
+      rawList = [];
     }
 
     // 2. Build bundled catalog entries — bundled skills are always allowed
     const bundledById = new Map<string, SkillCatalogEntry>();
-    if (Array.isArray(rawList)) {
+    if (rawList.length > 0) {
       for (const item of rawList) {
         if (typeof item !== 'object' || item === null) continue;
         const entry = item as Record<string, unknown>;
-        const entryId = (entry.id as string) ?? '';
+        const entryId = (entry.name as string) ?? (entry.id as string) ?? '';
         if (!entryId) continue;
+        const reqs = entry.requirements as Record<string, unknown> | undefined;
         bundledById.set(entryId, {
           id: entryId,
-          slug: (entry.slug as string) ?? entryId,
-          name: (entry.name as string) ?? entryId,
+          slug: (entry.skillKey as string) ?? entryId,
+          name: entryId,
           description: (entry.description as string) ?? '',
           category: (entry.category as string) ?? 'general',
-          source: (entry.source as 'bundled' | 'clawhub') ?? 'bundled',
-          version: (entry.version as string) ?? '0.0.0',
+          source: String(entry.source ?? '').startsWith('openclaw') ? 'bundled' as const : 'clawhub' as const,
+          version: (entry.version as string) ?? '',
           requiredCredentials: Array.isArray(entry.requiredCredentials) ? entry.requiredCredentials : [],
-          requiredBinaries: Array.isArray(entry.requiredBinaries) ? entry.requiredBinaries : [],
+          requiredBinaries: reqs && Array.isArray(reqs.bins) ? reqs.bins as string[] : [],
           requiredEnvVars: Array.isArray(entry.requiredEnvVars) ? entry.requiredEnvVars : [],
           trustTier: 'bundled' as TrustTier,
           trustDecision: 'allow' as TrustDecision,
@@ -148,50 +149,49 @@ router.get('/:id/skills/catalog', async (req, res) => {
       }
     }
 
-    // 3. Fetch ClawHub results and evaluate trust per entry
+    // 3. Fetch ClawHub results via gateway CLI (docker exec openclaw skills search --json)
     let hasMore = false;
     const clawHubEntries: SkillCatalogEntry[] = [];
-    try {
-      const clawHubResult = await searchClawHub(
-        { query: search, category, kind: 'skill', offset: page * limit, limit },
-      );
-      hasMore = clawHubResult.hasMore;
-
-      for (const chEntry of clawHubResult.entries) {
-        // Skip if bundled already has this id (bundled wins)
-        if (bundledById.has(chEntry.id)) continue;
-
-        const evaluation = await evaluateTrustPolicy(
-          instance.id,
-          chEntry.id,
-          'skill',
-          { type: 'clawhub', spec: chEntry.id },
-          chEntry.trustSignals,
+    if (search) {
+      try {
+        const containerName = `${instance.agentType}-${instance.id.slice(0, 8)}`;
+        const { execSync } = await import('node:child_process');
+        const stdout = execSync(
+          `docker exec ${containerName} openclaw skills search ${JSON.stringify(search)} --json`,
+          { timeout: 15_000, encoding: 'utf-8' },
         );
+        const parsed = JSON.parse(stdout) as { results?: unknown[] };
+        const results = Array.isArray(parsed.results) ? parsed.results : [];
 
-        clawHubEntries.push({
-          id: chEntry.id,
-          slug: chEntry.id,
-          name: chEntry.name,
-          description: chEntry.description,
-          category: chEntry.category,
-          source: 'clawhub',
-          version: chEntry.version,
-          requiredCredentials: chEntry.requiredCredentials,
-          requiredBinaries: chEntry.requiredBinaries ?? [],
-          requiredEnvVars: [],
-          trustSignals: chEntry.trustSignals,
-          trustTier: evaluation.tier,
-          trustDecision: evaluation.decision,
-          blockReason: evaluation.blockReason ?? undefined,
-        });
+        for (const item of results) {
+          if (typeof item !== 'object' || item === null) continue;
+          const r = item as Record<string, unknown>;
+          const slug = (r.slug as string) ?? '';
+          if (!slug || bundledById.has(slug)) continue;
+
+          clawHubEntries.push({
+            id: slug,
+            slug,
+            name: (r.displayName as string) ?? slug,
+            description: (r.summary as string) ?? '',
+            category: 'clawhub',
+            source: 'clawhub',
+            version: (r.version as string) ?? '',
+            requiredCredentials: [],
+            requiredBinaries: [],
+            requiredEnvVars: [],
+            trustTier: 'community' as TrustTier,
+            trustDecision: 'allow' as TrustDecision,
+            blockReason: undefined,
+            trustSignals: undefined,
+          });
+        }
+      } catch (searchErr: unknown) {
+        console.warn(
+          '[skills] ClawHub search failed (graceful degradation):',
+          searchErr instanceof Error ? searchErr.message : String(searchErr),
+        );
       }
-    } catch (clawHubErr: unknown) {
-      // Soft-log: ClawHub unavailable — return bundled results only
-      console.warn(
-        '[skills] ClawHub catalog fetch failed (graceful degradation):',
-        clawHubErr instanceof Error ? clawHubErr.message : String(clawHubErr),
-      );
     }
 
     // 4. Merge: bundled first, then ClawHub (bundled wins on conflict — already filtered above)

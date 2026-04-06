@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { AdminStats } from '@aquarium/shared';
+import { Button } from '@/components/ui';
 
 interface AdminUsageData {
   globalSpend: number;
@@ -103,12 +104,13 @@ export function OverviewTab({ stats, usageData, onSetBudget }: OverviewTabProps)
                         {u.usageLimitUsd != null ? `$${u.usageLimitUsd.toFixed(2)}` : '—'}
                       </td>
                       <td>
-                        <button
-                          className="btn-small btn-secondary"
+                        <Button
+                          variant="secondary"
+                          size="sm"
                           onClick={() => onSetBudget(u.userId, u.email, u.usageLimitUsd)}
                         >
                           {t('admin.usageTable.setBudget')}
-                        </button>
+                        </Button>
                       </td>
                     </tr>
                   ))}

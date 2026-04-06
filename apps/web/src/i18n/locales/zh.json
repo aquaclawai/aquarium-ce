@@ -275,7 +275,17 @@
       },
       "changeSecurityProfile": "更改",
       "savingSecurityProfile": "保存中...",
-      "exportTemplate": "导出为模板"
+      "exportTemplate": "导出为模板",
+      "webhookTitle": "通知 Webhook",
+      "webhookDescription": "配置即时通讯推送通知的 Webhook URL（飞书、钉钉、企业微信）。",
+      "webhookProviders": { "feishu": "飞书", "dingtalk": "钉钉", "wecom": "企业微信" },
+      "webhookConfigured": "已配置",
+      "webhookPlaceholder": "输入 {{provider}} Webhook URL",
+      "apiKeyTitle": "数据源 API 密钥",
+      "apiKeyDescription": "可选的 API 密钥，用于增强数据采集。在提供商网站获取密钥。",
+      "apiKeyProviders": { "tikhub": "TikHub" },
+      "apiKeyConfigured": "已配置",
+      "apiKeyPlaceholder": "输入 {{provider}} API 密钥"
     },
     "credentials": {
       "title": "凭证",
@@ -1782,7 +1792,8 @@
       "pending": "待处理",
       "disabled": "已禁用",
       "degraded": "降级",
-      "failed": "失败"
+      "failed": "失败",
+      "blocked": "已阻止"
     },
     "actions": {
       "install": "安装",

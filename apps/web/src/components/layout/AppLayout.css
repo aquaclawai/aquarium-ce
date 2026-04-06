@@ -1,50 +1,82 @@
-.app-layout {
+/* ─── Header bar inside SidebarInset ─── */
+
+.app-layout__header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
-  min-height: 100vh;
-  position: relative;
+  align-items: center;
+  gap: var(--spacing-sm);
+  height: 48px;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
 }
+
+.app-layout__separator {
+  width: 1px;
+  height: 16px;
+  background: var(--color-border);
+  margin: 0 var(--spacing-xs);
+}
+
+.app-layout__header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ─── Main content area ─── */
 
 .app-layout__content {
   flex: 1;
   min-width: 0;
-  overflow-y: auto;
+  min-height: 0;
+  overflow: auto;
   background: var(--color-bg);
-  transition: margin-left var(--transition-slow);
 }
 
-.app-layout__fab {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  z-index: 900;
+/* Chat pages manage their own scroll — disable parent scroll */
+.app-layout__content:has(> .achat-page),
+.app-layout__content:has(> .chat-hub) {
+  overflow: hidden;
 }
+
+/* ─── Shared page container (used by Dashboard, GroupChats, etc.) ─── */
+
+.dashboard-page, .instance-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-xl) var(--spacing-xl) var(--spacing-2xl);
+}
+
+/* ─── Small icon buttons (theme, lang) ─── */
 
 .app-layout__fab-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   padding: 0;
-  border: 1px solid var(--color-border);
-  background: var(--color-card-bg);
+  border: none;
+  background: transparent;
   color: var(--color-text-secondary);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
   transform: none;
 }
 
 .app-layout__fab-btn:hover {
-  background: var(--color-primary);
-  color: #fff;
-  border-color: var(--color-primary);
+  background: var(--sidebar-accent, rgba(255, 107, 53, 0.08));
+  color: var(--color-primary);
   transform: none;
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
 }
+
+/* ─── Language picker ─── */
 
 .app-layout__lang-wrap {
   position: relative;
@@ -52,8 +84,9 @@
 
 .app-layout__lang-menu {
   position: absolute;
-  bottom: 0;
-  right: calc(100% + 8px);
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
   background: var(--color-card-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -92,89 +125,4 @@
 .app-layout__lang-item--active {
   color: var(--color-primary);
   font-weight: 600;
-}
-
-.app-layout__toggle {
-  position: fixed;
-  top: 28px;
-  left: calc(var(--sidebar-width) - 14px);
-  width: var(--sidebar-toggle-size, 28px);
-  height: var(--sidebar-toggle-size, 28px);
-  border-radius: var(--radius-full);
-  background: var(--sidebar-toggle-bg, #ffffff);
-  border: 1px solid var(--sidebar-toggle-border, #e5e7eb);
-  box-shadow: var(--sidebar-toggle-shadow, 0 2px 8px rgba(0, 0, 0, 0.08));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 200;
-  padding: 0;
-  color: var(--sidebar-nav-icon);
-  transition: left var(--transition-slow), background var(--transition-fast), color var(--transition-fast);
-}
-
-.app-layout--sidebar-collapsed .app-layout__toggle {
-  left: calc(var(--sidebar-width-collapsed, 64px) - 14px);
-}
-
-.app-layout__toggle:hover {
-  background: var(--sidebar-toggle-hover-bg, #f3f4f6);
-  color: var(--sidebar-nav-active-bg);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .app-layout__toggle,
-  .app-layout__content {
-    transition: none;
-  }
-}
-
-/* ─── Mobile ─── */
-
-.app-layout__hamburger {
-  display: none;
-}
-
-.app-layout__backdrop {
-  display: none;
-}
-
-@media (max-width: 768px) {
-  .app-layout__toggle {
-    display: none;
-  }
-
-  .app-layout__hamburger {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: fixed;
-    top: 16px;
-    left: 16px;
-    z-index: 998;
-    width: 40px;
-    height: 40px;
-    border-radius: var(--radius-full);
-    background: var(--color-card-bg);
-    border: 1px solid var(--color-border);
-    cursor: pointer;
-    box-shadow: var(--shadow-sm);
-    color: var(--color-text);
-    padding: 0;
-  }
-
-  .app-layout__hamburger:hover {
-    background: var(--color-primary);
-    color: #fff;
-    border-color: var(--color-primary);
-  }
-
-  .app-layout__backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 999;
-  }
 }

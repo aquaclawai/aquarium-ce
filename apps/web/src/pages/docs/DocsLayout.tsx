@@ -1,6 +1,8 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useState } from 'react';
 import { ThemeToggle } from '../../components/ThemeToggle.js';
+import { Button } from '@/components/ui';
+import './DocsLayout.css';
 
 const NAV_ITEMS = [
   { to: '/docs', label: 'Overview', end: true },
@@ -27,13 +29,15 @@ export function DocsLayout() {
       <header className="docs-header">
         <div className="docs-header-inner">
           <div className="docs-header-left">
-            <button
+            <Button
               className="docs-sidebar-toggle"
+              variant="ghost"
+              size="icon"
               onClick={() => setSidebarOpen(!sidebarOpen)}
               aria-label="Toggle navigation"
             >
               {sidebarOpen ? '\u2715' : '\u2630'}
-            </button>
+            </Button>
             <Link to="/docs" className="docs-brand">
               Aquarium
             </Link>

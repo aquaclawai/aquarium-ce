@@ -1,9 +1,24 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Plus, MessageSquare } from 'lucide-react';
 import { api } from '../api';
 import type { InstancePublic, GroupChat, CreateGroupChatRequest, UserSearchResult, AddGroupChatMemberRequest } from '@aquarium/shared';
-import './group-chat.css';
+import '../components/group-chat/group-chat.css';
+import './GroupChatsListPage.css';
+import { PageHeader } from '../components/PageHeader';
+import { PageHeaderSkeleton, ListSkeleton } from '@/components/skeletons';
+import { EmptyState } from '../components/EmptyState';
+import {
+  Button,
+  Input,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui';
 
 export function GroupChatsListPage() {
   const { t } = useTranslation();
@@ -163,21 +178,40 @@ export function GroupChatsListPage() {
     }
   };
 
-  if (loading) return <div className="dashboard-page">{t('groupChat.list.loading')}</div>;
+  if (loading) return (
+    <div className="dashboard-page">
+      <PageHeaderSkeleton />
+      <ListSkeleton rows={6} showIcon />
+    </div>
+  );
 
   return (
     <main className="dashboard-page">
-      <header className="dashboard-header">
-        <h1>{t('groupChat.list.title')}</h1>
-        <div className="dashboard-header-actions">
-          <button onClick={() => setShowCreateModal(true)}>{t('groupChat.list.createButton')}</button>
-        </div>
-      </header>
+      <PageHeader
+        title={t('groupChat.list.title')}
+        subtitle={t('groupChat.list.subtitle')}
+        action={
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus size={16} />
+            {t('groupChat.list.createButton')}
+          </Button>
+        }
+      />
 
       {error && <div className="error-message" role="alert">{error}</div>}
 
       {groupChats.length === 0 && (
-        <div className="info-message">{t('groupChat.list.noChats')}</div>
+        <EmptyState
+          icon={<MessageSquare size={24} />}
+          title={t('groupChat.list.emptyTitle')}
+          description={t('groupChat.list.emptyDescription')}
+          action={
+            <Button onClick={() => setShowCreateModal(true)}>
+              <Plus size={16} />
+              {t('groupChat.list.createButton')}
+            </Button>
+          }
+        />
       )}
 
       <div className="instances-grid">
@@ -197,14 +231,16 @@ export function GroupChatsListPage() {
         ))}
       </div>
 
-      {showCreateModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
-          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="create-chat-title" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
-            <h2 id="create-chat-title">{t('groupChat.create.title')}</h2>
-            <form onSubmit={handleCreate}>
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogContent className="gc-create-dialog">
+          <DialogHeader>
+            <DialogTitle>{t('groupChat.create.title')}</DialogTitle>
+            <DialogDescription>{t('groupChat.create.selectInstances')}</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate}>
               <div className="form-group">
                 <label htmlFor="chat-name">{t('groupChat.create.chatNameLabel')}</label>
-                <input
+                <Input
                   type="text"
                   id="chat-name"
                   value={newChatName}
@@ -216,46 +252,45 @@ export function GroupChatsListPage() {
 
               <div className="form-group">
                 <label>{t('groupChat.create.selectInstances')}</label>
-                <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #ccc', padding: '10px', borderRadius: '4px' }}>
+                <div className="gc-list-dialog__instance-list">
                   {instances.length === 0 ? (
                     <p>{t('groupChat.create.noInstances')}</p>
                   ) : (
                     instances.map(inst => (
-                      <div key={inst.id} style={{ marginBottom: '10px', padding: '8px', borderBottom: '1px solid #eee' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '5px' }}>
-                          <input
-                            type="checkbox"
+                      <div key={inst.id} className="gc-list-dialog__instance-item">
+                        <div className="gc-list-dialog__instance-row">
+                          <input type="checkbox"
                             id={`inst-${inst.id}`}
                             checked={selectedInstanceIds.has(inst.id)}
                             onChange={() => handleInstanceToggle(inst.id)}
-                            style={{ marginRight: '10px' }}
+                            className="gc-list-dialog__instance-checkbox"
                           />
-                          <label htmlFor={`inst-${inst.id}`} style={{ fontWeight: 'bold', flex: 1 }}>
+                          <label htmlFor={`inst-${inst.id}`} className="gc-list-dialog__instance-label">
                             {inst.name}
                           </label>
-                          <span className={`status-badge status-${inst.status}`} style={{ fontSize: '0.8em' }}>
+                          <span className={`status-badge status-${inst.status} gc-list-dialog__instance-status`}>
                             {t('common.status.' + inst.status)}
                           </span>
                         </div>
 
                          {selectedInstanceIds.has(inst.id) && (
-                           <div style={{ marginLeft: '25px' }}>
-                             <label style={{ fontSize: '0.9em', display: 'block', marginBottom: '2px' }}>{t('groupChat.create.displayNameInChat')}</label>
-                             <input
-                               type="text"
-                               value={instanceDisplayNames[inst.id] || ''}
-                               onChange={e => handleDisplayNameChange(inst.id, e.target.value)}
-                               placeholder={inst.name}
-                               style={{ width: '100%', padding: '4px' }}
-                             />
-                             <div style={{ marginTop: '5px' }}>
-                               <label style={{ fontSize: '0.9em', display: 'block', marginBottom: '2px' }}>{t('groupChat.create.roleLabel')}</label>
-                               <input
+                           <div className="gc-list-dialog__instance-fields">
+                             <div className="gc-list-dialog__field">
+                               <label>{t('groupChat.create.displayNameInChat')}</label>
+                               <Input
+                                 type="text"
+                                 value={instanceDisplayNames[inst.id] || ''}
+                                 onChange={e => handleDisplayNameChange(inst.id, e.target.value)}
+                                 placeholder={inst.name}
+                               />
+                             </div>
+                             <div className="gc-list-dialog__field">
+                               <label>{t('groupChat.create.roleLabel')}</label>
+                               <Input
                                  type="text"
                                  value={instanceRoles[inst.id] || ''}
                                  onChange={e => handleRoleChange(inst.id, e.target.value)}
                                  placeholder={t('groupChat.create.rolePlaceholder')}
-                                 style={{ width: '100%', padding: '4px' }}
                                />
                              </div>
                            </div>
@@ -268,15 +303,15 @@ export function GroupChatsListPage() {
 
               <div className="form-group">
                 <label>{t('groupChat.create.inviteHumans')}</label>
-                <input
+                <Input
                   type="text"
                   value={humanSearchEmail}
                   onChange={e => setHumanSearchEmail(e.target.value)}
                   placeholder={t('groupChat.create.searchByEmail')}
                 />
-                {humanSearching && <div style={{ fontSize: '0.8em', color: '#666', marginTop: '4px' }}>{t('groupChat.create.searching')}</div>}
+                {humanSearching && <div className="gc-list-dialog__search-hint">{t('groupChat.create.searching')}</div>}
                 {humanSearchResults.length > 0 && (
-                  <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #ccc', marginTop: '5px', borderRadius: '4px' }}>
+                  <div className="gc-list-dialog__search-results">
                     {humanSearchResults.map(u => (
                       <div
                         key={u.id}
@@ -285,7 +320,7 @@ export function GroupChatsListPage() {
                           setHumanSearchEmail('');
                           setHumanSearchResults([]);
                         }}
-                        style={{ padding: '8px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
+                        className="gc-list-dialog__search-item"
                         role="button"
                         tabIndex={0}
                         onKeyDown={e => {
@@ -302,20 +337,20 @@ export function GroupChatsListPage() {
                   </div>
                 )}
                 {selectedHumans.length > 0 && (
-                  <div style={{ marginTop: '10px' }}>
-                    <label style={{ fontSize: '0.9em' }}>{t('groupChat.create.selectedHumans')}</label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '5px' }}>
+                  <div className="gc-list-dialog__selected-humans">
+                    <label className="gc-list-dialog__selected-humans-label">{t('groupChat.create.selectedHumans')}</label>
+                    <div className="gc-list-dialog__selected-chips">
                       {selectedHumans.map(h => (
-                        <span key={h.id} className="status-badge status-running" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <span key={h.id} className="status-badge status-running gc-list-dialog__chip">
                           {h.displayName}
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
                             onClick={() => setSelectedHumans(prev => prev.filter(x => x.id !== h.id))}
-                            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, fontSize: '1.2em', lineHeight: 1 }}
                             aria-label={t('groupChat.create.removeHuman', { name: h.displayName })}
                           >
                             ×
-                          </button>
+                          </Button>
                         </span>
                       ))}
                     </div>
@@ -351,16 +386,15 @@ export function GroupChatsListPage() {
                 </div>
               )}
 
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowCreateModal(false)} disabled={creating}>{t('common.buttons.cancel')}</button>
-                <button type="submit" disabled={creating || selectedInstanceIds.size === 0}>
+              <DialogFooter>
+                <Button type="button" variant="secondary" onClick={() => setShowCreateModal(false)} disabled={creating}>{t('common.buttons.cancel')}</Button>
+                <Button type="submit" disabled={creating || selectedInstanceIds.size === 0}>
                   {creating ? t('groupChat.create.creating') : selectedHumans.length > 0 ? t('groupChat.create.createAndInvite') : t('groupChat.create.createGroupChat')}
-                </button>
-              </div>
+                </Button>
+              </DialogFooter>
             </form>
-          </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

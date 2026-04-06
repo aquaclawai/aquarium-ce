@@ -7,6 +7,7 @@ import {
   Settings,
   LogOut,
 } from 'lucide-react';
+import { Button } from '@/components/ui';
 
 const isEE = import.meta.env.VITE_EDITION !== 'ce';
 
@@ -38,15 +39,15 @@ export function UserMenu({ isAdmin, onClose }: UserMenuProps) {
             <CreditCard size={14} />
             <span>{t('sidebar.billingGroup')}</span>
           </div>
-          <button className="user-menu__item" role="menuitem" onClick={() => handleNav('/billing')}>
+          <Button variant="ghost" className="user-menu__item" role="menuitem" onClick={() => handleNav('/billing')}>
             {t('sidebar.billing')}
-          </button>
-          <button className="user-menu__item" role="menuitem" onClick={() => handleNav('/billing/orders')}>
+          </Button>
+          <Button variant="ghost" className="user-menu__item" role="menuitem" onClick={() => handleNav('/billing/orders')}>
             {t('sidebar.orders')}
-          </button>
-          <button className="user-menu__item" role="menuitem" onClick={() => handleNav('/billing/costs')}>
+          </Button>
+          <Button variant="ghost" className="user-menu__item" role="menuitem" onClick={() => handleNav('/billing/costs')}>
             {t('sidebar.costs')}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -55,19 +56,20 @@ export function UserMenu({ isAdmin, onClose }: UserMenuProps) {
           <UserCog size={14} />
           <span>{t('sidebar.userGroup')}</span>
         </div>
-        <button className="user-menu__item" role="menuitem" onClick={() => handleNav('/user/credentials')}>
+        <Button variant="ghost" className="user-menu__item" role="menuitem" onClick={() => handleNav('/user/credentials')}>
           {t('sidebar.credentials')}
-        </button>
+        </Button>
         {isEE && (
-          <button className="user-menu__item" role="menuitem" onClick={() => handleNav('/profile')}>
+          <Button variant="ghost" className="user-menu__item" role="menuitem" onClick={() => handleNav('/profile')}>
             {t('sidebar.account')}
-          </button>
+          </Button>
         )}
       </div>
 
       {isEE && isAdmin && (
         <div className="user-menu__group">
-          <button
+          <Button
+            variant="ghost"
             className="user-menu__item user-menu__item--with-icon"
             role="menuitem"
             onClick={() => handleNav('/admin/config')}
@@ -75,8 +77,9 @@ export function UserMenu({ isAdmin, onClose }: UserMenuProps) {
             <Settings size={14} />
             <span>{t('sidebar.systemConfig')}</span>
             <span className="user-menu__admin-badge">Admin</span>
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             className="user-menu__item user-menu__item--with-icon"
             role="menuitem"
             onClick={() => handleNav('/admin')}
@@ -84,20 +87,21 @@ export function UserMenu({ isAdmin, onClose }: UserMenuProps) {
             <Settings size={14} />
             <span>{t('admin.title')}</span>
             <span className="user-menu__admin-badge">Admin</span>
-          </button>
+          </Button>
         </div>
       )}
 
       {isEE && (
         <div className="user-menu__group">
-          <button
+          <Button
+            variant="ghost"
             className="user-menu__item user-menu__item--danger"
             role="menuitem"
             onClick={handleLogout}
           >
             <LogOut size={14} />
             <span>{t('common.buttons.logout')}</span>
-          </button>
+          </Button>
         </div>
       )}
     </div>

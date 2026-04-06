@@ -1,17 +1,24 @@
-import './CronTab.css';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
 import { api } from '../api';
 import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
-import type { CronJob, CronJobRun, CronListResponse, CronRunsResponse } from '@aquarium/shared';
+import { TableSkeleton } from '@/components/skeletons';
+import type {
+  CronJob,
+  CronJobRun,
+  CreateCronJobRequest,
+  UpdateCronJobRequest,
+  CronJobSchedule,
+  CronJobPayload,
+  CronJobDelivery,
+} from '@aquarium/shared';
 
 interface CronTabProps {
   instanceId: string;
   instanceStatus: string;
 }
 
-type ViewMode = 'list' | 'create' | 'edit' | 'history';
+type ViewMode = 'list' | 'create' | 'edit';
 
 interface FormState {
   name: string;
@@ -21,454 +28,592 @@ interface FormState {
   cronExpr: string;
   cronTz: string;
   atDatetime: string;
-  everyMinutes: string;
-  payloadKind: 'agentTurn' | 'systemEvent';
-  message: string;
-  eventText: string;
+  everyValue: number;
+  everyUnit: 'seconds' | 'minutes' | 'hours';
+  payloadKind: 'systemEvent' | 'agentTurn';
+  systemEventText: string;
+  agentTurnMessage: string;
+  agentTurnModel: string;
+  agentTurnTimeout: string;
+  sessionTarget: 'main' | 'isolated';
   deliveryMode: 'none' | 'announce';
   deliveryChannel: string;
   deliveryTo: string;
-  sessionTarget: 'main' | 'isolated';
-  model: string;
-  timeoutSeconds: string;
 }
 
-const EMPTY_FORM: FormState = {
+const DEFAULT_FORM: FormState = {
   name: '',
   description: '',
   enabled: true,
   scheduleKind: 'cron',
-  cronExpr: '',
+  cronExpr: '0 9 * * *',
   cronTz: Intl.DateTimeFormat().resolvedOptions().timeZone,
   atDatetime: '',
-  everyMinutes: '60',
+  everyValue: 60,
+  everyUnit: 'minutes',
   payloadKind: 'agentTurn',
-  message: '',
-  eventText: '',
+  systemEventText: '',
+  agentTurnMessage: '',
+  agentTurnModel: '',
+  agentTurnTimeout: '',
+  sessionTarget: 'isolated',
   deliveryMode: 'none',
   deliveryChannel: '',
   deliveryTo: '',
-  sessionTarget: 'isolated',
-  model: '',
-  timeoutSeconds: '300',
 };
 
-function rpc<T>(instanceId: string, method: string, params: Record<string, unknown> = {}): Promise<T> {
-  return api.post<T>(`/instances/${instanceId}/rpc`, { method, params });
+function buildSchedule(form: FormState): CronJobSchedule {
+  switch (form.scheduleKind) {
+    case 'cron':
+      return { kind: 'cron', expr: form.cronExpr, tz: form.cronTz || undefined };
+    case 'at':
+      return { kind: 'at', at: new Date(form.atDatetime).toISOString() };
+    case 'every': {
+      const multipliers = { seconds: 1000, minutes: 60_000, hours: 3_600_000 };
+      return { kind: 'every', everyMs: form.everyValue * multipliers[form.everyUnit] };
+    }
+  }
+}
+
+function buildPayload(form: FormState): CronJobPayload {
+  if (form.payloadKind === 'systemEvent') {
+    return { kind: 'systemEvent', text: form.systemEventText };
+  }
+  return {
+    kind: 'agentTurn',
+    message: form.agentTurnMessage,
+    ...(form.agentTurnModel ? { model: form.agentTurnModel } : {}),
+    ...(form.agentTurnTimeout ? { timeoutSeconds: parseInt(form.agentTurnTimeout, 10) } : {}),
+  };
+}
+
+function buildDelivery(form: FormState): CronJobDelivery | undefined {
+  if (form.deliveryMode === 'none') return undefined;
+  return {
+    mode: 'announce',
+    ...(form.deliveryChannel ? { channel: form.deliveryChannel } : {}),
+    ...(form.deliveryTo ? { to: form.deliveryTo } : {}),
+  };
+}
+
+function formFromJob(job: CronJob): FormState {
+  const form: FormState = { ...DEFAULT_FORM };
+  form.name = job.name;
+  form.description = job.description ?? '';
+  form.enabled = job.enabled;
+  form.sessionTarget = job.sessionTarget;
+
+  switch (job.schedule.kind) {
+    case 'cron':
+      form.scheduleKind = 'cron';
+      form.cronExpr = job.schedule.expr;
+      form.cronTz = job.schedule.tz ?? DEFAULT_FORM.cronTz;
+      break;
+    case 'at':
+      form.scheduleKind = 'at';
+      form.atDatetime = job.schedule.at.slice(0, 16);
+      break;
+    case 'every':
+      form.scheduleKind = 'every';
+      if (job.schedule.everyMs >= 3_600_000 && job.schedule.everyMs % 3_600_000 === 0) {
+        form.everyValue = job.schedule.everyMs / 3_600_000;
+        form.everyUnit = 'hours';
+      } else if (job.schedule.everyMs >= 60_000 && job.schedule.everyMs % 60_000 === 0) {
+        form.everyValue = job.schedule.everyMs / 60_000;
+        form.everyUnit = 'minutes';
+      } else {
+        form.everyValue = job.schedule.everyMs / 1000;
+        form.everyUnit = 'seconds';
+      }
+      break;
+  }
+
+  if (job.payload.kind === 'systemEvent') {
+    form.payloadKind = 'systemEvent';
+    form.systemEventText = job.payload.text;
+  } else {
+    form.payloadKind = 'agentTurn';
+    form.agentTurnMessage = job.payload.message;
+    form.agentTurnModel = job.payload.model ?? '';
+    form.agentTurnTimeout = job.payload.timeoutSeconds?.toString() ?? '';
+  }
+
+  if (job.delivery) {
+    form.deliveryMode = job.delivery.mode;
+    form.deliveryChannel = job.delivery.channel ?? '';
+    form.deliveryTo = job.delivery.to ?? '';
+  }
+
+  return form;
+}
+
+function formatSchedule(schedule: CronJobSchedule, t: (k: string) => string): string {
+  switch (schedule.kind) {
+    case 'cron':
+      return `${t('cron.scheduleCron')}: ${schedule.expr}${schedule.tz ? ` (${schedule.tz})` : ''}`;
+    case 'at':
+      return `${t('cron.scheduleAt')}: ${new Date(schedule.at).toLocaleString()}`;
+    case 'every': {
+      const ms = schedule.everyMs;
+      if (ms >= 3_600_000 && ms % 3_600_000 === 0) return `${t('cron.scheduleEvery')}: ${ms / 3_600_000}h`;
+      if (ms >= 60_000 && ms % 60_000 === 0) return `${t('cron.scheduleEvery')}: ${ms / 60_000}m`;
+      return `${t('cron.scheduleEvery')}: ${ms / 1000}s`;
+    }
+  }
 }
 
 export function CronTab({ instanceId, instanceStatus }: CronTabProps) {
   const { t } = useTranslation();
-  const isRunning = instanceStatus === 'running';
-
   const [jobs, setJobs] = useState<CronJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<ViewMode>('list');
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [form, setForm] = useState<FormState>({ ...DEFAULT_FORM });
+  const [saving, setSaving] = useState(false);
+  const [expandedRuns, setExpandedRuns] = useState<string | null>(null);
   const [runs, setRuns] = useState<CronJobRun[]>([]);
   const [runsLoading, setRunsLoading] = useState(false);
 
+  const isRunning = instanceStatus === 'running';
+
   const fetchJobs = useCallback(async () => {
-    if (!isRunning) { setLoading(false); return; }
+    if (!isRunning) {
+      setJobs([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
     try {
-      const result = await rpc<CronListResponse>(instanceId, 'cron.list', { includeDisabled: true, limit: 100 });
-      setJobs(result.jobs ?? []);
-      setError(null);
+      const data = await api.get<CronJob[]>(`/instances/${instanceId}/cron/jobs?includeDisabled=true`);
+      setJobs(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load tasks');
+      setError(err instanceof Error ? err.message : t('cron.failedToLoad'));
     } finally {
       setLoading(false);
     }
-  }, [instanceId, isRunning]);
+  }, [instanceId, isRunning, t]);
 
-  useEffect(() => { fetchJobs(); }, [fetchJobs]);
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
 
-  const fetchRuns = useCallback(async (jobId: string) => {
+  const pendingCronApplied = useRef(false);
+  useEffect(() => {
+    if (!isRunning || loading || pendingCronApplied.current) return;
+    if (jobs.length > 0) return;
+    const storageKey = `pending-cron:${instanceId}`;
+    let pendingName = '';
+    let pendingSchedule = '';
+    let pendingTz: string | undefined;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { name?: string; schedule?: string; tz?: string };
+        pendingName = parsed.name ?? '';
+        pendingSchedule = parsed.schedule ?? '';
+        pendingTz = parsed.tz;
+      }
+    } catch { /* JSON.parse may throw on corrupt data */ }
+    if (!pendingSchedule) return;
+    pendingCronApplied.current = true;
+
+    const cronRequest: CreateCronJobRequest = {
+      name: pendingName,
+      description: '',
+      enabled: true,
+      schedule: { kind: 'cron', expr: pendingSchedule, tz: pendingTz },
+      sessionTarget: 'isolated',
+      payload: {
+        kind: 'agentTurn',
+        message: '请执行今日行业资讯采集和简报生成任务。严格按照 SOUL.md 中的分析框架和输出规范执行。',
+      },
+    };
+    api.post(`/instances/${instanceId}/cron/jobs`, cronRequest)
+      .then(() => {
+        try { localStorage.removeItem(storageKey); } catch { /* noop */ }
+        fetchJobs();
+      })
+      .catch(() => {
+        pendingCronApplied.current = false;
+      });
+  }, [isRunning, loading, jobs.length, instanceId, fetchJobs]);
+
+  const handleCreate = () => {
+    setForm({ ...DEFAULT_FORM });
+    setEditingJobId(null);
+    setViewMode('create');
+  };
+
+  const handleEdit = (job: CronJob) => {
+    setForm(formFromJob(job));
+    setEditingJobId(job.id);
+    setViewMode('edit');
+  };
+
+  const handleCancel = () => {
+    setViewMode('list');
+    setEditingJobId(null);
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const schedule = buildSchedule(form);
+      const payload = buildPayload(form);
+      const delivery = buildDelivery(form);
+
+      if (viewMode === 'create') {
+        const body: CreateCronJobRequest = {
+          name: form.name,
+          description: form.description || undefined,
+          enabled: form.enabled,
+          schedule,
+          sessionTarget: form.sessionTarget,
+          payload,
+          delivery,
+        };
+        await api.post(`/instances/${instanceId}/cron/jobs`, body);
+      } else {
+        const body: UpdateCronJobRequest = {
+          name: form.name,
+          description: form.description || undefined,
+          enabled: form.enabled,
+          schedule,
+          sessionTarget: form.sessionTarget,
+          payload,
+          delivery,
+        };
+        await api.patch(`/instances/${instanceId}/cron/jobs/${editingJobId}`, body);
+      }
+      setViewMode('list');
+      setEditingJobId(null);
+      await fetchJobs();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('cron.saveFailed'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (jobId: string) => {
+    if (!window.confirm(t('cron.confirmDelete'))) return;
+    setError(null);
+    try {
+      await api.delete(`/instances/${instanceId}/cron/jobs/${jobId}`);
+      await fetchJobs();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('cron.deleteFailed'));
+    }
+  };
+
+  const handleRunNow = async (jobId: string) => {
+    setError(null);
+    try {
+      await api.post(`/instances/${instanceId}/cron/jobs/${jobId}/run`, { mode: 'force' });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('cron.runFailed'));
+    }
+  };
+
+  const handleToggleEnabled = async (job: CronJob) => {
+    setError(null);
+    try {
+      await api.patch(`/instances/${instanceId}/cron/jobs/${job.id}`, { enabled: !job.enabled });
+      await fetchJobs();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('cron.saveFailed'));
+    }
+  };
+
+  const handleViewRuns = async (jobId: string) => {
+    if (expandedRuns === jobId) {
+      setExpandedRuns(null);
+      return;
+    }
+    setExpandedRuns(jobId);
     setRunsLoading(true);
     try {
-      const result = await rpc<CronRunsResponse>(instanceId, 'cron.runs', { id: jobId, limit: 20, sortDir: 'desc' });
-      setRuns(result.entries ?? []);
+      const data = await api.get<CronJobRun[]>(`/instances/${instanceId}/cron/jobs/${jobId}/runs?limit=20`);
+      setRuns(data);
     } catch {
       setRuns([]);
     } finally {
       setRunsLoading(false);
     }
-  }, [instanceId]);
-
-  function buildJobPayload(f: FormState) {
-    const schedule = f.scheduleKind === 'cron'
-      ? { kind: 'cron' as const, expr: f.cronExpr, tz: f.cronTz || undefined }
-      : f.scheduleKind === 'at'
-        ? { kind: 'at' as const, at: new Date(f.atDatetime).toISOString() }
-        : { kind: 'every' as const, everyMs: parseInt(f.everyMinutes, 10) * 60_000 };
-
-    const payload = f.payloadKind === 'agentTurn'
-      ? {
-          kind: 'agentTurn' as const,
-          message: f.message,
-          ...(f.model ? { model: f.model } : {}),
-          ...(f.timeoutSeconds ? { timeoutSeconds: parseInt(f.timeoutSeconds, 10) } : {}),
-        }
-      : { kind: 'systemEvent' as const, text: f.eventText };
-
-    const delivery = f.deliveryMode === 'announce'
-      ? { mode: 'announce' as const, channel: f.deliveryChannel || undefined, to: f.deliveryTo || undefined }
-      : { mode: 'none' as const };
-
-    return {
-      name: f.name,
-      description: f.description || undefined,
-      enabled: f.enabled,
-      schedule,
-      payload,
-      delivery,
-      sessionTarget: f.sessionTarget,
-      wakeMode: 'now' as const,
-    };
-  }
-
-  async function handleSave() {
-    if (!form.name.trim()) { toast.error('Name is required'); return; }
-    if (form.payloadKind === 'agentTurn' && !form.message.trim()) { toast.error('Prompt is required'); return; }
-    if (form.payloadKind === 'systemEvent' && !form.eventText.trim()) { toast.error('Event text is required'); return; }
-    if (form.scheduleKind === 'cron' && !form.cronExpr.trim()) { toast.error('Cron expression is required'); return; }
-    if (form.scheduleKind === 'at' && !form.atDatetime) { toast.error('Date/time is required'); return; }
-
-    setSaving(true);
-    try {
-      if (editingJobId) {
-        await rpc(instanceId, 'cron.update', { id: editingJobId, patch: buildJobPayload(form) });
-        toast.success('Task updated');
-      } else {
-        await rpc(instanceId, 'cron.add', buildJobPayload(form));
-        toast.success('Task created');
-      }
-      setView('list');
-      setForm(EMPTY_FORM);
-      setEditingJobId(null);
-      fetchJobs();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleDelete(jobId: string) {
-    if (!confirm(t('cron.deleteConfirm'))) return;
-    try {
-      await rpc(instanceId, 'cron.remove', { id: jobId });
-      toast.success('Task deleted');
-      fetchJobs();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Delete failed');
-    }
-  }
-
-  async function handleRunNow(jobId: string) {
-    try {
-      await rpc(instanceId, 'cron.run', { id: jobId, mode: 'force' });
-      toast.success('Task triggered');
-      setTimeout(fetchJobs, 2000);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to trigger');
-    }
-  }
-
-  async function handleToggleEnabled(job: CronJob) {
-    try {
-      await rpc(instanceId, 'cron.update', { id: job.id, patch: { enabled: !job.enabled } });
-      fetchJobs();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update');
-    }
-  }
-
-  function startEdit(job: CronJob) {
-    const s = job.schedule;
-    const p = job.payload;
-    setForm({
-      name: job.name,
-      description: job.description ?? '',
-      enabled: job.enabled,
-      scheduleKind: s.kind,
-      cronExpr: s.kind === 'cron' ? s.expr : '',
-      cronTz: s.kind === 'cron' ? (s.tz ?? '') : EMPTY_FORM.cronTz,
-      atDatetime: s.kind === 'at' ? s.at.slice(0, 16) : '',
-      everyMinutes: s.kind === 'every' ? String(s.everyMs / 60_000) : '60',
-      payloadKind: p.kind,
-      message: p.kind === 'agentTurn' ? p.message : '',
-      eventText: p.kind === 'systemEvent' ? p.text : '',
-      deliveryMode: job.delivery?.mode === 'announce' ? 'announce' : 'none',
-      deliveryChannel: job.delivery?.channel ?? '',
-      deliveryTo: job.delivery?.to ?? '',
-      sessionTarget: job.sessionTarget ?? 'isolated',
-      model: p.kind === 'agentTurn' ? (p.model ?? '') : '',
-      timeoutSeconds: p.kind === 'agentTurn' ? String(p.timeoutSeconds ?? 300) : '300',
-    });
-    setEditingJobId(job.id);
-    setView('edit');
-  }
-
-  function openHistory(jobId: string) {
-    setSelectedJobId(jobId);
-    setView('history');
-    fetchRuns(jobId);
-  }
+  };
 
   const updateForm = (patch: Partial<FormState>) => setForm(prev => ({ ...prev, ...patch }));
 
-  // ─── Not running ───
   if (!isRunning) {
     return (
-      <div className="cron-tab">
-        <div className="cron-tab__header">
-          <h2>{t('cron.title')}</h2>
-        </div>
-        <div className="channels-tab__banner">{t('cron.instanceNotRunning')}</div>
+      <div style={{ padding: 'var(--space-4)', color: 'var(--color-text-secondary)' }}>
+        {t('cron.instanceNotRunning')}
       </div>
     );
   }
 
-  // ─── History view ───
-  if (view === 'history' && selectedJobId) {
-    const job = jobs.find(j => j.id === selectedJobId);
+  if (viewMode === 'create' || viewMode === 'edit') {
     return (
-      <div className="cron-tab">
-        <div className="cron-tab__header">
-          <h2>{t('cron.history')}: {job?.name ?? selectedJobId}</h2>
-          <Button variant="outline" size="sm" onClick={() => setView('list')}>{t('cron.cancel')}</Button>
-        </div>
-        {runsLoading ? (
-          <p>{t('cron.loading')}</p>
-        ) : runs.length === 0 ? (
-          <p className="cron-tab__empty">{t('cron.noRuns')}</p>
-        ) : (
-          <div className="cron-tab__runs">
-            {runs.map(run => (
-              <div key={run.id} className={`cron-run cron-run--${run.status}`}>
-                <span className="cron-run__status">{t(`cron.status.${run.status}`)}</span>
-                <span className="cron-run__time">{new Date(run.startedAt).toLocaleString()}</span>
-                {run.durationMs != null && <span className="cron-run__duration">{(run.durationMs / 1000).toFixed(1)}s</span>}
-                {run.error && <span className="cron-run__error">{run.error}</span>}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
+      <div style={{ padding: 'var(--space-4)', maxWidth: 640 }}>
+        <h3 style={{ margin: '0 0 var(--space-4)' }}>
+          {viewMode === 'create' ? t('cron.createJob') : t('cron.editJob')}
+        </h3>
+        {error && <div className="error-message" role="alert">{error}</div>}
 
-  // ─── Create/Edit form ───
-  if (view === 'create' || view === 'edit') {
-    return (
-      <div className="cron-tab">
-        <div className="cron-tab__header">
-          <h2>{editingJobId ? t('cron.edit') : t('cron.createJob')}</h2>
-        </div>
-        <div className="cron-tab__form">
-          {/* Name */}
-          <div className="cron-field">
-            <label>{t('cron.name')} *</label>
-            <Input value={form.name} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ name: e.target.value })} placeholder={t('cron.namePlaceholder')} />
-          </div>
-          <div className="cron-field">
-            <label>{t('cron.description')}</label>
-            <Input value={form.description} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ description: e.target.value })} placeholder={t('cron.descriptionPlaceholder')} />
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          <label style={labelStyle}>
+            {t('cron.form.name')} *
+            <Input
+              value={form.name}
+              onChange={e => updateForm({ name: e.target.value })}
+              placeholder={t('cron.form.namePlaceholder')}
+            />
+          </label>
 
-          {/* Schedule */}
-          <div className="cron-field">
-            <label>{t('cron.scheduleType')}</label>
-            <Select value={form.scheduleKind} onValueChange={(v: string) => updateForm({ scheduleKind: v as FormState['scheduleKind'] })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cron">{t('cron.scheduleTypes.cron')}</SelectItem>
-                <SelectItem value="at">{t('cron.scheduleTypes.at')}</SelectItem>
-                <SelectItem value="every">{t('cron.scheduleTypes.every')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {form.scheduleKind === 'cron' && (
-            <>
-              <div className="cron-field">
-                <label>{t('cron.cronExpr')} *</label>
-                <Input value={form.cronExpr} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ cronExpr: e.target.value })} placeholder={t('cron.cronExprPlaceholder')} />
-                <p className="cron-field__help">{t('cron.cronExprHelp')}</p>
-              </div>
-              <div className="cron-field">
-                <label>{t('cron.timezone')}</label>
-                <Input value={form.cronTz} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ cronTz: e.target.value })} placeholder="UTC" />
-              </div>
-            </>
-          )}
-          {form.scheduleKind === 'at' && (
-            <div className="cron-field">
-              <label>{t('cron.atDatetime')} *</label>
-              <Input type="datetime-local" value={form.atDatetime} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ atDatetime: e.target.value })} />
+          <label style={labelStyle}>
+            {t('cron.form.description')}
+            <Input
+              value={form.description}
+              onChange={e => updateForm({ description: e.target.value })}
+            />
+          </label>
+
+          <label style={{ ...labelStyle, flexDirection: 'row', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <input type="checkbox"
+              checked={form.enabled}
+              onChange={e => updateForm({ enabled: e.target.checked })}
+            />
+            {t('cron.form.enabled')}
+          </label>
+
+          <fieldset style={fieldsetStyle}>
+            <legend>{t('cron.form.schedule')}</legend>
+            <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
+              {(['cron', 'at', 'every'] as const).map(kind => (
+                <label key={kind} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', cursor: 'pointer' }}>
+                  <input type="radio" name="scheduleKind" checked={form.scheduleKind === kind} onChange={() => updateForm({ scheduleKind: kind })} />
+                  {t(`cron.form.schedule${kind.charAt(0).toUpperCase() + kind.slice(1)}`)}
+                </label>
+              ))}
             </div>
-          )}
-          {form.scheduleKind === 'every' && (
-            <div className="cron-field">
-              <label>{t('cron.everyMs')} *</label>
-              <Input type="number" min="1" value={form.everyMinutes} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ everyMinutes: e.target.value })} />
-            </div>
-          )}
-
-          {/* Payload */}
-          <div className="cron-field">
-            <label>{t('cron.payloadType')}</label>
-            <Select value={form.payloadKind} onValueChange={(v: string) => updateForm({ payloadKind: v as FormState['payloadKind'] })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="agentTurn">{t('cron.agentTurn')}</SelectItem>
-                <SelectItem value="systemEvent">{t('cron.systemEvent')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {form.payloadKind === 'agentTurn' ? (
-            <>
-              <div className="cron-field">
-                <label>{t('cron.message')} *</label>
-                <textarea className="cron-textarea" rows={3} value={form.message} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ message: e.target.value })} placeholder={t('cron.messagePlaceholder')} />
+            {form.scheduleKind === 'cron' && (
+              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                <Input style={{ flex: 1 }} value={form.cronExpr} onChange={e => updateForm({ cronExpr: e.target.value })} placeholder="0 9 * * *" />
+                <Input style={{ flex: 1 }} value={form.cronTz} onChange={e => updateForm({ cronTz: e.target.value })} placeholder="Asia/Shanghai" />
               </div>
-              <div className="cron-field-row">
-                <div className="cron-field">
-                  <label>{t('cron.sessionTarget')}</label>
-                  <Select value={form.sessionTarget} onValueChange={(v: string) => updateForm({ sessionTarget: v as 'main' | 'isolated' })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="isolated">{t('cron.sessionIsolated')}</SelectItem>
-                      <SelectItem value="main">{t('cron.sessionMain')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="cron-field">
-                  <label>{t('cron.timeout')}</label>
-                  <Input type="number" min="10" value={form.timeoutSeconds} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ timeoutSeconds: e.target.value })} />
+            )}
+            {form.scheduleKind === 'at' && (
+              <Input type="datetime-local" value={form.atDatetime} onChange={e => updateForm({ atDatetime: e.target.value })} />
+            )}
+            {form.scheduleKind === 'every' && (
+              <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+                <Input type="number" min={1} style={{ width: 100 }} value={form.everyValue} onChange={e => updateForm({ everyValue: parseInt(e.target.value, 10) || 1 })} />
+                <Select value={form.everyUnit} onValueChange={(val) => updateForm({ everyUnit: val as FormState['everyUnit'] })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="seconds">{t('cron.form.seconds')}</SelectItem>
+                    <SelectItem value="minutes">{t('cron.form.minutes')}</SelectItem>
+                    <SelectItem value="hours">{t('cron.form.hours')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </fieldset>
+
+          <fieldset style={fieldsetStyle}>
+            <legend>{t('cron.form.payload')}</legend>
+            <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', cursor: 'pointer' }}>
+                <input type="radio" name="payloadKind" checked={form.payloadKind === 'systemEvent'} onChange={() => updateForm({ payloadKind: 'systemEvent' })} />
+                {t('cron.form.systemEvent')}
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', cursor: 'pointer' }}>
+                <input type="radio" name="payloadKind" checked={form.payloadKind === 'agentTurn'} onChange={() => updateForm({ payloadKind: 'agentTurn' })} />
+                {t('cron.form.agentTurn')}
+              </label>
+            </div>
+            {form.payloadKind === 'systemEvent' && (
+              <textarea
+                style={{ minHeight: 80, resize: 'vertical', padding: 'var(--space-2)', border: '1px solid var(--color-border)', borderRadius: 4, background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: '0.875rem' }}
+                value={form.systemEventText}
+                onChange={e => updateForm({ systemEventText: e.target.value })}
+                placeholder={t('cron.form.systemEventPlaceholder')}
+              />
+            )}
+            {form.payloadKind === 'agentTurn' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                <textarea
+                  style={{ minHeight: 80, resize: 'vertical', padding: 'var(--space-2)', border: '1px solid var(--color-border)', borderRadius: 4, background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: '0.875rem' }}
+                  value={form.agentTurnMessage}
+                  onChange={e => updateForm({ agentTurnMessage: e.target.value })}
+                  placeholder={t('cron.form.agentTurnMessagePlaceholder')}
+                />
+                <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                  <Input style={{ flex: 1 }} value={form.agentTurnModel} onChange={e => updateForm({ agentTurnModel: e.target.value })} placeholder={t('cron.form.modelPlaceholder')} />
+                  <Input type="number" style={{ width: 120 }} value={form.agentTurnTimeout} onChange={e => updateForm({ agentTurnTimeout: e.target.value })} placeholder={t('cron.form.timeoutPlaceholder')} />
                 </div>
               </div>
-            </>
-          ) : (
-            <div className="cron-field">
-              <label>{t('cron.eventText')} *</label>
-              <Input value={form.eventText} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ eventText: e.target.value })} placeholder={t('cron.eventTextPlaceholder')} />
-            </div>
-          )}
+            )}
+          </fieldset>
 
-          {/* Delivery */}
-          <div className="cron-field">
-            <label>{t('cron.deliveryMode')}</label>
-            <Select value={form.deliveryMode} onValueChange={(v: string) => updateForm({ deliveryMode: v as 'none' | 'announce' })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">{t('cron.deliveryNone')}</SelectItem>
-                <SelectItem value="announce">{t('cron.deliveryAnnounce')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {form.deliveryMode === 'announce' && (
-            <div className="cron-field-row">
-              <div className="cron-field">
-                <label>{t('cron.deliveryChannel')}</label>
-                <Input value={form.deliveryChannel} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ deliveryChannel: e.target.value })} placeholder="slack, telegram..." />
-              </div>
-              <div className="cron-field">
-                <label>{t('cron.deliveryTo')}</label>
-                <Input value={form.deliveryTo} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ deliveryTo: e.target.value })} placeholder="channel:C123..." />
-              </div>
+          <fieldset style={fieldsetStyle}>
+            <legend>{t('cron.form.sessionTarget')}</legend>
+            <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', cursor: 'pointer' }}>
+                <input type="radio" name="sessionTarget" checked={form.sessionTarget === 'isolated'} onChange={() => updateForm({ sessionTarget: 'isolated' })} />
+                {t('cron.form.isolated')}
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', cursor: 'pointer' }}>
+                <input type="radio" name="sessionTarget" checked={form.sessionTarget === 'main'} onChange={() => updateForm({ sessionTarget: 'main' })} />
+                {t('cron.form.main')}
+              </label>
             </div>
-          )}
+          </fieldset>
 
-          {/* Actions */}
-          <div className="cron-tab__actions">
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? t('cron.saving') : t('cron.save')}
+          <fieldset style={fieldsetStyle}>
+            <legend>{t('cron.form.delivery')}</legend>
+            <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', cursor: 'pointer' }}>
+                <input type="radio" name="deliveryMode" checked={form.deliveryMode === 'none'} onChange={() => updateForm({ deliveryMode: 'none' })} />
+                {t('cron.form.deliveryNone')}
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', cursor: 'pointer' }}>
+                <input type="radio" name="deliveryMode" checked={form.deliveryMode === 'announce'} onChange={() => updateForm({ deliveryMode: 'announce' })} />
+                {t('cron.form.deliveryAnnounce')}
+              </label>
+            </div>
+            {form.deliveryMode === 'announce' && (
+              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                <Input style={{ flex: 1 }} value={form.deliveryChannel} onChange={e => updateForm({ deliveryChannel: e.target.value })} placeholder={t('cron.form.channelPlaceholder')} />
+                <Input style={{ flex: 1 }} value={form.deliveryTo} onChange={e => updateForm({ deliveryTo: e.target.value })} placeholder={t('cron.form.toPlaceholder')} />
+              </div>
+            )}
+          </fieldset>
+
+          <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
+            <Button onClick={handleSave} disabled={saving || !form.name.trim()}>
+              {saving ? t('cron.saving') : (viewMode === 'create' ? t('cron.create') : t('cron.save'))}
             </Button>
-            <Button variant="ghost" onClick={() => { setView('list'); setForm(EMPTY_FORM); setEditingJobId(null); }}>
-              {t('cron.cancel')}
-            </Button>
+            <Button variant="secondary" onClick={handleCancel}>{t('cron.cancel')}</Button>
           </div>
         </div>
       </div>
     );
   }
 
-  // ─── List view ───
   return (
-    <div className="cron-tab">
-      <div className="cron-tab__header">
-        <h2>{t('cron.title')}</h2>
-        <p className="cron-tab__subtitle">{t('cron.subtitle')}</p>
-        <Button onClick={() => { setForm(EMPTY_FORM); setEditingJobId(null); setView('create'); }} style={{ marginLeft: 'auto' }}>
-          {t('cron.createJob')}
-        </Button>
+    <div style={{ padding: 'var(--space-4)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
+        <h3 style={{ margin: 0 }}>{t('cron.title')}</h3>
+        <Button onClick={handleCreate}>{t('cron.createJob')}</Button>
       </div>
 
       {error && <div className="error-message" role="alert">{error}</div>}
 
-      {loading ? (
-        <p>{t('cron.loading')}</p>
-      ) : jobs.length === 0 ? (
-        <p className="cron-tab__empty">{t('cron.noJobs')}</p>
-      ) : (
-        <div className="cron-tab__list">
-          {jobs.map(job => (
-            <div key={job.id} className={`cron-job${!job.enabled ? ' cron-job--disabled' : ''}`}>
-              <div className="cron-job__header">
-                <button className={`cron-job__toggle${job.enabled ? ' cron-job__toggle--on' : ''}`} onClick={() => handleToggleEnabled(job)} title={job.enabled ? t('cron.enabled') : t('cron.disabled')}>
-                  {job.enabled ? '●' : '○'}
-                </button>
-                <div className="cron-job__info">
-                  <span className="cron-job__name">{job.name}</span>
-                  {job.description && <span className="cron-job__desc">{job.description}</span>}
-                </div>
-                <div className="cron-job__schedule">
-                  {formatSchedule(job.schedule, t)}
-                </div>
-              </div>
-              <div className="cron-job__state">
-                {job.state.nextRunAtMs && (
-                  <span>{t('cron.state.nextRun')}: {new Date(job.state.nextRunAtMs).toLocaleString()}</span>
-                )}
-                {job.state.lastRunStatus && (
-                  <span className={`cron-job__status cron-job__status--${job.state.lastRunStatus}`}>
-                    {t(`cron.status.${job.state.lastRunStatus}`)}
-                  </span>
-                )}
-                {job.state.lastDurationMs != null && (
-                  <span>{(job.state.lastDurationMs / 1000).toFixed(1)}s</span>
-                )}
-                {job.state.lastError && (
-                  <span className="cron-job__error">{job.state.lastError}</span>
-                )}
-              </div>
-              <div className="cron-job__actions">
-                <Button variant="ghost" size="sm" onClick={() => handleRunNow(job.id)}>{t('cron.runNow')}</Button>
-                <Button variant="ghost" size="sm" onClick={() => openHistory(job.id)}>{t('cron.history')}</Button>
-                <Button variant="ghost" size="sm" onClick={() => startEdit(job)}>{t('cron.edit')}</Button>
-                <Button variant="ghost" size="sm" onClick={() => handleDelete(job.id)}>{t('cron.delete')}</Button>
-              </div>
-            </div>
-          ))}
+      {loading && <TableSkeleton rows={5} />}
+
+      {!loading && jobs.length === 0 && (
+        <div style={{ textAlign: 'center', padding: 'var(--space-8)', color: 'var(--color-text-secondary)' }}>
+          {t('cron.noJobs')}
         </div>
       )}
+
+      {!loading && jobs.map(job => (
+        <div key={job.id} style={cardStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                <strong>{job.name}</strong>
+                <span style={{
+                  fontSize: '0.75rem',
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  background: job.enabled ? 'var(--color-success)' : 'var(--color-text-secondary)',
+                  color: '#fff',
+                }}>
+                  {job.enabled ? t('cron.enabled') : t('cron.disabled')}
+                </span>
+              </div>
+              {job.description && <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', marginTop: 'var(--space-1)' }}>{job.description}</div>}
+              <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', marginTop: 'var(--space-1)' }}>
+                {formatSchedule(job.schedule, t)}
+              </div>
+              {job.nextRunAt && (
+                <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem' }}>
+                  {t('cron.nextRun')}: {new Date(job.nextRunAt).toLocaleString()}
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--space-1)', flexShrink: 0 }}>
+              <Button variant="ghost" size="sm" onClick={() => handleToggleEnabled(job)} title={job.enabled ? t('cron.disable') : t('cron.enable')}>
+                {job.enabled ? '⏸' : '▶'}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => handleRunNow(job.id)} title={t('cron.runNow')}>
+                {'⚡'}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => handleViewRuns(job.id)} title={t('cron.viewHistory')}>
+                {'📋'}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => handleEdit(job)} title={t('cron.editJob')}>
+                {'✏'}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => handleDelete(job.id)} title={t('cron.deleteJob')} style={{ color: 'var(--color-error)' }}>
+                {'✕'}
+              </Button>
+            </div>
+          </div>
+
+          {expandedRuns === job.id && (
+            <div style={{ marginTop: 'var(--space-3)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-3)' }}>
+              <strong style={{ fontSize: '0.875rem' }}>{t('cron.runHistory')}</strong>
+              {runsLoading && <TableSkeleton rows={5} />}
+              {!runsLoading && runs.length === 0 && (
+                <div style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>{t('cron.noRuns')}</div>
+              )}
+              {!runsLoading && runs.map(run => (
+                <div key={run.id} style={{ display: 'flex', gap: 'var(--space-3)', fontSize: '0.8rem', padding: 'var(--space-1) 0', alignItems: 'center' }}>
+                  <span style={{
+                    width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                    background: run.status === 'completed' ? 'var(--color-success)' : run.status === 'failed' ? 'var(--color-error)' : 'var(--color-warning)',
+                  }} />
+                  <span>{new Date(run.startedAt).toLocaleString()}</span>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>{run.status}</span>
+                  {run.error && <span style={{ color: 'var(--color-error)' }}>{run.error}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
 
-function formatSchedule(s: CronJob['schedule'], t: (key: string) => string): string {
-  if (s.kind === 'cron') return `${s.expr}${s.tz ? ` (${s.tz})` : ''}`;
-  if (s.kind === 'at') return new Date(s.at).toLocaleString();
-  if (s.kind === 'every') {
-    const mins = s.everyMs / 60_000;
-    if (mins >= 1440) return `${t('cron.scheduleTypes.every')}: ${(mins / 1440).toFixed(0)}d`;
-    if (mins >= 60) return `${t('cron.scheduleTypes.every')}: ${(mins / 60).toFixed(0)}h`;
-    return `${t('cron.scheduleTypes.every')}: ${mins}m`;
-  }
-  return '?';
-}
+const labelStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-1)',
+  fontSize: '0.875rem',
+  fontWeight: 500,
+};
+
+const fieldsetStyle: React.CSSProperties = {
+  border: '1px solid var(--color-border)',
+  borderRadius: 6,
+  padding: 'var(--space-3)',
+  margin: 0,
+};
+
+const cardStyle: React.CSSProperties = {
+  border: '1px solid var(--color-border)',
+  borderRadius: 8,
+  padding: 'var(--space-3)',
+  marginBottom: 'var(--space-3)',
+  background: 'var(--color-bg-elevated, var(--color-bg))',
+};

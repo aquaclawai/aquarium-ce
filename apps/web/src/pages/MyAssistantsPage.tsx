@@ -1,10 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Zap, Bot } from 'lucide-react';
+import { Plus, Bot } from 'lucide-react';
 import { api } from '../api';
 import { useWebSocket } from '../context/WebSocketContext';
 import { AssistantCard } from '../components/assistant/AssistantCard';
+import { PageHeader } from '../components/PageHeader';
+import { PageHeaderSkeleton, CardSkeleton } from '@/components/skeletons';
+import { EmptyState } from '../components/EmptyState';
+import { Button } from '@/components/ui';
 import type { InstancePublic, AgentTypeInfo, WsMessage } from '@aquarium/shared';
 import './MyAssistantsPage.css';
 
@@ -88,42 +92,46 @@ export function MyAssistantsPage() {
   if (loading) {
     return (
       <main className="my-assistants-page">
-        <div className="my-assistants-page__loading">{t('common.labels.loading')}</div>
+        <PageHeaderSkeleton />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+          <CardSkeleton lines={3} showBadge />
+          <CardSkeleton lines={3} showBadge />
+          <CardSkeleton lines={3} showBadge />
+          <CardSkeleton lines={3} showBadge />
+          <CardSkeleton lines={3} showBadge />
+          <CardSkeleton lines={3} showBadge />
+        </div>
       </main>
     );
   }
 
   return (
     <main className="my-assistants-page">
-      <header className="my-assistants-page__header">
-        <div>
-          <h1 className="my-assistants-page__title">{t('myAssistants.title')}</h1>
-          <p className="my-assistants-page__subtitle">{t('myAssistants.subtitle')}</p>
-        </div>
-        <button className="my-assistants-page__create" onClick={() => navigate('/create')}>
-          <Plus size={18} />
-          {t('myAssistants.createNew')}
-        </button>
-      </header>
+      <PageHeader
+        title={t('myAssistants.title')}
+        subtitle={t('myAssistants.subtitle')}
+        action={
+          <Button onClick={() => navigate('/create')}>
+            <Plus size={16} />
+            {t('myAssistants.createNew')}
+          </Button>
+        }
+      />
 
       {error && <div className="error-message" role="alert">{error}</div>}
 
       {instances.length === 0 ? (
-        <div className="my-assistants-page__empty-banner">
-          <div className="my-assistants-page__empty-content">
-            <div className="my-assistants-page__empty-icon">
-              <Zap size={22} />
-            </div>
-            <div className="my-assistants-page__empty-text">
-              <h3>{t('myAssistants.emptyTitle')}</h3>
-              <p>{t('myAssistants.emptyDescription')}</p>
-            </div>
-          </div>
-          <button className="my-assistants-page__empty-btn" onClick={() => navigate('/create')}>
-            <Bot size={18} />
-            <span>{t('myAssistants.createFirst')}</span>
-          </button>
-        </div>
+        <EmptyState
+          icon={<Bot size={24} />}
+          title={t('myAssistants.emptyTitle')}
+          description={t('myAssistants.emptyDescription')}
+          action={
+            <Button onClick={() => navigate('/create')}>
+              <Plus size={16} />
+              {t('myAssistants.createNew')}
+            </Button>
+          }
+        />
       ) : (
         <div className="my-assistants-page__list">
           {instances.map(inst => (
