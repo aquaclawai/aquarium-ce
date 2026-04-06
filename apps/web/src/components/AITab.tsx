@@ -608,7 +608,7 @@ function ModelSection({
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-[320px]">
                 {!providers.some(p => p.name === selectedProvider) && (
                   <SelectItem value={selectedProvider}>{getProviderDisplayName(selectedProvider, t)}</SelectItem>
                 )}
