@@ -26,7 +26,7 @@ Aquarium is a monorepo managed by npm workspaces:
 ```
 aquarium/
   apps/
-    server/          @aquarium/server    Express backend
+    server/          @aquaclawai/aquarium  Express backend
     web/             @aquarium/web       React frontend
   packages/
     shared/          @aquarium/shared    Shared TypeScript types
@@ -38,7 +38,7 @@ aquarium/
 The workspace names matter -- you use them with the `-w` flag:
 
 ```bash
-npm run dev -w @aquarium/server    # Run command in server workspace
+npm run dev -w @aquaclawai/aquarium    # Run command in server workspace
 npm run dev -w @aquarium/web       # Run command in web workspace
 npm run build -w @aquarium/shared  # Run command in shared workspace
 ```

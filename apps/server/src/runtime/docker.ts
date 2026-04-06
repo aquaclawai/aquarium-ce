@@ -1,5 +1,7 @@
 import Docker from 'dockerode';
 import type { Readable } from 'stream';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
 import { config } from '../config.js';
 import type { RuntimeEngine, InstanceSpec, StartResult, RuntimeStatus, ExecResult, ExecOptions } from './types.js';
 import { Buffer } from 'buffer';
@@ -232,30 +234,18 @@ export class DockerEngine implements RuntimeEngine {
     const instanceId = spec.labels['platform.io/instance-id'];
     const networkName = await this.createInstanceNetwork(instanceId);
 
-    // ── TCP Proxy Strategy ──
-    // The alpine/openclaw gateway binds ONLY to 127.0.0.1 (hardcoded, no config to change).
-    // On Docker Desktop (macOS/Windows) containers run in a Linux VM, so bridge networking
-    // port mapping connects to the container's bridge IP — which the gateway isn't listening on.
-    // Host networking doesn't help either because 127.0.0.1 in the VM != macOS host.
-    //
-    // Solution: inject a Node.js TCP proxy that listens on 0.0.0.0:PROXY_PORT and forwards
-    // to 127.0.0.1:GATEWAY_PORT. Docker maps the host port to the proxy port.
-    // Node.js is guaranteed available in the alpine/openclaw image.
-    const PROXY_PORT_OFFSET = 1; // proxy listens on containerPort + 1
-
+    // Port mapping — gateway uses native bind:lan (0.0.0.0), so Docker can
+    // map host ports directly to the container's gateway port.
     const exposedPorts: Record<string, object> = {};
     const portBindings: Record<string, Array<{ HostPort: string }>> = {};
     const endpoints: Record<string, string> = {};
-    const proxyPairs: Array<{ gatewayPort: number; proxyPort: number }> = [];
 
     for (const p of spec.ports) {
       const hostPort = await this.allocatePort();
-      const proxyPort = p.containerPort + PROXY_PORT_OFFSET;
-      const proxyPortKey = `${proxyPort}/${p.protocol || 'tcp'}`;
-      exposedPorts[proxyPortKey] = {};
-      portBindings[proxyPortKey] = [{ HostPort: String(hostPort) }];
+      const portKey = `${p.containerPort}/${p.protocol || 'tcp'}`;
+      exposedPorts[portKey] = {};
+      portBindings[portKey] = [{ HostPort: String(hostPort) }];
       endpoints[p.name] = `ws://localhost:${hostPort}`;
-      proxyPairs.push({ gatewayPort: p.containerPort, proxyPort });
     }
 
     // Volumes
@@ -271,6 +261,17 @@ export class DockerEngine implements RuntimeEngine {
       binds.push(`${volumeName}:${v.mountPath}`);
     }
 
+    // Mount the local platform-bridge plugin into the container so the gateway
+    // picks up the latest code without rebuilding the Docker image.
+    // Path: <repo>/openclaw/plugin relative to <repo>/apps/server/src/runtime/docker.ts
+    const pluginHostPath = path.resolve(
+      path.dirname(new URL(import.meta.url).pathname),
+      '../../../../openclaw/plugin',
+    );
+    if (fs.existsSync(pluginHostPath)) {
+      binds.push(`${pluginHostPath}:/opt/openclaw-plugins/platform-bridge:ro`);
+    }
+
     // Env vars — inject HOME so root-user containers still use the expected data dir
     const mergedEnv = { HOME: '/home/node', ...spec.env };
     const env = [
@@ -280,7 +281,7 @@ export class DockerEngine implements RuntimeEngine {
 
     let healthcheck: Docker.ContainerCreateOptions['Healthcheck'] | undefined;
     if (spec.healthCheck) {
-      const checkPort = spec.healthCheck.port + PROXY_PORT_OFFSET;
+      const checkPort = spec.healthCheck.port;
       // Use Node.js for health check — nc/curl may not be available in minimal images
       healthcheck = {
         Test: ['CMD-SHELL', `node -e "require('net').connect(${checkPort},'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"`],
@@ -298,12 +299,6 @@ export class DockerEngine implements RuntimeEngine {
       component: 'instance',
     };
 
-    // Build the Node.js TCP proxy script + gateway startup command.
-    // The proxy is a self-contained Node.js one-liner that pipes connections.
-    const proxyScript = proxyPairs.map(({ gatewayPort, proxyPort }) =>
-      `require("net").createServer(c=>{const s=require("net").connect(${gatewayPort},"127.0.0.1");c.pipe(s);s.pipe(c);c.on("error",()=>s.destroy());s.on("error",()=>c.destroy())}).listen(${proxyPort},"0.0.0.0")`
-    ).join(';');
-
     // ── Resource limits from manifest (K8s-style strings → Docker numeric) ──
     const memoryBytes = this.parseMemory(spec.resources.limits.memory);
     const nanoCpus = this.parseCpu(spec.resources.limits.cpu);
@@ -318,9 +313,8 @@ export class DockerEngine implements RuntimeEngine {
       // Run as non-root (uid 1000 = node user in alpine/openclaw image).
       // Volumes are pre-chowned to 1000:1000 before container start.
       User: '1000:1000',
-      // Override entrypoint to: 1) start TCP proxy in background 2) exec gateway
-      // Uses openclaw.mjs CLI entry point (matches image default CMD)
-      Entrypoint: ['sh', '-c', `node -e '${proxyScript}' & exec node openclaw.mjs gateway --allow-unconfigured`],
+      // Override entrypoint to exec gateway directly (native bind:lan eliminates proxy need)
+      Entrypoint: ['sh', '-c', 'exec node openclaw.mjs gateway --allow-unconfigured'],
       Cmd: [],
       HostConfig: {
         Binds: binds,

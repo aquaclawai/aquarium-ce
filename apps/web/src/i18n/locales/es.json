@@ -56,6 +56,7 @@
       "created": "creado",
       "starting": "iniciando",
       "running": "en ejecución",
+      "restarting": "reiniciando",
       "stopping": "deteniendo",
       "stopped": "detenido",
       "error": "error",
@@ -194,7 +195,8 @@
       "settings": "Configuración",
       "files": "Archivos",
       "security": "Seguridad",
-      "more": "Más"
+      "more": "Más",
+      "extensions": "Extensiones"
     },
     "overview": {
       "title": "Detalles de la instancia",
@@ -1080,5 +1082,203 @@
       "file": "Archivo"
     },
     "previewNotAvailable": "Vista previa no disponible para este tipo de archivo. Usa el botón Descargar."
+  },
+  "extensions": {
+    "title": "Extensiones",
+    "subTabs": {
+      "plugins": "Plugins",
+      "skills": "Habilidades"
+    },
+    "sections": {
+      "installed": "Instaladas",
+      "available": "Disponibles",
+      "gatewayBuiltins": "Integradas en la puerta de enlace"
+    },
+    "status": {
+      "active": "Activo",
+      "installed": "Instalado",
+      "pending": "Pendiente",
+      "disabled": "Desactivado",
+      "degraded": "Degradado",
+      "failed": "Fallido"
+    },
+    "actions": {
+      "install": "Instalar",
+      "installing": "Instalando...",
+      "uninstall": "Desinstalar",
+      "enable": "Activar",
+      "disable": "Desactivar",
+      "configure": "Configurar",
+      "refresh": "Actualizar",
+      "activate": "Activar",
+      "activating": "Activando..."
+    },
+    "catalog": {
+      "startInstance": "Inicia la instancia para explorar las extensiones disponibles",
+      "noResults": "No hay extensiones disponibles",
+      "requiresCredentials": "Requiere clave API",
+      "bundled": "Incluido",
+      "clawhub": "ClawHub",
+      "requires": "Requiere",
+      "searchPlaceholder": "Buscar extensiones...",
+      "allCategories": "Todas las categorías",
+      "capabilities": "Funcionalidades",
+      "loadMore": "Cargar más",
+      "clawhubUnavailable": "Inicia la instancia para explorar el marketplace"
+    },
+    "trust": {
+      "bundled": "Incluido",
+      "verified": "Verificado",
+      "unverified": "No verificado",
+      "scanned": "Analizado",
+      "scanFailed": "Análisis fallido",
+      "downloads": "{{count}} descargas",
+      "age": "{{days}}d en ClawHub",
+      "blockedCommunity": "Bloqueado -- extensión comunitaria",
+      "blockedUnscanned": "Bloqueado -- análisis de seguridad fallido",
+      "override": "Anular",
+      "credentialAccessWarning": "Esta extensión comunitaria se ejecuta en proceso con la puerta de enlace y tendrá acceso a todas las credenciales de esta instancia, incluidas las claves API de otras extensiones. Solo aprueba si confías en el editor y has revisado el código fuente.",
+      "acknowledgeCheckbox": "Reconozco el riesgo de acceso a credenciales",
+      "reasonPlaceholder": "¿Por qué apruebas esta extensión?",
+      "approveOverride": "Aprobar",
+      "overrideSuccess": "Anulación de confianza concedida",
+      "trustSummary": "Confianza",
+      "auditTrail": "Aprobado por el administrador {{userId}} el {{date}}: {{reason}}"
+    },
+    "version": {
+      "pinned": "Versión: {{version}} (fijada)",
+      "integrity": "Integridad: {{hash}}",
+      "integrityUnavailable": "Integridad: no disponible",
+      "checkForUpdates": "Buscar actualizaciones",
+      "checking": "Comprobando...",
+      "upToDate": "Actualizado",
+      "upgradeAvailable": "v{{current}} -> v{{latest}}",
+      "upgrade": "Actualizar",
+      "upgrading": "Actualizando...",
+      "upgradeSuccess": "Actualizado a v{{version}}",
+      "restartRequired": "Se requiere reiniciar la pasarela",
+      "upgradeFailed": "Error al actualizar",
+      "cachedLocally": "Artefacto almacenado en cache localmente"
+    },
+    "empty": {
+      "noInstalled": "No hay habilidades instaladas",
+      "noBuiltins": "No hay habilidades integradas en la puerta de enlace",
+      "noPlugins": "No hay plugins instalados",
+      "noPluginBuiltins": "No hay plugins integrados en la puerta de enlace"
+    },
+    "confirm": {
+      "uninstall": "¿Estás seguro de que quieres desinstalar esta habilidad?",
+      "uninstallTitle": "Desinstalar habilidad",
+      "uninstallPlugin": "¿Estás seguro de que quieres desinstalar este plugin?"
+    },
+    "errors": {
+      "fetchFailed": "Error al cargar las extensiones",
+      "installFailed": "Error al instalar la habilidad",
+      "toggleFailed": "Error al actualizar la habilidad",
+      "uninstallFailed": "Error al desinstalar la habilidad",
+      "conflict": "Otra operación de extensión está en curso",
+      "pluginInstallFailed": "Error al instalar el plugin",
+      "pluginToggleFailed": "Error al actualizar el plugin",
+      "pluginUninstallFailed": "Error al desinstalar el plugin",
+      "pluginActivateFailed": "Error al activar el plugin",
+      "installPluginFailed": "Error al instalar el plugin",
+      "activateFailed": "Error al activar el plugin",
+      "togglePluginFailed": "Error al actualizar el plugin",
+      "uninstallPluginFailed": "Error al desinstalar el plugin"
+    },
+    "plugins": {
+      "comingSoon": "La gestión de plugins llegará en la fase 2",
+      "requiresRestart": "La instalación de este plugin requerirá un reinicio de la puerta de enlace.",
+      "activating": "Activando...",
+      "activate": "Activar",
+      "retryActivation": "Reintentar activación"
+    },
+    "confirmRestart": {
+      "title": "Confirmar activación",
+      "message": "Esto reiniciará la puerta de enlace. Las conversaciones activas pueden interrumpirse. ¿Continuar?",
+      "cancel": "Cancelar",
+      "confirm": "Activar"
+    },
+    "installDialog": {
+      "title": "Instalar {{name}}",
+      "source": "Fuente",
+      "version": "Versión",
+      "requiredCredentials": "Credenciales requeridas",
+      "noCredentials": "No se requieren credenciales",
+      "restartWarning": "Esto reiniciará la puerta de enlace. Las conversaciones activas pueden interrumpirse.",
+      "cancel": "Cancelar",
+      "install": "Instalar",
+      "installing": "Instalando..."
+    },
+    "restart": {
+      "banner": "Reiniciando puerta de enlace para {{name}}...",
+      "actionsDisabled": "Todas las acciones de plugin están deshabilitadas durante el reinicio."
+    },
+    "rollback": {
+      "title": "Activación fallida",
+      "message": "La puerta de enlace no pudo iniciarse con el plugin \"{{name}}\". Se ha revertido a la configuración anterior.",
+      "showDetails": "Mostrar detalles técnicos",
+      "hideDetails": "Ocultar detalles técnicos",
+      "close": "Cerrar",
+      "retry": "Reintentar activación"
+    },
+    "oauth": {
+      "connectWith": "Conectar con {{provider}}",
+      "connecting": "Conectando...",
+      "connected": "{{provider}} autenticado",
+      "failed": "Autorización fallida",
+      "tryAgain": "Intentar de nuevo",
+      "requiresReAuth": "Esta extensión requiere re-autenticación. Conecta tu cuenta para activarla.",
+      "popupBlocked": "La ventana emergente fue bloqueada. Por favor, permite ventanas emergentes para este sitio.",
+      "callbackError": "El callback de OAuth falló. Por favor, inténtalo de nuevo."
+    },
+    "vault": {
+      "title": "Integración de bóveda",
+      "configure": "Configurar bóveda",
+      "edit": "Editar",
+      "remove": "Eliminar bóveda",
+      "removeConfirm": "¿Eliminar la configuración de la bóveda? Las credenciales respaldadas por la bóveda dejarán de resolverse.",
+      "type": "Tipo de bóveda",
+      "onepassword": "1Password CLI (op)",
+      "hashicorp": "HashiCorp Vault",
+      "address": "Dirección de la bóveda",
+      "addressPlaceholder": "https://vault.example.com:8200",
+      "namespace": "Espacio de nombres",
+      "namespacePlaceholder": "admin",
+      "authMethod": "Método de autenticación",
+      "authToken": "Token",
+      "authAppRole": "AppRole",
+      "authCli": "Inicio de sesión CLI",
+      "mountPath": "Ruta de montaje",
+      "mountPathPlaceholder": "secret",
+      "save": "Guardar configuración de bóveda",
+      "saving": "Guardando...",
+      "saved": "Bóveda configurada",
+      "removed": "Configuración de bóveda eliminada",
+      "opNote": "Asegúrate de que el CLI op está disponible en el contenedor de la pasarela.",
+      "vaultNote": "Asegúrate de que el CLI vault está disponible en el contenedor de la pasarela."
+    },
+    "credentials": {
+      "title": "Configurar credenciales",
+      "requiresCredentials": "Esta habilidad requiere credenciales para activarse.",
+      "fieldLabel": "Campo de credencial",
+      "valueLabel": "Clave API / Valor",
+      "save": "Guardar credencial",
+      "saving": "Guardando...",
+      "saved": "Credencial guardada correctamente",
+      "saveFailed": "Error al guardar la credencial",
+      "source": "Fuente de credenciales",
+      "sourceDirect": "Valor directo",
+      "sourceVault": "Desde la bóveda",
+      "vaultPath": "Ruta de la bóveda",
+      "vaultPathPlaceholderOp": "op://vault/item/field",
+      "vaultPathPlaceholderHc": "secret/data/myapp/api-key"
+    },
+    "alerts": {
+      "failed": "{{name}} falló: {{error}}",
+      "degraded": "{{name}} está degradado — puede que siga ejecutándose desde la caché",
+      "retry": "Reintentar",
+      "integrityMismatch": "Discrepancia de integridad detectada"
+    }
   }
 }

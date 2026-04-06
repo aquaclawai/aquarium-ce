@@ -3,6 +3,7 @@ import { db } from '../db/index.js';
 import { createInstance } from './instance-manager.js';
 import { addCredential } from './credential-store.js';
 import { addUserCredential, resolveCredential } from './user-credential-store.js';
+import { evaluateTrustPolicy } from './trust-store.js';
 import { getRuntimeEngine } from '../runtime/factory.js';
 import { reverseAdaptFromContainer } from '../agent-types/openclaw/reverse-adapter.js';
 import type { DeploymentTarget } from '@aquarium/shared';
@@ -26,6 +27,11 @@ import type {
   PluginDependency,
   SkillDeclaration,
   McpServerDeclaration,
+  TemplateExtensionDeclaration,
+  ExtensionStatus,
+  ExtensionKind,
+  PluginSource,
+  ExtensionSkillSource,
 } from '@aquarium/shared';
 
 interface TemplateRow {
@@ -594,6 +600,220 @@ export async function exportFromInstance(
     sanitizedMcpConfigs[name] = cfg;
   }
 
+  // Read extension lifecycle tables (TMPL-01, TMPL-02)
+  const EXPORTABLE_STATUSES: ExtensionStatus[] = ['active', 'installed', 'disabled', 'degraded'];
+  const extensions: TemplateExtensionDeclaration[] = [];
+
+  const pluginRows = await db('instance_plugins')
+    .where({ instance_id: instanceId })
+    .whereIn('status', EXPORTABLE_STATUSES);
+
+  const skillRows = await db('instance_skills')
+    .where({ instance_id: instanceId })
+    .whereIn('status', EXPORTABLE_STATUSES);
+
+  // Build a Set of extension IDs that have OAuth credentials (oauth_token sentinel rows).
+  // These rows are written by oauth-proxy.ts callback after successful token exchange.
+  // Without this detection, requiresReAuth would never be set on export.
+  const instanceCreds = await db('instance_credentials')
+    .where({ instance_id: instanceId })
+    .select('provider', 'credential_type', 'metadata');
+
+  const oauthExtensionIds = new Set<string>();
+  for (const cred of instanceCreds) {
+    if (cred.credential_type === 'oauth_token') {
+      const meta = typeof cred.metadata === 'string'
+        ? JSON.parse(cred.metadata) as Record<string, unknown>
+        : ((cred.metadata as Record<string, unknown>) ?? {});
+      if (meta.extensionId && typeof meta.extensionId === 'string') {
+        oauthExtensionIds.add(meta.extensionId);
+      }
+      // Also add by provider name as fallback (provider may match extensionId for extension-scoped creds)
+      if (typeof cred.provider === 'string') {
+        oauthExtensionIds.add(cred.provider);
+      }
+    }
+  }
+
+  if (pluginRows.length > 0 || skillRows.length > 0) {
+    for (const row of pluginRows) {
+      const status = row.status as ExtensionStatus;
+      const pluginId = row.plugin_id as string;
+      const isOAuth = oauthExtensionIds.has(pluginId);
+      const baseConfig = parseJsonb<Record<string, unknown>>(row.config, {});
+      extensions.push({
+        id: pluginId,
+        kind: 'plugin',
+        source: parseJsonb<TemplateExtensionDeclaration['source']>(row.source, { type: 'bundled' }),
+        lockedVersion: (row.locked_version as string | null) ?? null,
+        integrityHash: (row.integrity_hash as string | null) ?? null,
+        enabled: status !== 'disabled',
+        needsCredentials: isOAuth ? true : status === 'installed',
+        ...(isOAuth ? { requiresReAuth: true } : {}),
+        // For OAuth extensions, clear any OAuth-specific config to prevent token leakage
+        config: isOAuth ? {} : baseConfig,
+      });
+    }
+
+    for (const row of skillRows) {
+      const status = row.status as ExtensionStatus;
+      const skillId = row.skill_id as string;
+      const isOAuth = oauthExtensionIds.has(skillId);
+      const baseConfig = parseJsonb<Record<string, unknown>>(row.config, {});
+      extensions.push({
+        id: skillId,
+        kind: 'skill',
+        source: parseJsonb<TemplateExtensionDeclaration['source']>(row.source, { type: 'bundled' }),
+        lockedVersion: (row.locked_version as string | null) ?? null,
+        integrityHash: (row.integrity_hash as string | null) ?? null,
+        enabled: status !== 'disabled',
+        needsCredentials: isOAuth ? true : status === 'installed',
+        ...(isOAuth ? { requiresReAuth: true } : {}),
+        // For OAuth extensions, clear any OAuth-specific config to prevent token leakage
+        config: isOAuth ? {} : baseConfig,
+      });
+    }
+  } else {
+    // Legacy fallback: instance_plugins/instance_skills tables empty — use plugin_dependencies from template_contents
+    // (pre-migration instances that pre-date lifecycle table tracking)
+    const templateContent = instance.template_id
+      ? await db('template_contents').where({ template_id: instance.template_id }).first()
+      : null;
+
+    if (templateContent) {
+      const legacyPlugins = parseJsonb<PluginDependency[]>(templateContent.plugin_dependencies, []);
+      for (const plugin of legacyPlugins) {
+        extensions.push({
+          id: plugin.id,
+          kind: 'plugin',
+          source: { type: 'bundled' },
+          lockedVersion: null,
+          integrityHash: null,
+          enabled: true,
+          needsCredentials: !!(plugin.credentialKeys && plugin.credentialKeys.length > 0),
+          config: plugin.config ?? {},
+        });
+      }
+    }
+  }
+
+  // Scrub OpenClaw config credential fields (TMPL-03)
+  const openclawConfig: Record<string, unknown> = {};
+
+  const rawPlugins = config.plugins as Record<string, unknown> | undefined;
+  const rawPluginEntries = rawPlugins?.entries as Record<string, unknown> | undefined;
+  if (rawPluginEntries) {
+    const scrubbedEntries: Record<string, unknown> = {};
+    for (const [pluginId, entryRaw] of Object.entries(rawPluginEntries)) {
+      const entry = entryRaw as Record<string, unknown> | null;
+      if (!entry || typeof entry !== 'object') {
+        scrubbedEntries[pluginId] = entry;
+        continue;
+      }
+      const entryCopy = { ...entry };
+      const entryConfig = entryCopy.config as Record<string, unknown> | undefined;
+      if (entryConfig && typeof entryConfig === 'object') {
+        const scrubbedConfig: Record<string, unknown> = {};
+        for (const [fieldName, fieldValue] of Object.entries(entryConfig)) {
+          if (typeof fieldValue === 'string') {
+            let scrubbed = false;
+            for (const { re } of SENSITIVE_PATTERNS) {
+              if (re.test(fieldValue)) {
+                scrubbedConfig[fieldName] = `\${CREDENTIAL:${pluginId}:${fieldName}}`;
+                warnings.push({
+                  type: 'possible_hardcoded_key',
+                  location: `plugins.entries.${pluginId}.config.${fieldName}`,
+                  pattern: maskValue(fieldValue),
+                  suggestion: `Replace with \${CREDENTIAL:${pluginId}:${fieldName}}`,
+                });
+                scrubbed = true;
+                break;
+              }
+            }
+            if (!scrubbed) scrubbedConfig[fieldName] = fieldValue;
+          } else {
+            scrubbedConfig[fieldName] = fieldValue;
+          }
+        }
+        entryCopy.config = scrubbedConfig;
+      }
+      scrubbedEntries[pluginId] = entryCopy;
+    }
+    openclawConfig.plugins = { ...rawPlugins, entries: scrubbedEntries };
+  }
+
+  const rawSkills = config.skills as Record<string, unknown> | undefined;
+  const rawSkillEntries = rawSkills?.entries as Record<string, unknown> | undefined;
+  if (rawSkillEntries) {
+    const scrubbedSkillEntries: Record<string, unknown> = {};
+    for (const [skillId, entryRaw] of Object.entries(rawSkillEntries)) {
+      const entry = entryRaw as Record<string, unknown> | null;
+      if (!entry || typeof entry !== 'object') {
+        scrubbedSkillEntries[skillId] = entry;
+        continue;
+      }
+      const entryCopy = { ...entry };
+      for (const sensitiveField of ['env', 'apiKey']) {
+        const fieldValue = entryCopy[sensitiveField];
+        if (typeof fieldValue === 'string') {
+          let scrubbed = false;
+          for (const { re } of SENSITIVE_PATTERNS) {
+            if (re.test(fieldValue)) {
+              entryCopy[sensitiveField] = `\${CREDENTIAL:${skillId}:${sensitiveField}}`;
+              warnings.push({
+                type: 'possible_hardcoded_key',
+                location: `skills.entries.${skillId}.${sensitiveField}`,
+                pattern: maskValue(fieldValue),
+                suggestion: `Replace with \${CREDENTIAL:${skillId}:${sensitiveField}}`,
+              });
+              scrubbed = true;
+              break;
+            }
+          }
+          if (scrubbed) continue;
+        }
+      }
+      scrubbedSkillEntries[skillId] = entryCopy;
+    }
+    openclawConfig.skills = { ...rawSkills, entries: scrubbedSkillEntries };
+  }
+
+  const rawProviders = config.providers as Record<string, unknown> | undefined;
+  if (rawProviders && typeof rawProviders === 'object') {
+    const scrubbedProviders: Record<string, unknown> = {};
+    for (const [providerName, providerCfg] of Object.entries(rawProviders)) {
+      const pCfg = providerCfg as Record<string, unknown> | null;
+      if (!pCfg || typeof pCfg !== 'object') {
+        scrubbedProviders[providerName] = pCfg;
+        continue;
+      }
+      const pCfgCopy = { ...pCfg };
+      const apiKey = pCfgCopy.api_key;
+      if (typeof apiKey === 'string') {
+        let scrubbed = false;
+        for (const { re } of SENSITIVE_PATTERNS) {
+          if (re.test(apiKey)) {
+            pCfgCopy.api_key = `\${CREDENTIAL:${providerName}:api_key}`;
+            warnings.push({
+              type: 'possible_hardcoded_key',
+              location: `providers.${providerName}.api_key`,
+              pattern: maskValue(apiKey),
+              suggestion: `Replace with \${CREDENTIAL:${providerName}:api_key}`,
+            });
+            scrubbed = true;
+            break;
+          }
+        }
+        if (scrubbed) {
+          scrubbedProviders[providerName] = pCfgCopy;
+          continue;
+        }
+      }
+      scrubbedProviders[providerName] = pCfgCopy;
+    }
+    openclawConfig.providers = scrubbedProviders;
+  }
+
   return {
     draft: {
       slug: slugify(instance.name as string),
@@ -609,9 +829,10 @@ export async function exportFromInstance(
       workspaceFiles,
       mcpServerConfigs: sanitizedMcpConfigs,
       inlineSkills: {},
-      openclawConfig: {},
+      openclawConfig,
       setupCommands: [],
       customImage: null,
+      extensions,
     },
     securityWarnings: warnings,
   };
@@ -744,11 +965,25 @@ export async function instantiateTemplate(
   const customImage = content ? ((content.custom_image as string) ?? null) : null;
   const templateSecurity = content ? parseJsonb<TemplateSecurityConfig | null>(content.security, null) : null;
 
-  const autoSetupCommands = generateDependencySetupCommands(
-    parseJsonb<SkillDeclaration[]>(template.skills, []),
-    parseJsonb<PluginDependency[]>(template.plugin_dependencies, []),
-    parseJsonb<Record<string, McpServerDeclaration>>(template.mcp_servers, {}),
-  );
+  // Discriminate between new TemplateExtensionDeclaration[] (has 'kind' field) and legacy PluginDependency[].
+  // New templates exported after Plan 04-01 store TemplateExtensionDeclaration[] in content.plugin_dependencies.
+  // Legacy templates store PluginDependency[] and are handled by generateDependencySetupCommands below.
+  const rawExtData = content
+    ? parseJsonb<unknown[]>(content.plugin_dependencies, [])
+    : [];
+  const templateExtensions: TemplateExtensionDeclaration[] = rawExtData
+    .filter((item): item is TemplateExtensionDeclaration =>
+      typeof item === 'object' && item !== null && 'kind' in item);
+
+  const autoSetupCommands = templateExtensions.length > 0
+    // New format: lifecycle rows handle plugin/skill installation; only generate MCP server setup commands
+    ? generateDependencySetupCommands([], [], parseJsonb<Record<string, McpServerDeclaration>>(template.mcp_servers, {}))
+    // Legacy format: generate setup commands for skills and plugin dependencies as before
+    : generateDependencySetupCommands(
+        parseJsonb<SkillDeclaration[]>(template.skills, []),
+        parseJsonb<PluginDependency[]>(template.plugin_dependencies, []),
+        parseJsonb<Record<string, McpServerDeclaration>>(template.mcp_servers, {}),
+      );
 
   const setupCommands = [...autoSetupCommands, ...explicitSetupCommands];
 
@@ -813,6 +1048,88 @@ export async function instantiateTemplate(
     template_version: template.version,
   });
 
+  // ─── Trust Re-evaluation and Lifecycle Row Insertion ─────────────────────────
+  // For each extension in the template (new format only), evaluate trust policy
+  // synchronously at import time. Only extensions that pass get lifecycle rows.
+  const blockedExtensions: Array<{ id: string; kind: ExtensionKind; reason: string }> = [];
+  const requiresTrustOverride: Array<{ id: string; kind: ExtensionKind; source: PluginSource | ExtensionSkillSource; reason: string }> = [];
+  let extensionsImported = 0;
+
+  for (const ext of templateExtensions) {
+    // evaluateTrustPolicy with null signals (no gateway running at import time):
+    //   bundled   → allow (tier=bundled)
+    //   non-bundled + null signals → tier=unscanned → block
+    //   community with existing DB override → allow
+    //   community without override → block (returned in requiresTrustOverride[])
+    const evaluation = await evaluateTrustPolicy(
+      instance.id,
+      ext.id,
+      ext.kind,
+      ext.source,
+      null, // No gateway running at import time — no ClawHub signals available
+    );
+
+    if (evaluation.decision === 'block') {
+      if (evaluation.tier === 'community') {
+        // Community extension without admin override on this instance
+        requiresTrustOverride.push({
+          id: ext.id,
+          kind: ext.kind,
+          source: ext.source,
+          reason: evaluation.blockReason ?? 'Community extension requires admin trust override',
+        });
+      } else {
+        // unscanned / scan-failed → hard block per trust policy: cannot instantiate
+        blockedExtensions.push({
+          id: ext.id,
+          kind: ext.kind,
+          reason: evaluation.blockReason ?? 'Extension blocked by trust policy',
+        });
+      }
+      continue; // Do NOT insert lifecycle row for blocked extensions
+    }
+
+    // evaluation.decision === 'allow' → insert lifecycle row
+    // If requiresReAuth=true, force 'installed' status so the extension waits
+    // for user re-authentication via OAuth before being loaded by seedConfig.
+    const now = new Date().toISOString();
+    const initialStatus = ext.requiresReAuth
+      ? 'installed'
+      : (ext.enabled ? 'pending' : 'disabled');
+
+    if (ext.kind === 'plugin') {
+      await db('instance_plugins').insert({
+        id: randomUUID(),
+        instance_id: instance.id,
+        plugin_id: ext.id,
+        source: JSON.stringify(ext.source),
+        locked_version: ext.lockedVersion,
+        integrity_hash: ext.integrityHash,
+        enabled: ext.enabled,
+        config: JSON.stringify(ext.config ?? {}),
+        status: initialStatus,
+        installed_at: now,
+        updated_at: now,
+      });
+    } else {
+      // kind === 'skill'
+      await db('instance_skills').insert({
+        id: randomUUID(),
+        instance_id: instance.id,
+        skill_id: ext.id,
+        source: JSON.stringify(ext.source),
+        locked_version: ext.lockedVersion,
+        integrity_hash: ext.integrityHash,
+        enabled: ext.enabled,
+        config: JSON.stringify(ext.config ?? {}),
+        status: initialStatus,
+        installed_at: now,
+        updated_at: now,
+      });
+    }
+    extensionsImported += 1;
+  }
+
   for (const cred of credentialsToStore) {
     await addCredential(instance.id, cred.provider, cred.credentialType, cred.value);
   }
@@ -822,6 +1139,9 @@ export async function instantiateTemplate(
   return {
     instance: { ...instance, templateId, templateVersion: template.version } as unknown as Instance,
     credentialStatus,
+    blockedExtensions: blockedExtensions.length > 0 ? blockedExtensions : undefined,
+    requiresTrustOverride: requiresTrustOverride.length > 0 ? requiresTrustOverride : undefined,
+    extensionsImported: extensionsImported > 0 ? extensionsImported : undefined,
   };
 }
 

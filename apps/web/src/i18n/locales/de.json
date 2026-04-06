@@ -56,6 +56,7 @@
       "created": "Erstellt",
       "starting": "Wird gestartet",
       "running": "Läuft",
+      "restarting": "Neustart",
       "stopping": "Wird gestoppt",
       "stopped": "Gestoppt",
       "error": "Fehler",
@@ -194,7 +195,8 @@
       "settings": "Einstellungen",
       "files": "Dateien",
       "security": "Sicherheit",
-      "more": "Mehr"
+      "more": "Mehr",
+      "extensions": "Erweiterungen"
     },
     "overview": {
       "title": "Instanzdetails",
@@ -1080,5 +1082,203 @@
       "file": "Datei"
     },
     "previewNotAvailable": "Vorschau für diesen Dateityp nicht verfügbar. Verwenden Sie den Download-Button."
+  },
+  "extensions": {
+    "title": "Erweiterungen",
+    "subTabs": {
+      "plugins": "Plugins",
+      "skills": "Skills"
+    },
+    "sections": {
+      "installed": "Installiert",
+      "available": "Verfügbar",
+      "gatewayBuiltins": "Gateway-Eingebaute"
+    },
+    "status": {
+      "active": "Aktiv",
+      "installed": "Installiert",
+      "pending": "Ausstehend",
+      "disabled": "Deaktiviert",
+      "degraded": "Eingeschränkt",
+      "failed": "Fehlgeschlagen"
+    },
+    "actions": {
+      "install": "Installieren",
+      "installing": "Installiere...",
+      "uninstall": "Deinstallieren",
+      "enable": "Aktivieren",
+      "disable": "Deaktivieren",
+      "configure": "Konfigurieren",
+      "refresh": "Aktualisieren",
+      "activate": "Aktivieren",
+      "activating": "Aktiviere..."
+    },
+    "catalog": {
+      "startInstance": "Instanz starten, um verfügbare Erweiterungen zu durchsuchen",
+      "noResults": "Keine Erweiterungen verfügbar",
+      "requiresCredentials": "Erfordert API-Schlüssel",
+      "bundled": "Mitgeliefert",
+      "clawhub": "ClawHub",
+      "requires": "Erfordert",
+      "searchPlaceholder": "Erweiterungen suchen...",
+      "allCategories": "Alle Kategorien",
+      "capabilities": "Funktionen",
+      "loadMore": "Mehr laden",
+      "clawhubUnavailable": "Instanz starten, um den Marketplace zu durchsuchen"
+    },
+    "trust": {
+      "bundled": "Mitgeliefert",
+      "verified": "Verifiziert",
+      "unverified": "Nicht verifiziert",
+      "scanned": "Gescannt",
+      "scanFailed": "Scan fehlgeschlagen",
+      "downloads": "{{count}} Downloads",
+      "age": "{{days}}T auf ClawHub",
+      "blockedCommunity": "Blockiert -- Community-Erweiterung",
+      "blockedUnscanned": "Blockiert -- Sicherheitsscan fehlgeschlagen",
+      "override": "Überschreiben",
+      "credentialAccessWarning": "Diese Community-Erweiterung läuft prozessintern mit dem Gateway und hat Zugriff auf alle Anmeldedaten dieser Instanz, einschließlich API-Schlüssel anderer Erweiterungen. Genehmigen Sie nur, wenn Sie dem Herausgeber vertrauen und den Quellcode überprüft haben.",
+      "acknowledgeCheckbox": "Ich anerkenne das Risiko des Anmeldedaten-Zugriffs",
+      "reasonPlaceholder": "Warum genehmigen Sie diese Erweiterung?",
+      "approveOverride": "Genehmigen",
+      "overrideSuccess": "Vertrauensüberschreibung gewährt",
+      "trustSummary": "Vertrauen",
+      "auditTrail": "Admin-genehmigt von {{userId}} am {{date}}: {{reason}}"
+    },
+    "version": {
+      "pinned": "Version: {{version}} (angeheftet)",
+      "integrity": "Integrität: {{hash}}",
+      "integrityUnavailable": "Integrität: nicht verfügbar",
+      "checkForUpdates": "Nach Updates suchen",
+      "checking": "Wird geprüft...",
+      "upToDate": "Aktuell",
+      "upgradeAvailable": "v{{current}} -> v{{latest}}",
+      "upgrade": "Aktualisieren",
+      "upgrading": "Wird aktualisiert...",
+      "upgradeSuccess": "Auf v{{version}} aktualisiert",
+      "restartRequired": "Gateway-Neustart erforderlich",
+      "upgradeFailed": "Aktualisierung fehlgeschlagen",
+      "cachedLocally": "Artefakt lokal zwischengespeichert"
+    },
+    "empty": {
+      "noInstalled": "Keine Skills installiert",
+      "noBuiltins": "Keine eingebauten Gateway-Skills",
+      "noPlugins": "Keine Plugins installiert",
+      "noPluginBuiltins": "Keine eingebauten Gateway-Plugins"
+    },
+    "confirm": {
+      "uninstall": "Möchten Sie diesen Skill wirklich deinstallieren?",
+      "uninstallTitle": "Skill deinstallieren",
+      "uninstallPlugin": "Möchten Sie dieses Plugin wirklich deinstallieren?"
+    },
+    "errors": {
+      "fetchFailed": "Erweiterungen konnten nicht geladen werden",
+      "installFailed": "Skill konnte nicht installiert werden",
+      "toggleFailed": "Skill konnte nicht aktualisiert werden",
+      "uninstallFailed": "Skill konnte nicht deinstalliert werden",
+      "conflict": "Eine andere Erweiterungsoperation läuft bereits",
+      "pluginInstallFailed": "Plugin konnte nicht installiert werden",
+      "pluginToggleFailed": "Plugin konnte nicht aktualisiert werden",
+      "pluginUninstallFailed": "Plugin konnte nicht deinstalliert werden",
+      "pluginActivateFailed": "Plugin konnte nicht aktiviert werden",
+      "installPluginFailed": "Plugin konnte nicht installiert werden",
+      "activateFailed": "Plugin konnte nicht aktiviert werden",
+      "togglePluginFailed": "Plugin konnte nicht aktualisiert werden",
+      "uninstallPluginFailed": "Plugin konnte nicht deinstalliert werden"
+    },
+    "plugins": {
+      "comingSoon": "Plugin-Verwaltung kommt in Phase 2",
+      "requiresRestart": "Die Installation dieses Plugins erfordert einen Gateway-Neustart.",
+      "activating": "Aktiviere...",
+      "activate": "Aktivieren",
+      "retryActivation": "Aktivierung wiederholen"
+    },
+    "confirmRestart": {
+      "title": "Aktivierung bestätigen",
+      "message": "Dadurch wird das Gateway neu gestartet. Aktive Gespräche können unterbrochen werden. Fortfahren?",
+      "cancel": "Abbrechen",
+      "confirm": "Aktivieren"
+    },
+    "installDialog": {
+      "title": "{{name}} installieren",
+      "source": "Quelle",
+      "version": "Version",
+      "requiredCredentials": "Erforderliche Anmeldedaten",
+      "noCredentials": "Keine Anmeldedaten erforderlich",
+      "restartWarning": "Dadurch wird das Gateway neu gestartet. Aktive Gespräche können unterbrochen werden.",
+      "cancel": "Abbrechen",
+      "install": "Installieren",
+      "installing": "Installiere..."
+    },
+    "restart": {
+      "banner": "Gateway wird für {{name}} neu gestartet...",
+      "actionsDisabled": "Alle Plugin-Aktionen sind während des Neustarts deaktiviert."
+    },
+    "rollback": {
+      "title": "Aktivierung fehlgeschlagen",
+      "message": "Das Gateway konnte mit dem Plugin \"{{name}}\" nicht starten. Es wurde auf die vorherige Konfiguration zurückgesetzt.",
+      "showDetails": "Technische Details anzeigen",
+      "hideDetails": "Technische Details ausblenden",
+      "close": "Schließen",
+      "retry": "Aktivierung wiederholen"
+    },
+    "oauth": {
+      "connectWith": "Verbinden mit {{provider}}",
+      "connecting": "Verbindung wird hergestellt...",
+      "connected": "{{provider}} authentifiziert",
+      "failed": "Autorisierung fehlgeschlagen",
+      "tryAgain": "Erneut versuchen",
+      "requiresReAuth": "Diese Erweiterung erfordert eine erneute Authentifizierung. Verbinden Sie Ihr Konto zur Aktivierung.",
+      "popupBlocked": "Popup wurde blockiert. Bitte erlauben Sie Popups für diese Seite.",
+      "callbackError": "OAuth-Rückruf fehlgeschlagen. Bitte erneut versuchen."
+    },
+    "vault": {
+      "title": "Tresor-Integration",
+      "configure": "Tresor konfigurieren",
+      "edit": "Bearbeiten",
+      "remove": "Tresor entfernen",
+      "removeConfirm": "Tresorkonfiguration entfernen? Bestehende tresorgestützte Anmeldedaten werden nicht mehr aufgelöst.",
+      "type": "Tresortyp",
+      "onepassword": "1Password CLI (op)",
+      "hashicorp": "HashiCorp Vault",
+      "address": "Tresoradresse",
+      "addressPlaceholder": "https://vault.example.com:8200",
+      "namespace": "Namensraum",
+      "namespacePlaceholder": "admin",
+      "authMethod": "Authentifizierungsmethode",
+      "authToken": "Token",
+      "authAppRole": "AppRole",
+      "authCli": "CLI-Anmeldung",
+      "mountPath": "Einhängepfad",
+      "mountPathPlaceholder": "secret",
+      "save": "Tresorkonfiguration speichern",
+      "saving": "Wird gespeichert...",
+      "saved": "Tresor konfiguriert",
+      "removed": "Tresorkonfiguration entfernt",
+      "opNote": "Stellen Sie sicher, dass die op CLI im Gateway-Container verfügbar ist.",
+      "vaultNote": "Stellen Sie sicher, dass die vault CLI im Gateway-Container verfügbar ist."
+    },
+    "credentials": {
+      "title": "Anmeldedaten konfigurieren",
+      "requiresCredentials": "Dieser Skill benötigt Anmeldedaten zur Aktivierung.",
+      "fieldLabel": "Anmeldedatenfeld",
+      "valueLabel": "API-Schlüssel / Wert",
+      "save": "Anmeldedaten speichern",
+      "saving": "Wird gespeichert...",
+      "saved": "Anmeldedaten erfolgreich gespeichert",
+      "saveFailed": "Anmeldedaten konnten nicht gespeichert werden",
+      "source": "Anmeldedatenquelle",
+      "sourceDirect": "Direkter Wert",
+      "sourceVault": "Aus dem Tresor",
+      "vaultPath": "Tresorpfad",
+      "vaultPathPlaceholderOp": "op://vault/item/field",
+      "vaultPathPlaceholderHc": "secret/data/myapp/api-key"
+    },
+    "alerts": {
+      "failed": "{{name}} fehlgeschlagen: {{error}}",
+      "degraded": "{{name}} ist eingeschränkt — läuft möglicherweise noch aus dem Cache",
+      "retry": "Wiederholen",
+      "integrityMismatch": "Integritätsfehler erkannt"
+    }
   }
 }

@@ -1,4 +1,5 @@
 export function ThinkingBlock({ content }: { content: string }) {
+  if (!content) return null;
   return (
     <details className="thinking-block">
       <summary className="thinking-summary">

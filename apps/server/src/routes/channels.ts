@@ -1,49 +1,125 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
-import { getInstance, reseedConfigFiles, patchGatewayConfig } from '../services/instance-manager.js';
+import { getInstance, patchGatewayConfig } from '../services/instance-manager.js';
+import { waitForReconnect } from '../services/gateway-event-relay.js';
 import { getAgentType } from '../agent-types/registry.js';
-import { addCredential, listCredentials, deleteCredential } from '../services/credential-store.js';
+import { addCredential, listCredentials, deleteCredential, getDecryptedCredentials } from '../services/credential-store.js';
 import type { ApiResponse, Instance, ChannelStatusDetail, ChannelEnableRequest, ChannelPolicyUpdate } from '@aquarium/shared';
 
 const router = Router();
 router.use(requireAuth);
 
 /**
- * Reseed config files and trigger a gateway SIGUSR1 restart via config.patch.
- * Used by channel configure/disconnect routes to apply credential changes
- * without a full pod restart (~5-10 sec vs 2-5 min).
+ * Push channel config changes to the gateway via patchGatewayConfig.
+ * Uses seedConfig to generate the full config, then extracts the channel-specific
+ * delta (channels + plugins entries) and sends as a merge-patch.
  */
-async function reseedAndPatch(instance: Instance, channel: string): Promise<void> {
-  await reseedConfigFiles(instance.id);
-  const { adapter } = getAgentType(instance.agentType);
-  if (!adapter?.translateRPC) return;
-
+async function pushChannelConfigToGateway(instance: Instance, channel: string, userId: string): Promise<void> {
   try {
-    const cfg = await adapter.translateRPC({
-      method: 'config.get',
-      params: {},
-      endpoint: instance.controlEndpoint!,
-      token: instance.authToken,
-      instanceId: instance.id,
-    }) as { hash?: string } | null;
-    if (cfg?.hash) {
-      await adapter.translateRPC({
-        method: 'config.patch',
-        params: {
-          patch: {},
-          baseHash: cfg.hash,
-          note: `Platform: configure ${channel}`,
-          restartDelayMs: 2000,
-        },
-        endpoint: instance.controlEndpoint!,
-        token: instance.authToken,
-        instanceId: instance.id,
-      });
+    let channelDelta: Record<string, unknown> = {};
+    const { adapter } = getAgentType(instance.agentType);
+    if (adapter?.seedConfig) {
+      try {
+        const creds = await getDecryptedCredentials(instance.id);
+        const configFiles = await adapter.seedConfig({
+          instance,
+          userConfig: instance.config || {},
+          credentials: creds,
+        });
+        const openclawJson = configFiles.get('openclaw.json');
+        if (openclawJson) {
+          const fullConfig = JSON.parse(openclawJson) as Record<string, unknown>;
+          const channels = fullConfig.channels as Record<string, unknown> | undefined;
+          if (channels?.[channel]) {
+            channelDelta.channels = { [channel]: channels[channel] };
+          }
+          const plugins = fullConfig.plugins as { entries?: Record<string, unknown> } | undefined;
+          if (plugins?.entries?.[channel]) {
+            channelDelta.plugins = { entries: { [channel]: plugins.entries[channel] } };
+          }
+        }
+      } catch (seedErr) {
+        console.warn(`[channel-config] seedConfig failed for ${instance.id}, sending empty delta:`, seedErr);
+        // Fall through with empty delta — patchGatewayConfig still triggers SIGUSR1 restart
+      }
     }
+    await patchGatewayConfig(instance.id, userId, channelDelta, `Platform: configure ${channel}`);
+    // Best-effort wait for gateway SIGUSR1 restart
+    try { await waitForReconnect(instance.id, 15_000); } catch { /* timeout is ok */ }
   } catch (err) {
     console.error(`[channel-config] config.patch failed for ${instance.id}:`, err);
   }
 }
+
+/* ─── Channel Registry ─── */
+
+router.get('/:id/channels/registry', async (req, res) => {
+  try {
+    const instance = await getInstance(req.params.id, req.auth!.userId);
+    if (!instance) {
+      res.status(404).json({ ok: false, error: 'Instance not found' } satisfies ApiResponse);
+      return;
+    }
+
+    const { enrichRegistryForInstance } = await import('../services/channel-registry.js');
+
+    // Fetch live status if instance is running
+    let statusDetails: ChannelStatusDetail[] = [];
+    if (instance.status === 'running' && instance.controlEndpoint) {
+      const { adapter } = getAgentType(instance.agentType);
+      if (adapter?.translateRPC) {
+        try {
+          const result = await adapter.translateRPC({
+            method: 'channels.status',
+            params: { probe: false, timeoutMs: 3_000 },
+            endpoint: instance.controlEndpoint,
+            token: instance.authToken,
+            instanceId: instance.id,
+          }) as { channels?: Record<string, Record<string, unknown>> } | undefined;
+
+          const raw = result?.channels ?? {};
+          for (const [id, ch] of Object.entries(raw)) {
+            const probe = ch.probe as { ok?: boolean; latencyMs?: number; error?: string } | undefined;
+            const connected =
+              typeof ch.connected === 'boolean'
+                ? ch.connected
+                : !!(ch.running && ch.configured && (probe == null || probe.ok));
+
+            const { connected: _c, running, configured, lastInboundAt, lastOutboundAt,
+                    lastError, lastErrorAt, authStatus, displayName, probe: _p,
+                    accountId: _accountId, ...extra } = ch as Record<string, unknown>;
+
+            statusDetails.push({
+              channelId: id,
+              connected,
+              running: !!running,
+              configured: !!configured,
+              lastInboundAt: typeof lastInboundAt === 'number' ? lastInboundAt : null,
+              lastOutboundAt: typeof lastOutboundAt === 'number' ? lastOutboundAt : null,
+              lastError: typeof lastError === 'string' ? lastError : null,
+              lastErrorAt: typeof lastErrorAt === 'number' ? lastErrorAt : null,
+              authStatus: typeof authStatus === 'string' ? authStatus : null,
+              displayName: typeof displayName === 'string' ? displayName : null,
+              probe: probe ? { ok: !!probe.ok, latencyMs: probe.latencyMs, error: probe.error } : null,
+              extra,
+            });
+          }
+        } catch {
+          // Gateway unreachable — status will be null for all channels
+        }
+      }
+    }
+
+    // Channels present in status are already loaded (builtin or plugin installed)
+    const gatewayBuiltinIds = statusDetails.map(d => d.channelId);
+
+    const channels = await enrichRegistryForInstance(instance, statusDetails, gatewayBuiltinIds);
+    res.json({ ok: true, data: { channels } } satisfies ApiResponse);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ ok: false, error: message } satisfies ApiResponse);
+  }
+});
 
 router.post('/:id/channels/whatsapp/start', async (req, res) => {
   try {
@@ -267,6 +343,7 @@ router.patch('/:id/channels/:channel/enable', async (req, res) => {
       channels: { [channel]: { enabled } },
       plugins: { entries: { [channel]: { enabled } } },
     }, `${enabled ? 'Enable' : 'Disable'} ${channel}`);
+    try { await waitForReconnect(instance.id, 15_000); } catch { /* best-effort */ }
 
     res.json({ ok: true, data: { message: `${channel} ${enabled ? 'enabled' : 'disabled'}` } } satisfies ApiResponse);
   } catch (err: unknown) {
@@ -283,9 +360,9 @@ const NESTED_DM_POLICY_CHANNELS = new Set(['discord', 'slack', 'googlechat', 'ma
 router.patch('/:id/channels/:channel/policies', async (req, res) => {
   try {
     const { channel } = req.params;
-    const { dmPolicy, groupPolicy } = req.body as ChannelPolicyUpdate;
-    if (!dmPolicy && !groupPolicy) {
-      res.status(400).json({ ok: false, error: 'At least one of dmPolicy or groupPolicy required' } satisfies ApiResponse);
+    const { dmPolicy, groupPolicy, allowFrom, groupAllowFrom } = req.body as ChannelPolicyUpdate;
+    if (!dmPolicy && !groupPolicy && !allowFrom && !groupAllowFrom) {
+      res.status(400).json({ ok: false, error: 'At least one policy field required' } satisfies ApiResponse);
       return;
     }
     const instance = await getInstance(req.params.id, req.auth!.userId);
@@ -297,18 +374,30 @@ router.patch('/:id/channels/:channel/policies', async (req, res) => {
     const channelPatch: Record<string, unknown> = {};
     if (dmPolicy) {
       if (NESTED_DM_POLICY_CHANNELS.has(channel)) {
-        channelPatch.dm = { policy: dmPolicy };
+        channelPatch.dm = { policy: dmPolicy, ...(allowFrom ? { allowFrom } : {}) };
       } else {
         channelPatch.dmPolicy = dmPolicy;
+        if (allowFrom) channelPatch.allowFrom = allowFrom;
+      }
+    } else if (allowFrom) {
+      // allowFrom without policy change
+      if (NESTED_DM_POLICY_CHANNELS.has(channel)) {
+        channelPatch.dm = { allowFrom };
+      } else {
+        channelPatch.allowFrom = allowFrom;
       }
     }
     if (groupPolicy) {
       channelPatch.groupPolicy = groupPolicy;
     }
+    if (groupAllowFrom) {
+      channelPatch.groupAllowFrom = groupAllowFrom;
+    }
 
     await patchGatewayConfig(instance.id, req.auth!.userId, {
       channels: { [channel]: channelPatch },
     }, `Update ${channel} policies`);
+    try { await waitForReconnect(instance.id, 15_000); } catch { /* best-effort */ }
 
     res.json({ ok: true, data: { message: `${channel} policies updated` } } satisfies ApiResponse);
   } catch (err: unknown) {
@@ -323,7 +412,7 @@ router.patch('/:id/channels/:channel/policies', async (req, res) => {
  * Defines required fields and credential mappings per channel.
  * Used by the generic configure/disconnect routes below.
  */
-const CHANNEL_REQUIRED_FIELDS: Record<string, {
+export const CHANNEL_REQUIRED_FIELDS: Record<string, {
   fields: string[];
   credentialFields: { provider: string; envKey: string }[];
 }> = {
@@ -385,7 +474,89 @@ const CHANNEL_REQUIRED_FIELDS: Record<string, {
     fields: ['serverUrl', 'password'],
     credentialFields: [{ provider: 'bluebubbles', envKey: 'serverUrl' }],
   },
+  feishu: {
+    fields: ['appId', 'appSecret'],
+    credentialFields: [
+      { provider: 'feishu_app', envKey: 'appId' },
+      { provider: 'feishu_secret', envKey: 'appSecret' },
+    ],
+  },
+  qqbot: {
+    fields: ['appId', 'clientSecret'],
+    credentialFields: [
+      { provider: 'qqbot_app', envKey: 'appId' },
+      { provider: 'qqbot_secret', envKey: 'clientSecret' },
+    ],
+  },
 };
+
+/* ─── Telegram (specific routes before generic :channel wildcard) ─── */
+
+router.post('/:id/channels/telegram/configure', async (req, res) => {
+  try {
+    const instance = await getInstance(req.params.id, req.auth!.userId);
+    if (!instance) {
+      res.status(404).json({ ok: false, error: 'Instance not found' } satisfies ApiResponse);
+      return;
+    }
+
+    const { botToken } = req.body as { botToken?: string };
+    if (!botToken || typeof botToken !== 'string' || !botToken.trim()) {
+      res.status(400).json({ ok: false, error: 'Missing or invalid botToken' } satisfies ApiResponse);
+      return;
+    }
+
+    const audit = { userId: req.auth!.userId, source: 'api' as const, ipAddress: req.ip ?? undefined };
+
+    const existing = await listCredentials(instance.id);
+    for (const cred of existing) {
+      if (cred.provider === 'telegram') {
+        await deleteCredential(cred.id, instance.id, audit);
+      }
+    }
+
+    await addCredential(instance.id, 'telegram', 'api_key', botToken.trim(), {}, audit);
+
+    if (instance.status === 'running' && instance.controlEndpoint) {
+      await pushChannelConfigToGateway(instance, 'telegram', req.auth!.userId);
+    }
+
+    res.json({ ok: true, data: { message: 'Telegram bot token configured. Changes applied.' } } satisfies ApiResponse);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ ok: false, error: message } satisfies ApiResponse);
+  }
+});
+
+router.post('/:id/channels/telegram/disconnect', async (req, res) => {
+  try {
+    const instance = await getInstance(req.params.id, req.auth!.userId);
+    if (!instance) {
+      res.status(404).json({ ok: false, error: 'Instance not found' } satisfies ApiResponse);
+      return;
+    }
+
+    const audit = { userId: req.auth!.userId, source: 'api' as const, ipAddress: req.ip ?? undefined };
+
+    const existing = await listCredentials(instance.id);
+    for (const cred of existing) {
+      if (cred.provider === 'telegram') {
+        await deleteCredential(cred.id, instance.id, audit);
+      }
+    }
+
+    if (instance.status === 'running' && instance.controlEndpoint) {
+      await pushChannelConfigToGateway(instance, 'telegram', req.auth!.userId);
+    }
+
+    res.json({ ok: true, data: { message: 'Telegram disconnected. Changes applied.' } } satisfies ApiResponse);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ ok: false, error: message } satisfies ApiResponse);
+  }
+});
+
+/* ─── Generic Channel Configuration ─── */
 
 router.post('/:id/channels/:channel/configure', async (req, res) => {
   try {
@@ -413,13 +584,15 @@ router.post('/:id/channels/:channel/configure', async (req, res) => {
       }
     }
 
+    const audit = { userId: req.auth!.userId, source: 'api' as const, ipAddress: req.ip ?? undefined };
+
     // Delete existing credentials for this channel
     const existing = await listCredentials(instance.id);
     for (const cred of existing) {
       const isChannelCred = channelDef.credentialFields.some(cf => cf.provider === cred.provider)
         || cred.provider === channel; // catch config-only channels stored with channel name
       if (isChannelCred) {
-        await deleteCredential(cred.id, instance.id);
+        await deleteCredential(cred.id, instance.id, audit);
       }
     }
 
@@ -427,7 +600,7 @@ router.post('/:id/channels/:channel/configure', async (req, res) => {
     for (const cf of channelDef.credentialFields) {
       const value = body[cf.envKey];
       if (value) {
-        await addCredential(instance.id, cf.provider, 'api_key', value.trim());
+        await addCredential(instance.id, cf.provider, 'api_key', value.trim(), {}, audit);
       }
     }
 
@@ -436,7 +609,7 @@ router.post('/:id/channels/:channel/configure', async (req, res) => {
       await addCredential(instance.id, 'imessage', 'api_key', JSON.stringify({
         cliPath: body.cliPath,
         dbPath: body.dbPath,
-      }));
+      }), {}, audit);
     }
 
     // IRC: server config stored as JSON credential blob
@@ -449,7 +622,7 @@ router.post('/:id/channels/:channel/configure', async (req, res) => {
       if (body.tls) ircConfig.tls = body.tls === 'true';
       if (body.channels) ircConfig.channels = body.channels.split(',').map((s: string) => s.trim()).filter(Boolean);
       if (body.password) ircConfig.password = body.password;
-      await addCredential(instance.id, 'irc', 'api_key', JSON.stringify(ircConfig));
+      await addCredential(instance.id, 'irc', 'api_key', JSON.stringify(ircConfig), {}, audit);
     }
 
     // Matrix: homeserver + accessToken stored as JSON credential blob
@@ -458,7 +631,7 @@ router.post('/:id/channels/:channel/configure', async (req, res) => {
         homeserver: body.homeserver,
         accessToken: body.accessToken,
         ...(body.userId ? { userId: body.userId } : {}),
-      }));
+      }), {}, audit);
     }
 
     // BlueBubbles: serverUrl + password stored as JSON credential blob
@@ -466,12 +639,12 @@ router.post('/:id/channels/:channel/configure', async (req, res) => {
       await addCredential(instance.id, 'bluebubbles', 'api_key', JSON.stringify({
         serverUrl: body.serverUrl,
         password: body.password,
-      }));
+      }), {}, audit);
     }
 
-    // Reseed config files and trigger gateway restart via config.patch
+    // Push channel config to gateway via merge-patch
     if (instance.status === 'running' && instance.controlEndpoint) {
-      await reseedAndPatch(instance, channel);
+      await pushChannelConfigToGateway(instance, channel, req.auth!.userId);
     }
 
     res.json({ ok: true, data: { message: `${channel} configured. Changes applied.` } } satisfies ApiResponse);
@@ -497,86 +670,24 @@ router.post('/:id/channels/:channel/disconnect', async (req, res) => {
       return;
     }
 
+    const audit = { userId: req.auth!.userId, source: 'api' as const, ipAddress: req.ip ?? undefined };
+
     // Delete all credentials for this channel
     const existing = await listCredentials(instance.id);
     for (const cred of existing) {
       const isChannelCred = channelDef.credentialFields.some(cf => cf.provider === cred.provider)
         || cred.provider === channel; // catch config-only channels stored with channel name
       if (isChannelCred) {
-        await deleteCredential(cred.id, instance.id);
+        await deleteCredential(cred.id, instance.id, audit);
       }
     }
 
-    // Reseed config files and trigger gateway restart via config.patch
+    // Push channel config to gateway via merge-patch
     if (instance.status === 'running' && instance.controlEndpoint) {
-      await reseedAndPatch(instance, channel);
+      await pushChannelConfigToGateway(instance, channel, req.auth!.userId);
     }
 
     res.json({ ok: true, data: { message: `${channel} disconnected. Changes applied.` } } satisfies ApiResponse);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    res.status(500).json({ ok: false, error: message } satisfies ApiResponse);
-  }
-});
-
-/* ─── Telegram ─── */
-
-router.post('/:id/channels/telegram/configure', async (req, res) => {
-  try {
-    const instance = await getInstance(req.params.id, req.auth!.userId);
-    if (!instance) {
-      res.status(404).json({ ok: false, error: 'Instance not found' } satisfies ApiResponse);
-      return;
-    }
-
-    const { botToken } = req.body as { botToken?: string };
-    if (!botToken || typeof botToken !== 'string' || !botToken.trim()) {
-      res.status(400).json({ ok: false, error: 'Missing or invalid botToken' } satisfies ApiResponse);
-      return;
-    }
-
-    const existing = await listCredentials(instance.id);
-    for (const cred of existing) {
-      if (cred.provider === 'telegram') {
-        await deleteCredential(cred.id, instance.id);
-      }
-    }
-
-    await addCredential(instance.id, 'telegram', 'api_key', botToken.trim());
-
-    // Reseed config files and trigger gateway restart via config.patch
-    if (instance.status === 'running' && instance.controlEndpoint) {
-      await reseedAndPatch(instance, 'telegram');
-    }
-
-    res.json({ ok: true, data: { message: 'Telegram bot token configured. Changes applied.' } } satisfies ApiResponse);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    res.status(500).json({ ok: false, error: message } satisfies ApiResponse);
-  }
-});
-
-router.post('/:id/channels/telegram/disconnect', async (req, res) => {
-  try {
-    const instance = await getInstance(req.params.id, req.auth!.userId);
-    if (!instance) {
-      res.status(404).json({ ok: false, error: 'Instance not found' } satisfies ApiResponse);
-      return;
-    }
-
-    const existing = await listCredentials(instance.id);
-    for (const cred of existing) {
-      if (cred.provider === 'telegram') {
-        await deleteCredential(cred.id, instance.id);
-      }
-    }
-
-    // Reseed config files and trigger gateway restart via config.patch
-    if (instance.status === 'running' && instance.controlEndpoint) {
-      await reseedAndPatch(instance, 'telegram');
-    }
-
-    res.json({ ok: true, data: { message: 'Telegram disconnected. Changes applied.' } } satisfies ApiResponse);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ ok: false, error: message } satisfies ApiResponse);

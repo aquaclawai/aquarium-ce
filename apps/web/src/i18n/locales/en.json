@@ -56,6 +56,7 @@
       "created": "created",
       "starting": "starting",
       "running": "running",
+      "restarting": "restarting",
       "stopping": "stopping",
       "stopped": "stopped",
       "error": "error",
@@ -238,7 +239,10 @@
       "events": "Events",
       "settings": "Settings",
       "security": "Security",
-      "more": "More"
+      "more": "More",
+      "extensions": "Extensions",
+      "channels": "Channels",
+      "cron": "Cron"
     },
     "overview": {
       "title": "Instance Details",
@@ -273,7 +277,23 @@
       },
       "changeSecurityProfile": "Change",
       "savingSecurityProfile": "Saving...",
-      "exportTemplate": "Export as Template"
+      "exportTemplate": "Export as Template",
+      "webhookTitle": "Notification Webhooks",
+      "webhookDescription": "Configure webhook URLs for IM push notifications (Feishu, DingTalk, WeCom).",
+      "webhookProviders": {
+        "feishu": "Feishu",
+        "dingtalk": "DingTalk",
+        "wecom": "WeCom"
+      },
+      "webhookConfigured": "Configured",
+      "webhookPlaceholder": "Enter {{provider}} webhook URL",
+      "apiKeyTitle": "Data Source API Keys",
+      "apiKeyDescription": "Optional API keys for enhanced data collection (e.g. TikHub for Xiaohongshu, Douyin, etc.). Get your key at the provider's website.",
+      "apiKeyProviders": {
+        "tikhub": "TikHub"
+      },
+      "apiKeyConfigured": "Configured",
+      "apiKeyPlaceholder": "Enter {{provider}} API key"
     },
     "credentials": {
       "title": "Credentials",
@@ -1694,12 +1714,159 @@
     "waitingStart": "Starting up...",
     "status": {
       "running": "Online",
+      "restarting": "Restarting",
       "starting": "Starting",
       "stopping": "Stopping",
       "stopped": "Offline",
       "created": "Not started",
       "error": "Error"
     }
+  },
+  "cron": {
+    "title": "Scheduled Tasks",
+    "subtitle": "Automate recurring tasks for your AI agent.",
+    "createJob": "New Task",
+    "noJobs": "No scheduled tasks yet. Create one to automate recurring work.",
+    "instanceNotRunning": "Start your instance to manage scheduled tasks.",
+    "loading": "Loading tasks...",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "name": "Name",
+    "namePlaceholder": "e.g., Daily Report",
+    "description": "Description",
+    "descriptionPlaceholder": "What this task does...",
+    "schedule": "Schedule",
+    "scheduleType": "Type",
+    "cronExpr": "Cron Expression",
+    "cronExprPlaceholder": "0 9 * * *",
+    "cronExprHelp": "Standard 5-field cron: minute hour day month weekday",
+    "timezone": "Timezone",
+    "atDatetime": "Run At",
+    "everyInterval": "Interval",
+    "everyMs": "Every (minutes)",
+    "payload": "Task Action",
+    "payloadType": "Action Type",
+    "agentTurn": "Agent Prompt",
+    "systemEvent": "System Event",
+    "message": "Prompt",
+    "messagePlaceholder": "What should the agent do?",
+    "eventText": "Event Text",
+    "eventTextPlaceholder": "Event to trigger...",
+    "delivery": "Results Delivery",
+    "deliveryMode": "Delivery",
+    "deliveryNone": "None",
+    "deliveryAnnounce": "Announce to channel",
+    "deliveryChannel": "Channel",
+    "deliveryTo": "Recipient",
+    "sessionTarget": "Session",
+    "sessionMain": "Main session",
+    "sessionIsolated": "Isolated session",
+    "model": "Model override",
+    "timeout": "Timeout (seconds)",
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this scheduled task?",
+    "runNow": "Run Now",
+    "runNowConfirm": "Run this task now?",
+    "running": "Running...",
+    "history": "Run History",
+    "noRuns": "No runs yet.",
+    "status": {
+      "ok": "Success",
+      "error": "Failed",
+      "skipped": "Skipped",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "state": {
+      "nextRun": "Next run",
+      "lastRun": "Last run",
+      "lastStatus": "Last status",
+      "lastDuration": "Duration",
+      "errors": "Consecutive errors"
+    },
+    "scheduleTypes": {
+      "cron": "Cron schedule",
+      "at": "One-time",
+      "every": "Interval"
+    }
+  },
+  "channels": {
+    "title": "Channels",
+    "subtitle": "Connect your AI agent to messaging platforms.",
+    "instanceNotRunning": "Start your instance to manage channels.",
+    "noChannelsAvailable": "No channels available for this agent type.",
+    "applying": "Applying changes...",
+    "status": {
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "stopped": "Stopped",
+      "notConfigured": "Not configured",
+      "applying": "Applying...",
+      "lastMessage": "Last msg: {{time}}"
+    },
+    "actions": {
+      "configure": "Configure",
+      "setup": "Set up",
+      "disconnect": "Disconnect",
+      "enable": "Enable",
+      "disable": "Disable",
+      "installPlugin": "Install Plugin",
+      "installing": "Installing...",
+      "save": "Save & Apply",
+      "saving": "Saving...",
+      "retry": "Retry"
+    },
+    "drawer": {
+      "status": "Status",
+      "configuration": "Configuration",
+      "configured": "Configured",
+      "notConfigured": "Not yet configured",
+      "policies": "Access Policies",
+      "pluginRequired": "Plugin Required",
+      "pluginRequiredDesc": "{{channel}} requires the {{pluginId}} plugin. Install it to continue.",
+      "disconnectConfirm": "This will remove your {{channel}} credentials and disconnect the bot. Continue?",
+      "incompatible": "This channel is not compatible with your current instance image.",
+      "learnMore": "Learn more"
+    },
+    "policies": {
+      "dmPolicy": "DM Policy",
+      "groupPolicy": "Group Policy",
+      "allowList": "Allow List",
+      "addEntry": "Add",
+      "pairing": "Pairing",
+      "pairingDesc": "New contacts must be approved before messaging.",
+      "allowlist": "Allow List",
+      "allowlistDesc": "Only listed contacts can message.",
+      "open": "Open",
+      "openDesc": "Anyone can message the bot.",
+      "disabled": "Disabled",
+      "disabledDesc": "All messages blocked."
+    },
+    "capabilities": {
+      "dm": "DM",
+      "groups": "Groups",
+      "media": "Media",
+      "reactions": "Reactions",
+      "threads": "Threads",
+      "streaming": "Streaming"
+    },
+    "whatsapp": { "label": "WhatsApp", "description": "Connect via QR code — uses your existing WhatsApp account." },
+    "telegram": { "label": "Telegram", "description": "Create a bot via @BotFather and paste the token.", "fields": { "botToken": "Bot Token", "botTokenPlaceholder": "123456789:ABCdefGHI...", "botTokenHelp": "Get this from @BotFather on Telegram." } },
+    "discord": { "label": "Discord", "description": "Create a bot in the Discord Developer Portal.", "fields": { "token": "Bot Token", "tokenHelp": "Discord Developer Portal > Bot > Token." } },
+    "feishu": { "label": "飞书 / Lark", "description": "Connect via Feishu Open Platform enterprise app.", "fields": { "appId": "App ID", "appIdHelp": "From Feishu Open Platform console.", "appSecret": "App Secret", "domain": "Domain", "domainFeishu": "飞书 (China)", "domainLark": "Lark (Global)" } },
+    "slack": { "label": "Slack", "description": "Connect via Slack Socket Mode.", "fields": { "appToken": "App Token", "appTokenHelp": "App-Level Token (starts with xapp-).", "botToken": "Bot Token", "botTokenHelp": "Bot User OAuth Token (starts with xoxb-)." } },
+    "qqbot": { "label": "QQ Bot", "description": "Connect via official QQ Bot API.", "fields": { "appId": "App ID", "appIdHelp": "From QQ Open Platform.", "clientSecret": "Client Secret" } },
+    "wechat": { "label": "WeChat", "description": "Connect via QR code login." },
+    "msteams": { "label": "Microsoft Teams", "description": "Connect via Azure Bot Framework.", "fields": { "appId": "App ID", "appPassword": "App Password", "tenantId": "Tenant ID" } },
+    "signal": { "label": "Signal", "description": "Connect via signal-cli.", "fields": { "account": "Phone Number", "accountHelp": "E.164 format." } },
+    "googlechat": { "label": "Google Chat", "description": "Connect via service account.", "fields": { "serviceAccountJson": "Service Account JSON" } },
+    "line": { "label": "LINE", "description": "Connect via LINE Messaging API.", "fields": { "channelAccessToken": "Channel Access Token", "channelSecret": "Channel Secret" } },
+    "matrix": { "label": "Matrix", "description": "Connect to any Matrix homeserver.", "fields": { "homeserver": "Homeserver URL", "accessToken": "Access Token" } }
   },
   "exportWizard": {
     "title": "Export as Template",
@@ -1762,5 +1929,205 @@
       "file": "File"
     },
     "previewNotAvailable": "Preview not available for this file type. Use the Download button."
+  },
+  "extensions": {
+    "title": "Extensions",
+    "subTabs": {
+      "plugins": "Plugins",
+      "skills": "Skills"
+    },
+    "sections": {
+      "installed": "Installed",
+      "available": "Available",
+      "gatewayBuiltins": "Gateway Built-ins"
+    },
+    "status": {
+      "active": "Active",
+      "installed": "Installed",
+      "pending": "Pending",
+      "disabled": "Disabled",
+      "degraded": "Degraded",
+      "failed": "Failed",
+      "blocked": "Blocked"
+    },
+    "actions": {
+      "install": "Install",
+      "installing": "Installing...",
+      "uninstall": "Uninstall",
+      "enable": "Enable",
+      "disable": "Disable",
+      "configure": "Configure",
+      "refresh": "Refresh",
+      "activate": "Activate",
+      "activating": "Activating..."
+    },
+    "catalog": {
+      "startInstance": "Start instance to browse available extensions",
+      "noResults": "No extensions available",
+      "requiresCredentials": "Requires API key",
+      "bundled": "Bundled",
+      "clawhub": "ClawHub",
+      "requires": "Requires",
+      "searchPlaceholder": "Search extensions...",
+      "allCategories": "All Categories",
+      "capabilities": "Capabilities",
+      "loadMore": "Load more",
+      "searching": "Searching ClawHub...",
+      "clawhubUnavailable": "Start instance to browse marketplace"
+    },
+    "trust": {
+      "bundled": "Bundled",
+      "verified": "Verified",
+      "unverified": "Unverified",
+      "scanned": "Scanned",
+      "scanFailed": "Scan failed",
+      "downloads": "{{count}} downloads",
+      "age": "{{days}}d on ClawHub",
+      "blockedCommunity": "Blocked -- community extension",
+      "blockedUnscanned": "Blocked -- security scan failed",
+      "override": "Override",
+      "credentialAccessWarning": "This community extension runs in-process with the gateway and will have access to all credentials on this instance, including API keys for other extensions. Only approve if you trust the publisher and have reviewed the source code.",
+      "acknowledgeCheckbox": "I acknowledge the credential access risk",
+      "reasonPlaceholder": "Why are you approving this extension?",
+      "approveOverride": "Approve",
+      "overrideSuccess": "Trust override granted",
+      "trustSummary": "Trust",
+      "auditTrail": "Admin-approved by {{userId}} on {{date}}: {{reason}}"
+    },
+    "version": {
+      "pinned": "Version: {{version}} (pinned)",
+      "integrity": "Integrity: {{hash}}",
+      "integrityUnavailable": "Integrity: not available",
+      "checkForUpdates": "Check for Updates",
+      "checking": "Checking...",
+      "upToDate": "Up to date",
+      "upgradeAvailable": "v{{current}} -> v{{latest}}",
+      "upgrade": "Upgrade",
+      "upgrading": "Upgrading...",
+      "upgradeSuccess": "Upgraded to v{{version}}",
+      "restartRequired": "Gateway restart required",
+      "upgradeFailed": "Upgrade failed",
+      "cachedLocally": "Artifact cached locally"
+    },
+    "empty": {
+      "noInstalled": "No skills installed",
+      "noBuiltins": "No gateway built-in skills",
+      "noPlugins": "No plugins installed",
+      "noPluginBuiltins": "No gateway built-in plugins"
+    },
+    "confirm": {
+      "uninstall": "Are you sure you want to uninstall this skill?",
+      "uninstallTitle": "Uninstall Skill",
+      "uninstallPlugin": "Are you sure you want to uninstall this plugin?"
+    },
+    "errors": {
+      "fetchFailed": "Failed to load extensions",
+      "installFailed": "Failed to install skill",
+      "toggleFailed": "Failed to update skill",
+      "uninstallFailed": "Failed to uninstall skill",
+      "conflict": "Another extension operation is in progress",
+      "pluginInstallFailed": "Failed to install plugin",
+      "pluginToggleFailed": "Failed to update plugin",
+      "pluginUninstallFailed": "Failed to uninstall plugin",
+      "pluginActivateFailed": "Failed to activate plugin",
+      "installPluginFailed": "Failed to install plugin",
+      "activateFailed": "Failed to activate plugin",
+      "togglePluginFailed": "Failed to update plugin",
+      "uninstallPluginFailed": "Failed to uninstall plugin"
+    },
+    "plugins": {
+      "comingSoon": "Plugin management coming in Phase 2",
+      "requiresRestart": "Installing this plugin will require a gateway restart.",
+      "activating": "Activating...",
+      "activate": "Activate",
+      "retryActivation": "Retry Activation"
+    },
+    "confirmRestart": {
+      "title": "Confirm Activation",
+      "message": "This will restart the gateway. Active conversations may be interrupted. Continue?",
+      "cancel": "Cancel",
+      "confirm": "Activate"
+    },
+    "installDialog": {
+      "title": "Install {{name}}",
+      "source": "Source",
+      "version": "Version",
+      "requiredCredentials": "Required Credentials",
+      "noCredentials": "No credentials required",
+      "restartWarning": "This will restart the gateway. Active conversations may be interrupted.",
+      "cancel": "Cancel",
+      "install": "Install",
+      "installing": "Installing..."
+    },
+    "restart": {
+      "banner": "Gateway restarting for {{name}}...",
+      "actionsDisabled": "All plugin actions are disabled during restart."
+    },
+    "rollback": {
+      "title": "Activation Failed",
+      "message": "The gateway failed to start with plugin \"{{name}}\". It has been rolled back to the previous configuration.",
+      "showDetails": "Show technical details",
+      "hideDetails": "Hide technical details",
+      "close": "Close",
+      "retry": "Retry Activation"
+    },
+    "oauth": {
+      "connectWith": "Connect with {{provider}}",
+      "connecting": "Connecting...",
+      "connected": "{{provider}} authenticated",
+      "failed": "Authorization failed",
+      "tryAgain": "Try again",
+      "requiresReAuth": "This extension requires re-authentication. Connect your account to activate.",
+      "popupBlocked": "Popup was blocked. Please allow popups for this site.",
+      "callbackError": "OAuth callback failed. Please try again."
+    },
+    "vault": {
+      "title": "Vault Integration",
+      "configure": "Configure Vault",
+      "edit": "Edit",
+      "remove": "Remove Vault",
+      "removeConfirm": "Remove vault configuration? Existing vault-backed credentials will stop resolving.",
+      "type": "Vault Type",
+      "onepassword": "1Password CLI (op)",
+      "hashicorp": "HashiCorp Vault",
+      "address": "Vault Address",
+      "addressPlaceholder": "https://vault.example.com:8200",
+      "namespace": "Namespace",
+      "namespacePlaceholder": "admin",
+      "authMethod": "Auth Method",
+      "authToken": "Token",
+      "authAppRole": "AppRole",
+      "authCli": "CLI Login",
+      "mountPath": "Mount Path",
+      "mountPathPlaceholder": "secret",
+      "save": "Save Vault Config",
+      "saving": "Saving...",
+      "saved": "Vault configured",
+      "removed": "Vault configuration removed",
+      "opNote": "Ensure the op CLI is available in the gateway container.",
+      "vaultNote": "Ensure the vault CLI is available in the gateway container."
+    },
+    "credentials": {
+      "title": "Configure Credentials",
+      "requiresCredentials": "This skill requires credentials to activate.",
+      "fieldLabel": "Credential Field",
+      "valueLabel": "API Key / Value",
+      "save": "Save Credential",
+      "saving": "Saving...",
+      "saved": "Credential saved successfully",
+      "saveFailed": "Failed to save credential",
+      "source": "Credential Source",
+      "sourceDirect": "Direct value",
+      "sourceVault": "From vault",
+      "vaultPath": "Vault Path",
+      "vaultPathPlaceholderOp": "op://vault/item/field",
+      "vaultPathPlaceholderHc": "secret/data/myapp/api-key"
+    },
+    "alerts": {
+      "failed": "{{name}} failed: {{error}}",
+      "degraded": "{{name}} is degraded — may still be running from cache",
+      "retry": "Retry",
+      "integrityMismatch": "Integrity mismatch detected"
+    }
   }
 }

@@ -9,6 +9,7 @@ import { MessageRenderer } from '../components/chat/MessageRenderer';
 import { ChatErrorBanner } from '../components/chat/ChatErrorBanner';
 import { classifyChatError } from '../components/chat/classifyError';
 import { SessionDrawer } from '../components/chat/SessionDrawer';
+import { useInstanceModels } from '../hooks/useInstanceModels';
 import { isImageMime, ALLOWED_ATTACHMENT_TYPES, MAX_FILE_UPLOAD_SIZE, FILE_INPUT_ACCEPT } from '@aquarium/shared';
 import type { InstancePublic, WsMessage, AgentTypeInfo, ChatErrorCategory } from '@aquarium/shared';
 import './MyAssistantsPage.css';
@@ -55,6 +56,22 @@ function extractText(content: unknown): string {
     if (Array.isArray(c.content)) return extractText(c.content);
   }
   return '';
+}
+
+function extractToolName(content: unknown): string | null {
+  if (Array.isArray(content)) {
+    for (const block of content) {
+      if (block && typeof block === 'object') {
+        const b = block as Record<string, unknown>;
+        if ((b.type === 'toolCall' || b.type === 'tool_use') && typeof b.name === 'string') return b.name;
+      }
+    }
+  }
+  if (content && typeof content === 'object') {
+    const c = content as Record<string, unknown>;
+    if (Array.isArray(c.content)) return extractToolName(c.content);
+  }
+  return null;
 }
 
 function getDocumentTypeLabel(mime: string): string {
@@ -110,6 +127,7 @@ export function AssistantChatPage() {
   const [sending, setSending] = useState(false);
   const [chatError, setChatError] = useState<ChatError | null>(null);
   const [streamText, setStreamText] = useState<string | null>(null);
+  const [toolActivity, setToolActivity] = useState<string | null>(null);
   const [chatSuggestions, setChatSuggestions] = useState<string[]>([]);
   const activeRunIdRef = useRef<string | null>(null);
   const abortedRunIdsRef = useRef<Set<string>>(new Set());
@@ -191,26 +209,7 @@ export function AssistantChatPage() {
   const [sessionThinking, setSessionThinking] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
 
-  const [rpcModels, setRpcModels] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (instance?.status !== 'running') { setRpcModels([]); return; }
-    if (!id) return;
-    if (instance.billingMode === 'platform') {
-      api.get<{ models: string[] }>('/litellm/models')
-        .then(res => setRpcModels(res.models))
-        .catch(() => setRpcModels([]));
-    } else {
-      rpc<{ models?: Array<{ id?: string; name?: string }> }>(id, 'models.list', {})
-        .then(res => {
-          const ids = (res.models ?? []).map(m => m.id ?? m.name).filter((v): v is string => !!v);
-          setRpcModels(ids);
-        })
-        .catch(() => setRpcModels([]));
-    }
-  }, [id, instance?.status, instance?.billingMode]);
-
-  const modelSuggestions = rpcModels;
+  const { models: gatewayModels } = useInstanceModels(id ?? '', instance?.status ?? '');
 
   const isStreaming = streamText !== null || sending;
 
@@ -278,7 +277,7 @@ export function AssistantChatPage() {
         const historyMsgs = res.messages
           .filter(m => {
             if (m.role === 'user') return true;
-            if (m.role === 'tool') return false;
+            if (m.role === 'tool' || m.role === 'toolResult') return false;
             return extractText(m.content).length > 0;
           })
           .map(m => ({
@@ -301,7 +300,7 @@ export function AssistantChatPage() {
       const historyMsgs = res.messages
         .filter(m => {
           if (m.role === 'user') return true;
-          if (m.role === 'tool') return false;
+          if (m.role === 'tool' || m.role === 'toolResult') return false;
           return extractText(m.content).length > 0;
         })
         .map(m => ({
@@ -329,7 +328,7 @@ export function AssistantChatPage() {
       const historyMsgs = res.messages
         .filter(m => {
           if (m.role === 'user') return true;
-          if (m.role === 'tool') return false;
+          if (m.role === 'tool' || m.role === 'toolResult') return false;
           return extractText(m.content).length > 0;
         })
         .map(m => ({
@@ -363,22 +362,25 @@ export function AssistantChatPage() {
         if (evtKey !== sessionKey && !sessionKey.endsWith(evtKey) && !evtKey.endsWith(sessionKey)) return;
         if (chatData.runId && abortedRunIdsRef.current.has(chatData.runId)) return;
 
+        // Clear no-response timeout on ANY chat event
+        if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
+
         if (chatData.state === 'delta') {
-          if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
           const text = extractText(chatData.content ?? chatData.message);
           if (text) {
+            setToolActivity(null);
             setStreamText(prev => (!prev || text.length >= prev.length) ? text : prev);
+          } else {
+            const toolName = extractToolName(chatData.content ?? chatData.message);
+            if (toolName) setToolActivity(toolName);
           }
         } else if (chatData.state === 'final') {
-          if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
-          setStreamText(null); activeRunIdRef.current = null; setSending(false);
+          setStreamText(null); setToolActivity(null); activeRunIdRef.current = null; setSending(false);
           loadHistory();
         } else if (chatData.state === 'aborted') {
-          if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
-          setStreamText(null); activeRunIdRef.current = null; setSending(false);
+          setStreamText(null); setToolActivity(null); activeRunIdRef.current = null; setSending(false);
         } else if (chatData.state === 'error') {
-          if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
-          setStreamText(null); activeRunIdRef.current = null; setSending(false);
+          setStreamText(null); setToolActivity(null); activeRunIdRef.current = null; setSending(false);
           const errMsg = chatData.errorMessage ?? t('chat.chatError');
           setChatError({ message: errMsg, category: classifyChatError(errMsg), timestamp: Date.now() });
         }
@@ -523,9 +525,9 @@ export function AssistantChatPage() {
         chatTimeoutRef.current = null;
         if (activeRunIdRef.current === runId) {
           setChatError({ message: t('chat.noResponseError'), category: 'timeout' as ChatErrorCategory, lastUserMessage: msg, timestamp: Date.now() });
-          setSending(false); setStreamText(null); activeRunIdRef.current = null;
+          setSending(false); setStreamText(null); setToolActivity(null); activeRunIdRef.current = null;
         }
-      }, 60_000);
+      }, 120_000);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : t('chat.failedToSend');
       setChatError({ message: errMsg, category: classifyChatError(errMsg), lastUserMessage: msg, timestamp: Date.now() });
@@ -637,7 +639,15 @@ export function AssistantChatPage() {
               list="achat-model-suggestions"
             />
             <datalist id="achat-model-suggestions">
-              {modelSuggestions.map(m => <option key={m} value={m} />)}
+              {[...gatewayModels]
+                .sort((a, b) => (a.usable === b.usable ? 0 : a.usable ? -1 : 1))
+                .map(m => (
+                  <option
+                    key={m.id}
+                    value={m.id}
+                    label={m.provider ? `${m.name} · ${m.provider}${m.usable ? '' : ' (no key)'}` : m.name}
+                  />
+                ))}
             </datalist>
           </div>
           <div className="achat-settings-field">
@@ -720,7 +730,7 @@ export function AssistantChatPage() {
           <div className="achat-msg achat-msg--agent">
             <div className="achat-msg__row">
               <div className="achat-msg__avatar"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="5.5" width="12" height="8.5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M5.5 5.5V4.5A1.5 1.5 0 0 1 7 3h2a1.5 1.5 0 0 1 1.5 1.5V5.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg></div>
-              <div className="achat-msg__bubble"><span className="spinner" /></div>
+              <div className="achat-msg__bubble"><span className="spinner" />{toolActivity && <span className="tool-activity">{toolActivity}</span>}</div>
             </div>
           </div>
         )}

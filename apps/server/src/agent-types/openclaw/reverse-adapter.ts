@@ -1,3 +1,4 @@
+import { db } from '../../db/index.js';
 import type { RuntimeEngine } from '../../runtime/types.js';
 import type {
   Instance,
@@ -10,6 +11,8 @@ import type {
   ToolProfile,
   BillingMode,
   McpServerDeclaration,
+  TemplateExtensionDeclaration,
+  ExtensionStatus,
 } from '@aquarium/shared';
 
 function slugify(text: string): string {
@@ -27,8 +30,8 @@ const SECURITY_PROFILE_DENY_ITEMS = new Set([
   'group:automation', 'group:runtime', 'group:gateway',
 ]);
 
-// Reused from template-store.ts for credential detection in exported content
-const SENSITIVE_PATTERNS = [
+// Credential detection patterns — used for both MCP config scrubbing and workspace file scanning
+export const SENSITIVE_PATTERNS = [
   { re: /^sk-[a-zA-Z0-9]{20,}/, label: 'OpenAI API key' },
   { re: /^hapi-[a-zA-Z0-9-]+/, label: 'HubSpot API key' },
   { re: /^xoxb-[a-zA-Z0-9-]+/, label: 'Slack bot token' },
@@ -37,7 +40,7 @@ const SENSITIVE_PATTERNS = [
   { re: /AIza[a-zA-Z0-9_-]+/, label: 'Google API key' },
 ];
 
-function maskValue(value: string): string {
+export function maskValue(value: string): string {
   if (value.length <= 8) return '****';
   return `${value.slice(0, 4)}****${value.slice(-4)}`;
 }
@@ -80,8 +83,8 @@ function resolveEnvReferenceToCredential(value: string): string | null {
   return ENV_VAR_TO_CREDENTIAL[envRef[1]] ?? null;
 }
 
-const EXPORTABLE_WORKSPACE_FILES = [
-  'SOUL.md', 'AGENTS.md', 'IDENTITY.md', 'TOOLS.md', 'BOOTSTRAP.md',
+const WORKSPACE_ALLOWLIST = [
+  'AGENTS.md', 'SOUL.md', 'IDENTITY.md', 'USER.md', 'TOOLS.md', 'BOOTSTRAP.md',
   'HEARTBEAT.md', 'MEMORY.md',
 ] as const;
 
@@ -503,18 +506,49 @@ export async function reverseAdaptFromContainer(
 
   const cfg = JSON.parse(rawOpenclawJson) as OpenClawConfig;
 
+  // 2. Read workspace files through allowlist (TMPL-04)
+  // First check local skills for scripts/ or assets/ directories (TMPL-05) — fail fast
+  const workspaceSkillsPath = `${OPENCLAW_HOME}/workspace/skills`;
+  let skillDirsForCheck: string[] = [];
+  if (engine.listFiles) {
+    try {
+      skillDirsForCheck = await engine.listFiles(runtimeId, workspaceSkillsPath);
+    } catch {
+      skillDirsForCheck = [];
+    }
+  }
+
+  for (const skillDir of skillDirsForCheck) {
+    if (!engine.listFiles) break;
+    let skillEntries: string[];
+    try {
+      skillEntries = await engine.listFiles(runtimeId, `${workspaceSkillsPath}/${skillDir}`);
+    } catch {
+      continue;
+    }
+    if (skillEntries.includes('scripts') || skillEntries.includes('assets')) {
+      throw new Error(
+        `Skill '${skillDir}' contains executable scripts and cannot be exported. ` +
+        `Install it from ClawHub or remove scripts to make it portable.`,
+      );
+    }
+  }
+
+  // Read fixed allowlist files
   const workspaceFiles: Record<string, string> = {};
-  for (const filename of EXPORTABLE_WORKSPACE_FILES) {
+  for (const filename of WORKSPACE_ALLOWLIST) {
     const content = await engine.readFile(runtimeId, `${OPENCLAW_HOME}/workspace/${filename}`);
     if (content) {
       workspaceFiles[filename] = content;
     }
   }
 
-  // Optionally read USER.md (included for completeness, user can decide to exclude)
-  const userMd = await engine.readFile(runtimeId, `${OPENCLAW_HOME}/workspace/USER.md`);
-  if (userMd) {
-    workspaceFiles['USER.md'] = userMd;
+  // Read skills/*/SKILL.md files
+  for (const skillDir of skillDirsForCheck) {
+    const skillMd = await engine.readFile(runtimeId, `${workspaceSkillsPath}/${skillDir}/SKILL.md`);
+    if (skillMd) {
+      workspaceFiles[`skills/${skillDir}/SKILL.md`] = skillMd;
+    }
   }
 
   // 3. Strip security paragraph from SOUL.md
@@ -563,19 +597,26 @@ export async function reverseAdaptFromContainer(
   if (modelConfig.suggestedProvider) openclawConfig.defaultProvider = modelConfig.suggestedProvider;
   openclawConfig.toolPermissions = toolPermissions;
 
-  // 11. Scan workspace files for hardcoded credentials
-  for (const [filename, content] of Object.entries(workspaceFiles)) {
+  // 10a. Scrub OpenClaw config credential fields (TMPL-03)
+  scrubOpenclawConfigCredentials(cfg, openclawConfig, warnings);
+
+  // 11. Scan workspace files for hardcoded credentials — redact (not just warn) (TMPL-04)
+  for (const [filename, fileContent] of Object.entries(workspaceFiles)) {
+    let scanned = fileContent;
     for (const { re, label } of SENSITIVE_PATTERNS) {
-      const match = content.match(re);
+      const match = scanned.match(re);
       if (match) {
+        const masked = maskValue(match[0]);
+        scanned = scanned.replace(re, '[REDACTED]');
         warnings.push({
-          type: 'possible_hardcoded_key',
+          type: 'redacted_secret',
           location: `workspaceFiles.${filename}`,
-          pattern: maskValue(match[0]),
-          suggestion: `Found ${label} in ${filename} — review before publishing`,
+          pattern: masked,
+          suggestion: `Found ${label} in ${filename} — value has been redacted`,
         });
       }
     }
+    workspaceFiles[filename] = scanned;
   }
 
   // 12. Determine suggested channels from config
@@ -585,7 +626,54 @@ export async function reverseAdaptFromContainer(
     return chCfg?.enabled !== false;
   });
 
-  // 13. Assemble export response
+  // 13. Read extension lifecycle tables (TMPL-01, TMPL-02)
+  const extensions: TemplateExtensionDeclaration[] = [];
+  const EXPORTABLE_STATUSES: ExtensionStatus[] = ['active', 'installed', 'disabled', 'degraded'];
+
+  const pluginRows = await db('instance_plugins')
+    .where({ instance_id: instance.id })
+    .whereIn('status', EXPORTABLE_STATUSES);
+
+  const skillRows = await db('instance_skills')
+    .where({ instance_id: instance.id })
+    .whereIn('status', EXPORTABLE_STATUSES);
+
+  function parseJsonb<T>(value: unknown, fallback: T): T {
+    if (typeof value === 'string') {
+      try { return JSON.parse(value) as T; } catch { return fallback; }
+    }
+    return (value as T) ?? fallback;
+  }
+
+  for (const row of pluginRows) {
+    const status = row.status as ExtensionStatus;
+    extensions.push({
+      id: row.plugin_id as string,
+      kind: 'plugin',
+      source: parseJsonb<TemplateExtensionDeclaration['source']>(row.source, { type: 'bundled' }),
+      lockedVersion: (row.locked_version as string | null) ?? null,
+      integrityHash: (row.integrity_hash as string | null) ?? null,
+      enabled: status !== 'disabled',
+      needsCredentials: status === 'installed',
+      config: parseJsonb<Record<string, unknown>>(row.config, {}),
+    });
+  }
+
+  for (const row of skillRows) {
+    const status = row.status as ExtensionStatus;
+    extensions.push({
+      id: row.skill_id as string,
+      kind: 'skill',
+      source: parseJsonb<TemplateExtensionDeclaration['source']>(row.source, { type: 'bundled' }),
+      lockedVersion: (row.locked_version as string | null) ?? null,
+      integrityHash: (row.integrity_hash as string | null) ?? null,
+      enabled: status !== 'disabled',
+      needsCredentials: status === 'installed',
+      config: parseJsonb<Record<string, unknown>>(row.config, {}),
+    });
+  }
+
+  // 14. Assemble export response
   return {
     draft: {
       slug: slugify(instance.name),
@@ -622,9 +710,129 @@ export async function reverseAdaptFromContainer(
       openclawConfig,
       setupCommands: [],
       customImage: null,
+      extensions,
     },
     securityWarnings: warnings,
   };
+}
+
+/**
+ * Scrub credential fields from OpenClaw config sections:
+ * plugins.entries.*.config, skills.entries.*, providers.*
+ * Detected values are replaced with ${CREDENTIAL:...} placeholders.
+ */
+function scrubOpenclawConfigCredentials(
+  cfg: OpenClawConfig,
+  openclawConfig: Record<string, unknown>,
+  warnings: SecurityWarning[],
+): void {
+  // Scrub plugins.entries.*.config
+  const rawPlugins = cfg.plugins as Record<string, unknown> | undefined;
+  const rawPluginEntries = rawPlugins?.entries as Record<string, unknown> | undefined;
+  if (rawPluginEntries) {
+    const scrubbedEntries: Record<string, unknown> = {};
+    for (const [pluginId, entryRaw] of Object.entries(rawPluginEntries)) {
+      const entry = entryRaw as Record<string, unknown> | null;
+      if (!entry || typeof entry !== 'object') {
+        scrubbedEntries[pluginId] = entry;
+        continue;
+      }
+      const entryCopy = { ...entry };
+      const entryConfig = entryCopy.config as Record<string, unknown> | undefined;
+      if (entryConfig && typeof entryConfig === 'object') {
+        const scrubbedConfig: Record<string, unknown> = {};
+        for (const [fieldName, fieldValue] of Object.entries(entryConfig)) {
+          if (typeof fieldValue === 'string') {
+            let scrubbed = false;
+            for (const { re } of SENSITIVE_PATTERNS) {
+              if (re.test(fieldValue)) {
+                scrubbedConfig[fieldName] = `\${CREDENTIAL:${pluginId}:${fieldName}}`;
+                warnings.push({
+                  type: 'possible_hardcoded_key',
+                  location: `plugins.entries.${pluginId}.config.${fieldName}`,
+                  pattern: maskValue(fieldValue),
+                  suggestion: `Replace with \${CREDENTIAL:${pluginId}:${fieldName}}`,
+                });
+                scrubbed = true;
+                break;
+              }
+            }
+            if (!scrubbed) scrubbedConfig[fieldName] = fieldValue;
+          } else {
+            scrubbedConfig[fieldName] = fieldValue;
+          }
+        }
+        entryCopy.config = scrubbedConfig;
+      }
+      scrubbedEntries[pluginId] = entryCopy;
+    }
+    openclawConfig.plugins = { ...rawPlugins, entries: scrubbedEntries };
+  }
+
+  // Scrub skills.entries.*.env and .apiKey
+  const rawSkills = cfg.skills as Record<string, unknown> | undefined;
+  const rawSkillEntries = rawSkills?.entries as Record<string, unknown> | undefined;
+  if (rawSkillEntries) {
+    const scrubbedSkillEntries: Record<string, unknown> = {};
+    for (const [skillId, entryRaw] of Object.entries(rawSkillEntries)) {
+      const entry = entryRaw as Record<string, unknown> | null;
+      if (!entry || typeof entry !== 'object') {
+        scrubbedSkillEntries[skillId] = entry;
+        continue;
+      }
+      const entryCopy = { ...entry };
+      for (const sensitiveField of ['env', 'apiKey']) {
+        const fieldValue = entryCopy[sensitiveField];
+        if (typeof fieldValue === 'string') {
+          for (const { re } of SENSITIVE_PATTERNS) {
+            if (re.test(fieldValue)) {
+              entryCopy[sensitiveField] = `\${CREDENTIAL:${skillId}:${sensitiveField}}`;
+              warnings.push({
+                type: 'possible_hardcoded_key',
+                location: `skills.entries.${skillId}.${sensitiveField}`,
+                pattern: maskValue(fieldValue),
+                suggestion: `Replace with \${CREDENTIAL:${skillId}:${sensitiveField}}`,
+              });
+              break;
+            }
+          }
+        }
+      }
+      scrubbedSkillEntries[skillId] = entryCopy;
+    }
+    openclawConfig.skills = { ...rawSkills, entries: scrubbedSkillEntries };
+  }
+
+  // Scrub providers.*.api_key
+  const rawProviders = cfg.providers as Record<string, unknown> | undefined;
+  if (rawProviders && typeof rawProviders === 'object') {
+    const scrubbedProviders: Record<string, unknown> = {};
+    for (const [providerName, providerCfg] of Object.entries(rawProviders)) {
+      const pCfg = providerCfg as Record<string, unknown> | null;
+      if (!pCfg || typeof pCfg !== 'object') {
+        scrubbedProviders[providerName] = pCfg;
+        continue;
+      }
+      const pCfgCopy = { ...pCfg };
+      const apiKey = pCfgCopy.api_key;
+      if (typeof apiKey === 'string') {
+        for (const { re } of SENSITIVE_PATTERNS) {
+          if (re.test(apiKey)) {
+            pCfgCopy.api_key = `\${CREDENTIAL:${providerName}:api_key}`;
+            warnings.push({
+              type: 'possible_hardcoded_key',
+              location: `providers.${providerName}.api_key`,
+              pattern: maskValue(apiKey),
+              suggestion: `Replace with \${CREDENTIAL:${providerName}:api_key}`,
+            });
+            break;
+          }
+        }
+      }
+      scrubbedProviders[providerName] = pCfgCopy;
+    }
+    openclawConfig.providers = scrubbedProviders;
+  }
 }
 
 function getPluginEntries(cfg: OpenClawConfig): Record<string, unknown> {

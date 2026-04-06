@@ -447,11 +447,7 @@ async function fanOutToBot(
     ].join('\n');
 
     const sessionKey = `gc-${groupChatId}-${messageId}`;
-    const rpc = new GroupChatRPCClient(
-      instance.control_endpoint as string,
-      instance.auth_token as string,
-      instance.id as string,
-    );
+    const rpc = new GroupChatRPCClient(instance.id as string);
 
     let replyText: string;
     try {

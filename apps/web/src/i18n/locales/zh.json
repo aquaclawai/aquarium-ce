@@ -56,6 +56,7 @@
       "created": "已创建",
       "starting": "启动中",
       "running": "运行中",
+      "restarting": "重启中",
       "stopping": "停止中",
       "stopped": "已停止",
       "error": "异常",
@@ -238,7 +239,8 @@
       "events": "事件",
       "settings": "设置",
       "security": "安全",
-      "more": "更多"
+      "more": "更多",
+      "extensions": "扩展"
     },
     "overview": {
       "title": "实例详情",
@@ -1693,6 +1695,7 @@
     "waitingStart": "正在启动...",
     "status": {
       "running": "在线",
+      "restarting": "重启中",
       "starting": "启动中",
       "stopping": "停止中",
       "stopped": "已停止",
@@ -1761,5 +1764,203 @@
       "file": "文件"
     },
     "previewNotAvailable": "此文件类型无法预览，请使用下载按钮。"
+  },
+  "extensions": {
+    "title": "扩展",
+    "subTabs": {
+      "plugins": "插件",
+      "skills": "技能"
+    },
+    "sections": {
+      "installed": "已安装",
+      "available": "可用",
+      "gatewayBuiltins": "网关内置"
+    },
+    "status": {
+      "active": "活跃",
+      "installed": "已安装",
+      "pending": "待处理",
+      "disabled": "已禁用",
+      "degraded": "降级",
+      "failed": "失败"
+    },
+    "actions": {
+      "install": "安装",
+      "installing": "安装中...",
+      "uninstall": "卸载",
+      "enable": "启用",
+      "disable": "禁用",
+      "configure": "配置",
+      "refresh": "刷新",
+      "activate": "激活",
+      "activating": "激活中..."
+    },
+    "catalog": {
+      "startInstance": "启动实例以浏览可用扩展",
+      "noResults": "暂无可用扩展",
+      "requiresCredentials": "需要 API 密钥",
+      "bundled": "内置",
+      "clawhub": "ClawHub",
+      "requires": "需要",
+      "searchPlaceholder": "搜索扩展...",
+      "allCategories": "所有分类",
+      "capabilities": "功能",
+      "loadMore": "加载更多",
+      "clawhubUnavailable": "启动实例以浏览市场"
+    },
+    "trust": {
+      "bundled": "内置",
+      "verified": "已验证",
+      "unverified": "未验证",
+      "scanned": "已扫描",
+      "scanFailed": "扫描失败",
+      "downloads": "{{count}} 次下载",
+      "age": "上线 {{days}} 天",
+      "blockedCommunity": "已屏蔽 -- 社区扩展",
+      "blockedUnscanned": "已屏蔽 -- 安全扫描失败",
+      "override": "覆盖",
+      "credentialAccessWarning": "此社区扩展在网关内部运行，将可访问此实例上的所有凭据，包括其他扩展的 API 密钥。仅在您信任发布者并已审查源代码后才可批准。",
+      "acknowledgeCheckbox": "我确认凭据访问风险",
+      "reasonPlaceholder": "为什么批准此扩展？",
+      "approveOverride": "批准",
+      "overrideSuccess": "已授予信任覆盖",
+      "trustSummary": "信任",
+      "auditTrail": "由 {{userId}} 于 {{date}} 管理员批准：{{reason}}"
+    },
+    "version": {
+      "pinned": "版本：{{version}}（已固定）",
+      "integrity": "完整性：{{hash}}",
+      "integrityUnavailable": "完整性：不可用",
+      "checkForUpdates": "检查更新",
+      "checking": "检查中...",
+      "upToDate": "已是最新",
+      "upgradeAvailable": "v{{current}} -> v{{latest}}",
+      "upgrade": "升级",
+      "upgrading": "升级中...",
+      "upgradeSuccess": "已升级至 v{{version}}",
+      "restartRequired": "需要重启网关",
+      "upgradeFailed": "升级失败",
+      "cachedLocally": "制品已本地缓存"
+    },
+    "empty": {
+      "noInstalled": "未安装任何技能",
+      "noBuiltins": "无网关内置技能",
+      "noPlugins": "未安装任何插件",
+      "noPluginBuiltins": "无网关内置插件"
+    },
+    "confirm": {
+      "uninstall": "确定要卸载此技能吗？",
+      "uninstallTitle": "卸载技能",
+      "uninstallPlugin": "确定要卸载此插件吗？"
+    },
+    "errors": {
+      "fetchFailed": "加载扩展失败",
+      "installFailed": "安装技能失败",
+      "toggleFailed": "更新技能失败",
+      "uninstallFailed": "卸载技能失败",
+      "conflict": "另一个扩展操作正在进行中",
+      "pluginInstallFailed": "安装插件失败",
+      "pluginToggleFailed": "更新插件失败",
+      "pluginUninstallFailed": "卸载插件失败",
+      "pluginActivateFailed": "激活插件失败",
+      "installPluginFailed": "安装插件失败",
+      "activateFailed": "激活插件失败",
+      "togglePluginFailed": "更新插件失败",
+      "uninstallPluginFailed": "卸载插件失败"
+    },
+    "plugins": {
+      "comingSoon": "插件管理将在第二阶段推出",
+      "requiresRestart": "安装此插件需要重启网关。",
+      "activating": "激活中...",
+      "activate": "激活",
+      "retryActivation": "重试激活"
+    },
+    "confirmRestart": {
+      "title": "确认激活",
+      "message": "此操作将重启网关。活跃的对话可能会中断。是否继续？",
+      "cancel": "取消",
+      "confirm": "激活"
+    },
+    "installDialog": {
+      "title": "安装 {{name}}",
+      "source": "来源",
+      "version": "版本",
+      "requiredCredentials": "所需凭证",
+      "noCredentials": "无需凭证",
+      "restartWarning": "此操作将重启网关。活跃的对话可能会中断。",
+      "cancel": "取消",
+      "install": "安装",
+      "installing": "安装中..."
+    },
+    "restart": {
+      "banner": "正在为 {{name}} 重启网关...",
+      "actionsDisabled": "重启期间所有插件操作均已禁用。"
+    },
+    "rollback": {
+      "title": "激活失败",
+      "message": "网关启动插件 \"{{name}}\" 失败，已回滚到之前的配置。",
+      "showDetails": "显示技术详情",
+      "hideDetails": "隐藏技术详情",
+      "close": "关闭",
+      "retry": "重试激活"
+    },
+    "oauth": {
+      "connectWith": "连接 {{provider}}",
+      "connecting": "连接中...",
+      "connected": "{{provider}} 已认证",
+      "failed": "授权失败",
+      "tryAgain": "重试",
+      "requiresReAuth": "此扩展需要重新认证。连接您的账户以激活。",
+      "popupBlocked": "弹出窗口被阻止。请允许此网站的弹出窗口。",
+      "callbackError": "OAuth 回调失败。请重试。"
+    },
+    "vault": {
+      "title": "密钥库集成",
+      "configure": "配置密钥库",
+      "edit": "编辑",
+      "remove": "删除密钥库",
+      "removeConfirm": "删除密钥库配置？现有的密钥库支持的凭证将停止解析。",
+      "type": "密钥库类型",
+      "onepassword": "1Password CLI (op)",
+      "hashicorp": "HashiCorp Vault",
+      "address": "Vault 地址",
+      "addressPlaceholder": "https://vault.example.com:8200",
+      "namespace": "命名空间",
+      "namespacePlaceholder": "admin",
+      "authMethod": "认证方式",
+      "authToken": "令牌",
+      "authAppRole": "AppRole",
+      "authCli": "CLI 登录",
+      "mountPath": "挂载路径",
+      "mountPathPlaceholder": "secret",
+      "save": "保存密钥库配置",
+      "saving": "保存中...",
+      "saved": "密钥库已配置",
+      "removed": "密钥库配置已删除",
+      "opNote": "确保 op CLI 在网关容器中可用。",
+      "vaultNote": "确保 vault CLI 在网关容器中可用。"
+    },
+    "credentials": {
+      "title": "配置凭证",
+      "requiresCredentials": "此技能需要凭证才能激活。",
+      "fieldLabel": "凭证字段",
+      "valueLabel": "API 密钥 / 值",
+      "save": "保存凭证",
+      "saving": "保存中...",
+      "saved": "凭证保存成功",
+      "saveFailed": "保存凭证失败",
+      "source": "凭证来源",
+      "sourceDirect": "直接输入",
+      "sourceVault": "来自密钥库",
+      "vaultPath": "密钥库路径",
+      "vaultPathPlaceholderOp": "op://vault/item/field",
+      "vaultPathPlaceholderHc": "secret/data/myapp/api-key"
+    },
+    "alerts": {
+      "failed": "{{name}} 失败：{{error}}",
+      "degraded": "{{name}} 已降级 — 可能仍在从缓存中运行",
+      "retry": "重试",
+      "integrityMismatch": "检测到完整性不匹配"
+    }
   }
 }

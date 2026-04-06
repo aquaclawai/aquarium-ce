@@ -1185,6 +1185,7 @@ select:focus {
 .status-stopped { color: var(--color-neutral); background: rgba(168, 162, 158, 0.1); }
 .status-created { color: var(--color-info); background: rgba(8, 145, 178, 0.1); }
 .status-starting, .status-stopping { color: var(--color-warning); background: rgba(217, 119, 6, 0.1); }
+.status-restarting { color: var(--color-warning); background: rgba(217, 119, 6, 0.1); }
 .status-error { color: var(--color-danger); background: rgba(239, 68, 68, 0.1); }
 
 .channels-status {
@@ -2177,6 +2178,19 @@ select:focus {
   background-color: var(--color-primary);
   color: white;
   border-bottom-right-radius: var(--radius-sm);
+}
+
+.tool-activity {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.chat-message.user a {
+  color: white;
+  text-decoration: underline;
 }
 
 .chat-message.agent {

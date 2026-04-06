@@ -4,7 +4,7 @@ import { useWebSocket } from '../../context/WebSocketContext.js';
 import { rpc } from '../../utils/rpc.js';
 import { api } from '../../api.js';
 import { MessageRenderer } from './MessageRenderer.js';
-import { MODEL_SUGGESTIONS } from '../../constants/models.js';
+import { useInstanceModels } from '../../hooks/useInstanceModels';
 import { SessionDrawer } from './SessionDrawer.js';
 import type { Instance, WsMessage } from '@aquarium/shared';
 import { isImageMime, ALLOWED_ATTACHMENT_TYPES, MAX_FILE_UPLOAD_SIZE, FILE_INPUT_ACCEPT } from '@aquarium/shared';
@@ -92,6 +92,23 @@ function extractText(content: unknown): string {
   return '';
 }
 
+/** Extract tool name from a delta content payload (toolCall blocks). */
+function extractToolName(content: unknown): string | null {
+  if (Array.isArray(content)) {
+    for (const block of content) {
+      if (block && typeof block === 'object') {
+        const b = block as Record<string, unknown>;
+        if ((b.type === 'toolCall' || b.type === 'tool_use') && typeof b.name === 'string') return b.name;
+      }
+    }
+  }
+  if (content && typeof content === 'object') {
+    const c = content as Record<string, unknown>;
+    if (Array.isArray(c.content)) return extractToolName(c.content);
+  }
+  return null;
+}
+
 function formatMessageTime(isoString?: string): string {
   if (!isoString) return '';
   const date = new Date(isoString);
@@ -126,6 +143,7 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [streamText, setStreamText] = useState<string | null>(null);
+  const [toolActivity, setToolActivity] = useState<string | null>(null);
   const activeRunIdRef = useRef<string | null>(null);
   const abortedRunIdsRef = useRef<Set<string>>(new Set());
   const imageStoreRef = useRef<Map<number, unknown>>(new Map());
@@ -260,8 +278,8 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
         const historyMsgs = res.messages
           .filter(m => {
             if (m.role === 'user') return true;
-            if (m.role === 'tool') return false;
-            // Hide agent messages with no visible text (thinking-only, tool-only, empty)
+            if (m.role === 'tool' || m.role === 'toolResult') return false;
+            // Hide agent messages with no visible text (thinking-only, toolCall-only, empty)
             return extractText(m.content).length > 0;
           })
           .map(m => ({
@@ -319,35 +337,42 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
         if (chatData.sessionKey !== sessionKey) return;
         if (chatData.runId && abortedRunIdsRef.current.has(chatData.runId)) return;
 
+        // Clear no-response timeout on ANY chat event — tool calls, deltas, etc.
+        if (chatTimeoutRef.current) {
+          clearTimeout(chatTimeoutRef.current);
+          chatTimeoutRef.current = null;
+        }
+
         if (chatData.state === 'delta') {
-          // Clear the no-response timeout — we're receiving data
-          if (chatTimeoutRef.current) {
-            clearTimeout(chatTimeoutRef.current);
-            chatTimeoutRef.current = null;
-          }
           const text = extractText(chatData.content ?? chatData.message);
           if (text) {
+            setToolActivity(null);
             setStreamText(prev => {
               // Gateway sends full accumulated text per delta, not incremental.
               // Length check prevents out-of-order WebSocket frames from overwriting newer content.
               if (!prev || text.length >= prev.length) return text;
               return prev;
             });
+          } else {
+            // Delta with no text — likely a tool call. Extract tool name for activity indicator.
+            const content = chatData.content ?? chatData.message;
+            const toolName = extractToolName(content);
+            if (toolName) setToolActivity(toolName);
           }
         } else if (chatData.state === 'final') {
-          if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
           setStreamText(null);
+          setToolActivity(null);
           activeRunIdRef.current = null;
           setSending(false);
           loadHistory();
         } else if (chatData.state === 'aborted') {
-          if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
           setStreamText(null);
+          setToolActivity(null);
           activeRunIdRef.current = null;
           setSending(false);
         } else if (chatData.state === 'error') {
-          if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
           setStreamText(null);
+          setToolActivity(null);
           activeRunIdRef.current = null;
           setSending(false);
           setError(chatData.errorMessage ?? t('chat.chatError'));
@@ -388,7 +413,7 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
   const [sessionThinking, setSessionThinking] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
 
-  const allModelSuggestions = Object.values(MODEL_SUGGESTIONS).flat();
+  const { models: gatewayModels, loading: modelsLoading } = useInstanceModels(instanceId, instanceStatus);
 
   useEffect(() => {
     if (!showSettings) return;
@@ -501,7 +526,7 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
       await rpc(instanceId, 'chat.send', payload);
       setSessionRefreshFlag(f => f + 1);
 
-      // Start a no-response timeout — if no chat events arrive within 60s,
+      // Start a no-response timeout — if no chat events arrive within 120s,
       // the persistent WebSocket relay likely isn't connected. Reset UI.
       chatTimeoutRef.current = setTimeout(() => {
         chatTimeoutRef.current = null;
@@ -509,9 +534,10 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
           setError(t('chat.noResponseError'));
           setSending(false);
           setStreamText(null);
+          setToolActivity(null);
           activeRunIdRef.current = null;
         }
-      }, 60_000);
+      }, 120_000);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('chat.failedToSend'));
       setSending(false);
@@ -590,11 +616,19 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
               type="text"
               value={sessionModel}
               onChange={e => setSessionModel(e.target.value)}
-              placeholder={t('chat.sessionSettings.modelPlaceholder')}
+              placeholder={modelsLoading ? t('common.loading') : t('chat.sessionSettings.modelPlaceholder')}
               list="model-suggestions"
             />
             <datalist id="model-suggestions">
-              {allModelSuggestions.map(m => <option key={m} value={m} />)}
+              {[...gatewayModels]
+                .sort((a, b) => (a.usable === b.usable ? 0 : a.usable ? -1 : 1))
+                .map(m => (
+                  <option
+                    key={m.id}
+                    value={m.id}
+                    label={m.provider ? `${m.name} · ${m.provider}${m.usable ? '' : ' (no key)'}` : m.name}
+                  />
+                ))}
             </datalist>
           </div>
           <div className="chat-settings-field">
@@ -652,6 +686,7 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
           <div className="chat-message agent">
             <div className="chat-message-content">
               <span className="spinner" />
+              {toolActivity && <span className="tool-activity">{toolActivity}</span>}
             </div>
           </div>
         )}

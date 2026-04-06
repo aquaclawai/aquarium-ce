@@ -56,6 +56,7 @@
       "created": "creato",
       "starting": "in avvio",
       "running": "in esecuzione",
+      "restarting": "riavvio",
       "stopping": "in arresto",
       "stopped": "arrestato",
       "error": "errore",
@@ -194,7 +195,8 @@
       "settings": "Impostazioni",
       "files": "File",
       "security": "Sicurezza",
-      "more": "Altro"
+      "more": "Altro",
+      "extensions": "Estensioni"
     },
     "overview": {
       "title": "Dettagli istanza",
@@ -1080,5 +1082,203 @@
       "file": "File"
     },
     "previewNotAvailable": "Anteprima non disponibile per questo tipo di file. Usa il pulsante Scarica."
+  },
+  "extensions": {
+    "title": "Estensioni",
+    "subTabs": {
+      "plugins": "Plugin",
+      "skills": "Competenze"
+    },
+    "sections": {
+      "installed": "Installate",
+      "available": "Disponibili",
+      "gatewayBuiltins": "Integrate nel gateway"
+    },
+    "status": {
+      "active": "Attivo",
+      "installed": "Installato",
+      "pending": "In attesa",
+      "disabled": "Disabilitato",
+      "degraded": "Degradato",
+      "failed": "Fallito"
+    },
+    "actions": {
+      "install": "Installa",
+      "installing": "Installazione...",
+      "uninstall": "Disinstalla",
+      "enable": "Abilita",
+      "disable": "Disabilita",
+      "configure": "Configura",
+      "refresh": "Aggiorna",
+      "activate": "Attiva",
+      "activating": "Attivazione..."
+    },
+    "catalog": {
+      "startInstance": "Avvia l'istanza per sfogliare le estensioni disponibili",
+      "noResults": "Nessuna estensione disponibile",
+      "requiresCredentials": "Richiede chiave API",
+      "bundled": "Incluso",
+      "clawhub": "ClawHub",
+      "requires": "Richiede",
+      "searchPlaceholder": "Cerca estensioni...",
+      "allCategories": "Tutte le categorie",
+      "capabilities": "Funzionalità",
+      "loadMore": "Carica altro",
+      "clawhubUnavailable": "Avvia l'istanza per sfogliare il marketplace"
+    },
+    "trust": {
+      "bundled": "Incluso",
+      "verified": "Verificato",
+      "unverified": "Non verificato",
+      "scanned": "Scansionato",
+      "scanFailed": "Scansione fallita",
+      "downloads": "{{count}} download",
+      "age": "{{days}}g su ClawHub",
+      "blockedCommunity": "Bloccato -- estensione community",
+      "blockedUnscanned": "Bloccato -- scansione di sicurezza fallita",
+      "override": "Ignora",
+      "credentialAccessWarning": "Questa estensione community viene eseguita nel processo del gateway e avrà accesso a tutte le credenziali di questa istanza, incluse le chiavi API delle altre estensioni. Approva solo se ti fidi dell'editore e hai esaminato il codice sorgente.",
+      "acknowledgeCheckbox": "Riconosco il rischio di accesso alle credenziali",
+      "reasonPlaceholder": "Perché stai approvando questa estensione?",
+      "approveOverride": "Approva",
+      "overrideSuccess": "Override di attendibilità concesso",
+      "trustSummary": "Attendibilità",
+      "auditTrail": "Approvato dall'amministratore {{userId}} il {{date}}: {{reason}}"
+    },
+    "version": {
+      "pinned": "Versione: {{version}} (bloccata)",
+      "integrity": "Integrità: {{hash}}",
+      "integrityUnavailable": "Integrità: non disponibile",
+      "checkForUpdates": "Controlla aggiornamenti",
+      "checking": "Verifica in corso...",
+      "upToDate": "Aggiornato",
+      "upgradeAvailable": "v{{current}} -> v{{latest}}",
+      "upgrade": "Aggiorna",
+      "upgrading": "Aggiornamento in corso...",
+      "upgradeSuccess": "Aggiornato a v{{version}}",
+      "restartRequired": "Riavvio del gateway necessario",
+      "upgradeFailed": "Aggiornamento non riuscito",
+      "cachedLocally": "Artefatto memorizzato nella cache locale"
+    },
+    "empty": {
+      "noInstalled": "Nessuna competenza installata",
+      "noBuiltins": "Nessuna competenza integrata nel gateway",
+      "noPlugins": "Nessun plugin installato",
+      "noPluginBuiltins": "Nessun plugin integrato nel gateway"
+    },
+    "confirm": {
+      "uninstall": "Sei sicuro di voler disinstallare questa competenza?",
+      "uninstallTitle": "Disinstalla competenza",
+      "uninstallPlugin": "Sei sicuro di voler disinstallare questo plugin?"
+    },
+    "errors": {
+      "fetchFailed": "Impossibile caricare le estensioni",
+      "installFailed": "Impossibile installare la competenza",
+      "toggleFailed": "Impossibile aggiornare la competenza",
+      "uninstallFailed": "Impossibile disinstallare la competenza",
+      "conflict": "Un'altra operazione di estensione è in corso",
+      "pluginInstallFailed": "Impossibile installare il plugin",
+      "pluginToggleFailed": "Impossibile aggiornare il plugin",
+      "pluginUninstallFailed": "Impossibile disinstallare il plugin",
+      "pluginActivateFailed": "Impossibile attivare il plugin",
+      "installPluginFailed": "Impossibile installare il plugin",
+      "activateFailed": "Impossibile attivare il plugin",
+      "togglePluginFailed": "Impossibile aggiornare il plugin",
+      "uninstallPluginFailed": "Impossibile disinstallare il plugin"
+    },
+    "plugins": {
+      "comingSoon": "La gestione dei plugin arriverà nella fase 2",
+      "requiresRestart": "L'installazione di questo plugin richiederà il riavvio del gateway.",
+      "activating": "Attivazione...",
+      "activate": "Attiva",
+      "retryActivation": "Riprova attivazione"
+    },
+    "confirmRestart": {
+      "title": "Conferma attivazione",
+      "message": "Questo riavvierà il gateway. Le conversazioni attive potrebbero essere interrotte. Continuare?",
+      "cancel": "Annulla",
+      "confirm": "Attiva"
+    },
+    "installDialog": {
+      "title": "Installa {{name}}",
+      "source": "Fonte",
+      "version": "Versione",
+      "requiredCredentials": "Credenziali richieste",
+      "noCredentials": "Nessuna credenziale richiesta",
+      "restartWarning": "Questo riavvierà il gateway. Le conversazioni attive potrebbero essere interrotte.",
+      "cancel": "Annulla",
+      "install": "Installa",
+      "installing": "Installazione..."
+    },
+    "restart": {
+      "banner": "Gateway in riavvio per {{name}}...",
+      "actionsDisabled": "Tutte le azioni plugin sono disabilitate durante il riavvio."
+    },
+    "rollback": {
+      "title": "Attivazione non riuscita",
+      "message": "Il gateway non è riuscito ad avviarsi con il plugin \"{{name}}\". È stato ripristinato alla configurazione precedente.",
+      "showDetails": "Mostra dettagli tecnici",
+      "hideDetails": "Nascondi dettagli tecnici",
+      "close": "Chiudi",
+      "retry": "Riprova attivazione"
+    },
+    "oauth": {
+      "connectWith": "Connetti con {{provider}}",
+      "connecting": "Connessione in corso...",
+      "connected": "{{provider}} autenticato",
+      "failed": "Autorizzazione fallita",
+      "tryAgain": "Riprova",
+      "requiresReAuth": "Questa estensione richiede una nuova autenticazione. Connetti il tuo account per attivarla.",
+      "popupBlocked": "Il popup è stato bloccato. Consenti i popup per questo sito.",
+      "callbackError": "Il callback OAuth è fallito. Riprova."
+    },
+    "vault": {
+      "title": "Integrazione vault",
+      "configure": "Configura vault",
+      "edit": "Modifica",
+      "remove": "Rimuovi vault",
+      "removeConfirm": "Rimuovere la configurazione del vault? Le credenziali backed dal vault smetteranno di risolversi.",
+      "type": "Tipo di vault",
+      "onepassword": "1Password CLI (op)",
+      "hashicorp": "HashiCorp Vault",
+      "address": "Indirizzo vault",
+      "addressPlaceholder": "https://vault.example.com:8200",
+      "namespace": "Namespace",
+      "namespacePlaceholder": "admin",
+      "authMethod": "Metodo di autenticazione",
+      "authToken": "Token",
+      "authAppRole": "AppRole",
+      "authCli": "Accesso CLI",
+      "mountPath": "Percorso di montaggio",
+      "mountPathPlaceholder": "secret",
+      "save": "Salva configurazione vault",
+      "saving": "Salvataggio...",
+      "saved": "Vault configurato",
+      "removed": "Configurazione vault rimossa",
+      "opNote": "Assicurati che il CLI op sia disponibile nel container del gateway.",
+      "vaultNote": "Assicurati che il CLI vault sia disponibile nel container del gateway."
+    },
+    "credentials": {
+      "title": "Configura credenziali",
+      "requiresCredentials": "Questa competenza richiede credenziali per attivarsi.",
+      "fieldLabel": "Campo credenziale",
+      "valueLabel": "Chiave API / Valore",
+      "save": "Salva credenziale",
+      "saving": "Salvataggio...",
+      "saved": "Credenziale salvata con successo",
+      "saveFailed": "Impossibile salvare la credenziale",
+      "source": "Fonte delle credenziali",
+      "sourceDirect": "Valore diretto",
+      "sourceVault": "Dal vault",
+      "vaultPath": "Percorso vault",
+      "vaultPathPlaceholderOp": "op://vault/item/field",
+      "vaultPathPlaceholderHc": "secret/data/myapp/api-key"
+    },
+    "alerts": {
+      "failed": "{{name}} non riuscito: {{error}}",
+      "degraded": "{{name}} è degradato — potrebbe essere ancora in esecuzione dalla cache",
+      "retry": "Riprova",
+      "integrityMismatch": "Mancata corrispondenza dell'integrità rilevata"
+    }
   }
 }

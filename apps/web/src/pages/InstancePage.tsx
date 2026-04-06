@@ -1,5 +1,7 @@
+import './InstancePage.css';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Button } from '@/components/ui';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { useWebSocket } from '../context/WebSocketContext';
@@ -18,10 +20,16 @@ import type { ExecApprovalItem } from '../components/ExecApprovalDialog';
 import { SecurityTimeline } from '../components/SecurityTimeline';
 import { SecurityStatusBadge } from '../components/SecurityStatusBadge';
 import { ChatTab } from '../components/chat/ChatTab';
+import { ExtensionsTab } from '../components/extensions/ExtensionsTab';
+import { VaultConfigSection } from '../components/extensions/VaultConfigSection';
+import { ChannelsTab } from '../components/channels/ChannelsTab';
+import { CronTab } from '../components/CronTab';
+import { PageHeaderSkeleton, TabsSkeleton } from '@/components/skeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 
-type TabId = 'overview' | 'ai' | 'chat' | 'agent-management' | 'usage' | 'files' | 'logs' | 'events' | 'snapshots' | 'security';
+type TabId = 'overview' | 'ai' | 'chat' | 'channels' | 'extensions' | 'agent-management' | 'usage' | 'files' | 'logs' | 'events' | 'snapshots' | 'security' | 'cron';
 
-const ADVANCED_TABS: ReadonlySet<TabId> = new Set(['agent-management', 'snapshots', 'security', 'logs', 'events']);
+const ADVANCED_TABS: ReadonlySet<TabId> = new Set(['agent-management', 'snapshots', 'security', 'logs', 'events', 'cron']);
 
 const ADVANCED_TAB_KEYS: Record<string, string> = {
   'agent-management': 'instance.tabs.agentManagement',
@@ -29,6 +37,7 @@ const ADVANCED_TAB_KEYS: Record<string, string> = {
   'security': 'instance.tabs.security',
   'logs': 'instance.tabs.logs',
   'events': 'instance.tabs.events',
+  'cron': 'instance.tabs.cron',
 };
 
 export function InstancePage() {
@@ -212,7 +221,13 @@ export function InstancePage() {
     }
   };
 
-  if (loading) return <div className="instance-page">{t('instance.loading')}</div>;
+  if (loading) return (
+    <div className="instance-page">
+      <PageHeaderSkeleton showAction={false} />
+      <TabsSkeleton count={6} />
+      <Skeleton className="h-96 w-full rounded-lg" />
+    </div>
+  );
   if (!instance) return <div className="instance-page">{t('instance.notFound')}</div>;
 
   const isTransitioning = instance.status === 'starting' || instance.status === 'stopping';
@@ -243,42 +258,53 @@ export function InstancePage() {
       </div>
 
       <div className="tabs">
-        <button className={activeTab === 'chat' ? 'active' : ''} onClick={() => setActiveTab('chat')}>{t('instance.tabs.chat')}</button>
-        <button className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>{t('instance.tabs.overview')}</button>
-        <button className={activeTab === 'ai' ? 'active' : ''} onClick={() => setActiveTab('ai')}>AI</button>
-        <button className={activeTab === 'usage' ? 'active' : ''} onClick={() => setActiveTab('usage')}>{t('instance.tabs.usage')}</button>
-        <button className={activeTab === 'files' ? 'active' : ''} onClick={() => setActiveTab('files')}>{t('instance.tabs.files')}</button>
+        <Button variant="ghost" className={activeTab === 'chat' ? 'active' : ''} onClick={() => setActiveTab('chat')}>{t('instance.tabs.chat')}</Button>
+        <Button variant="ghost" className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>{t('instance.tabs.overview')}</Button>
+        <Button variant="ghost" className={activeTab === 'channels' ? 'active' : ''} onClick={() => setActiveTab('channels')}>{t('instance.tabs.channels', 'Channels')}</Button>
+        <Button variant="ghost" className={activeTab === 'extensions' ? 'active' : ''} onClick={() => setActiveTab('extensions')}>{t('instance.tabs.extensions')}</Button>
+        <Button variant="ghost" className={activeTab === 'ai' ? 'active' : ''} onClick={() => setActiveTab('ai')}>AI</Button>
+        <Button variant="ghost" className={activeTab === 'usage' ? 'active' : ''} onClick={() => setActiveTab('usage')}>{t('instance.tabs.usage')}</Button>
+        <Button variant="ghost" className={activeTab === 'files' ? 'active' : ''} onClick={() => setActiveTab('files')}>{t('instance.tabs.files')}</Button>
         {ADVANCED_TABS.has(activeTab) && (
-          <button className="active" onClick={() => setActiveTab(activeTab)}>
+          <Button variant="ghost" className="active" onClick={() => setActiveTab(activeTab)}>
             {t(ADVANCED_TAB_KEYS[activeTab])}
-          </button>
+          </Button>
         )}
         <div className="tabs-more" ref={moreRef}>
-          <button className={moreOpen ? 'active' : ''} onClick={() => setMoreOpen(prev => !prev)}>
-            {t('instance.tabs.more')} ▾
-          </button>
+          <Button variant="outline" size="sm" className={`tabs-more__trigger${moreOpen ? ' active' : ''}`} onClick={() => setMoreOpen(prev => !prev)}>
+            {t('instance.tabs.advanced', 'Advanced')} ▾
+          </Button>
           {moreOpen && (
             <div className="tabs-more-menu">
-              <button onClick={() => { setActiveTab('agent-management'); setMoreOpen(false); }}>{t('instance.tabs.agentManagement')}</button>
-              <button onClick={() => { setActiveTab('snapshots'); setMoreOpen(false); }}>{t('instance.tabs.snapshots')}</button>
-              <button onClick={() => { setActiveTab('security'); setMoreOpen(false); }}>{t('instance.tabs.security')}</button>
-              <button onClick={() => { setActiveTab('logs'); setMoreOpen(false); }}>{t('instance.tabs.logs')}</button>
-              <button onClick={() => { setActiveTab('events'); setMoreOpen(false); }}>{t('instance.tabs.events')}</button>
+              <Button variant="ghost" onClick={() => { setActiveTab('agent-management'); setMoreOpen(false); }}>{t('instance.tabs.agentManagement')}</Button>
+              <Button variant="ghost" onClick={() => { setActiveTab('snapshots'); setMoreOpen(false); }}>{t('instance.tabs.snapshots')}</Button>
+              <Button variant="ghost" onClick={() => { setActiveTab('security'); setMoreOpen(false); }}>{t('instance.tabs.security')}</Button>
+              <Button variant="ghost" onClick={() => { setActiveTab('logs'); setMoreOpen(false); }}>{t('instance.tabs.logs')}</Button>
+              <Button variant="ghost" onClick={() => { setActiveTab('events'); setMoreOpen(false); }}>{t('instance.tabs.events')}</Button>
+              <Button variant="ghost" onClick={() => { setActiveTab('cron'); setMoreOpen(false); }}>{t('instance.tabs.cron', 'Scheduled Tasks')}</Button>
             </div>
           )}
         </div>
       </div>
 
       <div className="tab-content">
-        {activeTab === 'overview' && <OverviewTab instance={instance} onInstanceUpdate={fetchInstance} onLifecycle={handleLifecycle} actionInProgress={actionInProgress} onClone={handleClone} cloning={cloning} />}
+        {activeTab === 'overview' && (
+          <>
+            <OverviewTab instance={instance} onInstanceUpdate={fetchInstance} onLifecycle={handleLifecycle} actionInProgress={actionInProgress} onClone={handleClone} cloning={cloning} />
+            <VaultConfigSection instanceId={instance.id} disabled={instance.status === 'starting' || instance.status === 'stopping'} />
+          </>
+        )}
         {activeTab === 'ai' && <AITab instance={instance} agentType={agentTypes.find(a => a.id === instance.agentType) ?? null} onInstanceUpdate={fetchInstance} />}
         {activeTab === 'chat' && <ChatTab instanceId={instance.id} instanceStatus={instance.status} />}
+        {activeTab === 'channels' && <ChannelsTab instanceId={instance.id} instanceStatus={instance.status} />}
+        {activeTab === 'extensions' && <ExtensionsTab instanceId={instance.id} instanceStatus={instance.status} />}
         {activeTab === 'agent-management' && <AgentUIFrame instance={instance} agentType={agentTypes.find(a => a.id === instance.agentType) ?? null} />}
         {activeTab === 'usage' && <UsageTab instanceId={instance.id} instanceStatus={instance.status} billingMode={instance.billingMode} />}
         {activeTab === 'files' && <FilesTab instanceId={instance.id} instanceStatus={instance.status} />}
         {activeTab === 'logs' && <LogsTab instanceId={instance.id} instanceStatus={instance.status} />}
         {activeTab === 'events' && <EventsTab instanceId={instance.id} />}
         {activeTab === 'snapshots' && <SnapshotsTab instanceId={instance.id} instanceStatus={instance.status} />}
+        {activeTab === 'cron' && <CronTab instanceId={instance.id} instanceStatus={instance.status} />}
         {activeTab === 'security' && (
           <div className="security-tab">
             <SecurityTimeline instanceId={instance.id} />

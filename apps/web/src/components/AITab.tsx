@@ -10,6 +10,9 @@ import type {
   CredentialRequirement,
   AgentTypeInfo,
 } from '@aquarium/shared';
+import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui';
+import { CardSkeleton } from '@/components/skeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // ─── Types ───────────────────────────────────────────────
 
@@ -125,13 +128,6 @@ export function AITab({ instance, agentType, onInstanceUpdate }: AITabProps) {
 
   return (
     <div className="details-tab">
-      {/* Section 1: Provider Mode */}
-      <ProviderModeSection
-        instanceId={instance.id}
-        isPlatform={isPlatform}
-        instanceStatus={instance.status}
-        onInstanceUpdate={onInstanceUpdate}
-      />
 
       {/* Section 2: Model Selection */}
       <ModelSection
@@ -148,7 +144,8 @@ export function AITab({ instance, agentType, onInstanceUpdate }: AITabProps) {
 }
 
 // ─── Section 1: Provider Mode (switchable, requires restart) ─
-
+// EE-only component — CE always uses BYOK, so this is unused in CE builds.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function ProviderModeSection({
   instanceId,
   isPlatform,
@@ -264,13 +261,13 @@ function ProviderModeSection({
           </p>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             {canRestart && (
-              <button onClick={handleRestart} disabled={restarting}>
+              <Button onClick={handleRestart} disabled={restarting}>
                 {restarting ? t('aiTab.providerMode.switching') : t('aiTab.providerMode.restartNow')}
-              </button>
+              </Button>
             )}
-            <button className="btn-secondary" onClick={() => setPendingRestart(false)}>
+            <Button variant="secondary" onClick={() => setPendingRestart(false)}>
               {t('aiTab.providerMode.restartLater')}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -281,29 +278,29 @@ function ProviderModeSection({
         </p>
       )}
 
-      {/* Confirm switch modal */}
-      {confirmTarget !== null && (
-        <div className="modal-overlay" onClick={() => setConfirmTarget(null)}>
-          <div className="modal" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
-            <h3 style={{ margin: '0 0 0.75rem 0' }}>{t('aiTab.providerMode.confirmTitle')}</h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '0 0 1.25rem 0', lineHeight: 1.6 }}>
+      {/* Confirm switch dialog */}
+      <Dialog open={confirmTarget !== null} onOpenChange={(open) => { if (!open) setConfirmTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('aiTab.providerMode.confirmTitle')}</DialogTitle>
+            <DialogDescription>
               {t('aiTab.providerMode.switchConfirm', {
                 mode: confirmTarget
                   ? t('aiTab.providerMode.platformTitle')
                   : t('aiTab.providerMode.byokTitle'),
               })}
-            </p>
-            <div className="modal-actions">
-              <button type="button" className="btn-secondary" onClick={() => setConfirmTarget(null)}>
-                {t('aiTab.providerMode.confirmCancel')}
-              </button>
-              <button type="button" onClick={executeSwitch}>
-                {t('aiTab.providerMode.confirmOk')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setConfirmTarget(null)}>
+              {t('aiTab.providerMode.confirmCancel')}
+            </Button>
+            <Button onClick={executeSwitch}>
+              {t('aiTab.providerMode.confirmOk')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -505,8 +502,7 @@ function ModelSection({
               style={radioCardStyle(modelMode === 'auto')}
               onClick={() => { setModelMode('auto'); setMessage(null); }}
             >
-              <input
-                type="radio"
+              <input type="radio"
                 checked={modelMode === 'auto'}
                 onChange={() => setModelMode('auto')}
                 style={{ marginTop: '2px' }}
@@ -535,8 +531,7 @@ function ModelSection({
                 setMessage(null);
               }}
             >
-              <input
-                type="radio"
+              <input type="radio"
                 checked={modelMode === 'specific'}
                 onChange={() => setModelMode('specific')}
                 style={{ marginTop: '2px' }}
@@ -551,7 +546,7 @@ function ModelSection({
                     {dynamicModels.length > 0 ? (
                       <>
                         {dynamicModels.length > 10 && (
-                          <input
+                          <Input
                             className="wiz-input wiz-model-search"
                             type="text"
                             placeholder={t('wizard.confirm.modelSearchPlaceholder')}
@@ -567,27 +562,29 @@ function ModelSection({
                                 <div className="wiz-model-group__label">{provider}</div>
                               )}
                               {models.map(m => (
-                                <button
+                                <Button
                                   key={m.id}
                                   type="button"
+                                  variant="ghost"
                                   className={`wiz-model-item${selectedModel === m.id ? ' wiz-model-item--active' : ''}`}
                                   onClick={e => { e.stopPropagation(); setSelectedModel(m.id); setMessage(null); }}
                                 >
                                   <span className="wiz-model-item__name">{m.name || formatModelDisplayName(m.id)}</span>
                                   <span className="wiz-model-item__id">{formatModelDisplayName(m.id)}</span>
                                   {m.recommended && <span className="wiz-model-item__badge">{t('wizard.confirm.modelRecommended')}</span>}
-                                </button>
+                                </Button>
                               ))}
                             </div>
                           ))}
                         </div>
                       </>
                     ) : modelsLoading ? (
-                      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', padding: '0.5rem 0' }}>
-                        {t('wizard.confirm.modelsLoading', 'Loading models...')}
+                      <div style={{ padding: '0.5rem 0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <Skeleton className="h-4 w-48" />
+                        <Skeleton className="h-4 w-32" />
                       </div>
                     ) : (
-                      <input
+                      <Input
                         type="text"
                         value={selectedModel}
                         onChange={e => { setSelectedModel(e.target.value); setMessage(null); }}
@@ -606,104 +603,171 @@ function ModelSection({
         <>
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>{t('aiTab.model.providerLabel')}</label>
-            <select
-              value={selectedProvider}
-              onChange={e => handleProviderChange(e.target.value)}
-              style={selectStyle}
-            >
-              {!providers.some(p => p.name === selectedProvider) && (
-                <option value={selectedProvider}>{getProviderDisplayName(selectedProvider, t)}</option>
-              )}
-              {providers.map(p => (
-                <option key={p.name} value={p.name}>{p.displayName} ({p.models.length} models)</option>
-              ))}
-            </select>
+            <Select value={selectedProvider} onValueChange={handleProviderChange}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {!providers.some(p => p.name === selectedProvider) && (
+                  <SelectItem value={selectedProvider}>{getProviderDisplayName(selectedProvider, t)}</SelectItem>
+                )}
+                {providers.map(p => (
+                  <SelectItem key={p.name} value={p.name}>{p.displayName} ({p.models.length} models)</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          {selectedProvider && (
-            <div style={{
-              marginBottom: '1rem',
-              padding: '1rem',
-              borderRadius: '8px',
-              border: '1px solid var(--border)',
-              background: existingByokCred ? 'var(--color-primary-bg, rgba(99, 102, 241, 0.05))' : 'transparent',
-            }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>
-                {t('aiTab.byokCredential.label')}
-              </label>
-              {existingByokCred ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', flex: 1 }}>
-                    {t('aiTab.byokCredential.configured', {
-                      date: new Date(existingByokCred.createdAt).toLocaleDateString(),
-                    })}
-                  </span>
-                  <button
-                    className="btn-secondary"
-                    style={{ fontSize: '0.8rem', padding: '0.25rem 0.6rem' }}
-                    onClick={handleByokCredDelete}
+          {selectedProvider && (() => {
+            const providerDef = AI_PROVIDERS.find(p => p.value === selectedProvider);
+            const hasOAuth = providerDef?.authModes.includes('oauth') ?? false;
+            const hasApiKey = providerDef?.authModes.includes('api_key') ?? true;
+            const oauthCred = byokCredentials.find(c => c.provider === selectedProvider && c.credentialType === 'oauth_token');
+            const isOAuthConnected = !!oauthCred;
+
+            return (
+              <div style={{
+                marginBottom: '1rem',
+                padding: '1rem',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                background: (existingByokCred || isOAuthConnected) ? 'var(--color-primary-bg, rgba(99, 102, 241, 0.05))' : 'transparent',
+              }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>
+                  {t('aiTab.byokCredential.label')}
+                </label>
+
+                {/* OAuth option */}
+                {hasOAuth && (
+                  <div style={{ marginBottom: hasApiKey ? '0.75rem' : 0 }}>
+                    {isOAuthConnected ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0' }}>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--color-success, #059669)', fontWeight: 500 }}>
+                          ✓ {t('aiTab.byokCredential.oauthConnected', 'OAuth connected')}
+                        </span>
+                        <Button variant="secondary" size="sm" onClick={async () => {
+                          if (!oauthCred) return;
+                          try {
+                            await api.delete(`/instances/${instance.id}/credentials/${oauthCred.id}`);
+                            fetchByokCredentials();
+                          } catch { /* ignore */ }
+                        }}>
+                          {t('aiTab.byokCredential.disconnectButton', 'Disconnect')}
+                        </Button>
+                      </div>
+                    ) : (
+                      <div>
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            if (providerDef?.oauthFlow === 'device_code' && selectedProvider === 'openai') {
+                              // Navigate to Overview tab which has the full OpenAI device-code flow
+                              // Or trigger it inline — for now, link to the Overview tab
+                              window.open(`/instances/${instance.id}#oauth-openai`, '_self');
+                            } else if (providerDef?.oauthFlow === 'device_code' && selectedProvider === 'github-copilot') {
+                              window.open(`/instances/${instance.id}#oauth-github`, '_self');
+                            }
+                          }}
+                          style={{ width: '100%', justifyContent: 'center' }}
+                        >
+                          {t('aiTab.byokCredential.oauthButton', `Sign in with ${providerDef?.label ?? selectedProvider}`)}
+                        </Button>
+                        <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', margin: '0.25rem 0 0 0' }}>
+                          {providerDef?.oauthFlow === 'device_code'
+                            ? t('aiTab.byokCredential.oauthDeviceHint', 'Uses device code flow — opens a new page to authenticate.')
+                            : t('aiTab.byokCredential.oauthHint', 'Opens a popup to authenticate.')}
+                        </p>
+                      </div>
+                    )}
+                    {hasApiKey && !isOAuthConnected && (
+                      <div style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-tertiary)', margin: '0.5rem 0' }}>
+                        {t('aiTab.byokCredential.orDivider', '— or use API key —')}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* API key option */}
+                {hasApiKey && (
+                  <>
+                    {existingByokCred ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', flex: 1 }}>
+                          {t('aiTab.byokCredential.configured', {
+                            date: new Date(existingByokCred.createdAt).toLocaleDateString(),
+                          })}
+                        </span>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={handleByokCredDelete}
+                        >
+                          {t('aiTab.byokCredential.deleteButton')}
+                        </Button>
+                      </div>
+                    ) : !isOAuthConnected ? (
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', margin: '0 0 0.5rem 0' }}>
+                        {t('aiTab.byokCredential.hint')}
+                      </p>
+                    ) : null}
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: existingByokCred ? '0.5rem' : 0 }}>
+                      <Input
+                        type="password"
+                        value={byokApiKey}
+                        onChange={e => { setByokApiKey(e.target.value); setByokCredMessage(null); }}
+                        placeholder={existingByokCred
+                          ? t('aiTab.byokCredential.updatePlaceholder')
+                          : t('aiTab.byokCredential.placeholder')}
+                        style={{ flex: 1 }}
+                      />
+                      <Button
+                        onClick={handleByokCredSave}
+                        disabled={!byokApiKey.trim() || byokCredSaving}
+                        style={{ whiteSpace: 'nowrap' }}
+                      >
+                        {byokCredSaving
+                          ? t('aiTab.save.saving')
+                          : existingByokCred
+                            ? t('aiTab.byokCredential.updateButton')
+                            : t('aiTab.byokCredential.saveButton')}
+                      </Button>
+                    </div>
+                  </>
+                )}
+
+                {byokCredMessage && (
+                  <div
+                    className={byokCredMessage.type === 'success' ? 'success-message' : 'error-message'}
+                    role="alert"
+                    style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}
                   >
-                    {t('aiTab.byokCredential.deleteButton')}
-                  </button>
-                </div>
-              ) : (
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', margin: '0 0 0.5rem 0' }}>
-                  {t('aiTab.byokCredential.hint')}
-                </p>
-              )}
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: existingByokCred ? '0.5rem' : 0 }}>
-                <input
-                  type="password"
-                  value={byokApiKey}
-                  onChange={e => { setByokApiKey(e.target.value); setByokCredMessage(null); }}
-                  placeholder={existingByokCred
-                    ? t('aiTab.byokCredential.updatePlaceholder')
-                    : t('aiTab.byokCredential.placeholder')}
-                  style={{ ...selectStyle, flex: 1 }}
-                />
-                <button
-                  onClick={handleByokCredSave}
-                  disabled={!byokApiKey.trim() || byokCredSaving}
-                  style={{ whiteSpace: 'nowrap' }}
-                >
-                  {byokCredSaving
-                    ? t('aiTab.save.saving')
-                    : existingByokCred
-                      ? t('aiTab.byokCredential.updateButton')
-                      : t('aiTab.byokCredential.saveButton')}
-                </button>
+                    {byokCredMessage.text}
+                  </div>
+                )}
               </div>
-              {byokCredMessage && (
-                <div
-                  className={byokCredMessage.type === 'success' ? 'success-message' : 'error-message'}
-                  role="alert"
-                  style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}
-                >
-                  {byokCredMessage.text}
-                </div>
-              )}
-            </div>
-          )}
+            );
+          })()}
 
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>{t('aiTab.model.modelLabel')}</label>
             {byokModels.length > 0 ? (
               <div className="wiz-model-list">
                 {byokModels.map(m => (
-                  <button
+                  <Button
                     key={m.id}
                     type="button"
+                    variant="ghost"
                     className={`wiz-model-item${selectedModel === m.id ? ' wiz-model-item--active' : ''}`}
                     onClick={() => { setSelectedModel(m.id); setMessage(null); }}
                   >
                     <span className="wiz-model-item__name">{m.displayName || formatModelDisplayName(m.id)}</span>
                     <span className="wiz-model-item__id">{formatModelDisplayName(m.id)}</span>
                     {m.isDefault && <span className="wiz-model-item__badge">{t('aiTab.model.defaultSuffix')}</span>}
-                  </button>
+                  </Button>
                 ))}
               </div>
             ) : (
-              <input
+              <Input
                 type="text"
                 value={selectedModel}
                 onChange={e => { setSelectedModel(e.target.value); setMessage(null); }}
@@ -721,9 +785,9 @@ function ModelSection({
         </div>
       )}
 
-      <button onClick={handleSave} disabled={!hasChanges || saving} style={{ marginTop: '1rem' }}>
+      <Button onClick={handleSave} disabled={!hasChanges || saving} style={{ marginTop: '1rem' }}>
         {saving ? t('aiTab.save.saving') : t('aiTab.save.button')}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -902,7 +966,7 @@ function ToolCredentialsSection({ instanceId }: { instanceId: string }) {
     ? Object.entries(templateReqs.credentialStatus).filter(([, status]) => status === 'missing')
     : [];
 
-  if (loading) return <div style={sectionStyle}><p>{t('aiTab.toolCredentials.loading')}</p></div>;
+  if (loading) return <div style={sectionStyle}><CardSkeleton lines={4} /></div>;
 
   return (
     <div style={sectionStyle}>
@@ -953,8 +1017,7 @@ function ToolCredentialsSection({ instanceId }: { instanceId: string }) {
 
           <div style={radioGroupStyle}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-              <input
-                type="radio"
+              <input type="radio"
                 name="geo-cred-mode"
                 checked={geoCredentialMode === 'oauth'}
                 onChange={() => setGeoCredentialMode('oauth')}
@@ -967,8 +1030,7 @@ function ToolCredentialsSection({ instanceId }: { instanceId: string }) {
               </div>
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-              <input
-                type="radio"
+              <input type="radio"
                 name="geo-cred-mode"
                 checked={geoCredentialMode === 'apikey'}
                 onChange={() => setGeoCredentialMode('apikey')}
@@ -984,21 +1046,21 @@ function ToolCredentialsSection({ instanceId }: { instanceId: string }) {
 
           <div style={{ marginTop: '1rem' }}>
             {geoCredentialMode === 'oauth' ? (
-              <button onClick={handleSalevoiceOAuth} disabled={geoConnecting}>
+              <Button onClick={handleSalevoiceOAuth} disabled={geoConnecting}>
                 {geoConnecting ? t('aiTab.toolCredentials.salevoice.connecting') : t('aiTab.toolCredentials.salevoice.connectButton')}
-              </button>
+              </Button>
             ) : (
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input
+                <Input
                   type="password"
                   value={geoApiKey}
                   onChange={e => setGeoApiKey(e.target.value)}
                   placeholder={t('aiTab.toolCredentials.salevoice.apiKeyPlaceholder')}
                   style={{ flex: 1 }}
                 />
-                <button onClick={handleSaveGeoApiKey} disabled={geoConnecting || !geoApiKey.trim()}>
+                <Button onClick={handleSaveGeoApiKey} disabled={geoConnecting || !geoApiKey.trim()}>
                   {geoConnecting ? t('aiTab.toolCredentials.salevoice.connecting') : t('aiTab.toolCredentials.salevoice.saveButton')}
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -1028,7 +1090,7 @@ function ToolCredentialsSection({ instanceId }: { instanceId: string }) {
               <div className="provider-card-header">
                 <strong>{cred.provider}</strong>
                 <div className="provider-card-actions">
-                   <button className="danger" onClick={() => handleDelete(cred.id)}>{t('aiTab.toolCredentials.deleteButton')}</button>
+                   <Button variant="destructive" size="sm" onClick={() => handleDelete(cred.id)}>{t('aiTab.toolCredentials.deleteButton')}</Button>
                 </div>
               </div>
               <div className="provider-card-details">
@@ -1072,7 +1134,7 @@ function ToolCredentialsSection({ instanceId }: { instanceId: string }) {
           {provider === OTHER_PROVIDER_VALUE && (
             <div className="form-group">
               <label htmlFor="tool-cred-custom">{t('aiTab.toolCredentials.providerName')}</label>
-              <input
+              <Input
                 type="text"
                 id="tool-cred-custom"
                 value={customProvider}
@@ -1087,7 +1149,7 @@ function ToolCredentialsSection({ instanceId }: { instanceId: string }) {
             <form onSubmit={handleAdd}>
               <div className="form-group">
                 <label htmlFor="tool-cred-value">{t('aiTab.toolCredentials.apiKeyLabel')}</label>
-                <input
+                <Input
                   type="password"
                   id="tool-cred-value"
                   value={value}
@@ -1097,17 +1159,17 @@ function ToolCredentialsSection({ instanceId }: { instanceId: string }) {
                 />
               </div>
               <div className="form-actions">
-                <button type="submit">{t('aiTab.toolCredentials.addButton')}</button>
+                <Button type="submit">{t('aiTab.toolCredentials.addButton')}</Button>
               </div>
             </form>
           )}
 
           <div className="form-actions">
-            <button type="button" className="btn-secondary" onClick={() => { setShowForm(false); setProvider(''); setCustomProvider(''); }}>{t('aiTab.toolCredentials.cancel')}</button>
+            <Button variant="secondary" type="button" onClick={() => { setShowForm(false); setProvider(''); setCustomProvider(''); }}>{t('aiTab.toolCredentials.cancel')}</Button>
           </div>
         </div>
       ) : (
-        <button onClick={() => setShowForm(true)}>{t('aiTab.toolCredentials.addButton')}</button>
+        <Button onClick={() => setShowForm(true)}>{t('aiTab.toolCredentials.addButton')}</Button>
       )}
     </div>
   );

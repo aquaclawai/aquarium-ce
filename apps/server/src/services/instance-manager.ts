@@ -21,6 +21,8 @@ import { buildCredentialIndex, clearCredentialIndex, buildWorkspaceContentIndex,
 import { preloadDlpConfig, evictDlpConfig } from './gateway-event-relay.js';
 import { scanContent } from './dlp-scanner.js';
 import { createNotification } from './notification-store.js';
+import { reconcileExtensions, replayPendingExtensions } from './extension-lifecycle.js';
+import { gatewayCall } from '../agent-types/openclaw/gateway-rpc.js';
 
 // ── helpers ──
 
@@ -64,7 +66,7 @@ function toInstance(row: Record<string, unknown>): Instance {
   };
 }
 
-async function updateStatus(id: string, status: InstanceStatus, extra: Record<string, unknown> = {}, statusMessage?: string): Promise<void> {
+export async function updateStatus(id: string, status: InstanceStatus, extra: Record<string, unknown> = {}, statusMessage?: string): Promise<void> {
   await db('instances').where({ id }).update({ status, status_message: statusMessage ?? null, updated_at: db.fn.now(), ...extra });
   broadcast(id, { type: 'instance:status', instanceId: id, payload: { status, statusMessage: statusMessage ?? null } });
 }
@@ -152,7 +154,7 @@ export async function createInstance(userId: string, req: CreateInstanceRequest)
       image_tag: imageTag,
       deployment_target: deploymentTarget,
       billing_mode: req.billingMode === 'byok' ? 'byok' : 'platform',
-      security_profile: req.securityProfile || 'standard',
+      security_profile: req.securityProfile || (config.isCE ? 'unrestricted' : 'standard'),
       auth_token: authToken,
       config: JSON.stringify(req.config || {}),
       avatar: req.avatar || null,
@@ -233,6 +235,120 @@ export async function syncWorkspaceFromContainer(instanceId: string): Promise<vo
   } catch (err) {
      console.error(`[syncWorkspace] Failed for ${instanceId}:`, err);
   }
+}
+
+/**
+ * Sync workspace files from gateway via RPC (agents.files.list + agents.files.get).
+ * Falls back to Docker exec (syncWorkspaceFromContainer) if gateway RPC fails.
+ * Gateway files are authoritative for running instances (gateway is source of truth).
+ */
+export async function syncWorkspaceViaGateway(instanceId: string): Promise<void> {
+  try {
+    const listResult = await gatewayCall(instanceId, 'agents.files.list', { agentId: 'main' }, 15_000) as {
+      files?: Array<{ name: string; path: string; missing: boolean }>;
+    };
+
+    const row = await db('instances').where({ id: instanceId }).first();
+    if (!row) return;
+
+    const currentConfig = typeof row.config === 'string'
+      ? JSON.parse(row.config) as Record<string, unknown>
+      : (row.config as Record<string, unknown> || {});
+    let changed = false;
+
+    // Build mapping from gateway file names to config keys
+    // Gateway returns names like "AGENTS.md", WORKSPACE_FILE_KEYS has filenames like "workspace/AGENTS.md"
+    const fileKeyMap = new Map<string, string>();
+    for (const wf of WORKSPACE_FILE_KEYS) {
+      // Extract just the filename part (e.g., "AGENTS.md" from "workspace/AGENTS.md")
+      const basename = wf.filename.split('/').pop()!;
+      fileKeyMap.set(basename, wf.key);
+      // Also map the full path in case gateway returns it
+      fileKeyMap.set(wf.filename, wf.key);
+    }
+
+    for (const file of listResult.files ?? []) {
+      if (file.missing) continue;
+
+      const configKey = fileKeyMap.get(file.name) ?? fileKeyMap.get(file.path);
+      if (!configKey) continue;
+
+      try {
+        const fileResult = await gatewayCall(instanceId, 'agents.files.get', {
+          agentId: 'main',
+          name: file.name,
+        }, 15_000) as { file?: { content?: string } };
+
+        if (fileResult?.file?.content !== undefined && fileResult.file.content !== currentConfig[configKey]) {
+          // Gateway wins -- overwrite DB with gateway's authoritative content
+          currentConfig[configKey] = fileResult.file.content;
+          changed = true;
+        }
+      } catch {
+        // Skip individual file errors
+      }
+    }
+
+    if (changed) {
+      await db('instances').where({ id: instanceId }).update({
+        config: JSON.stringify(currentConfig),
+        updated_at: db.fn.now(),
+      });
+    }
+  } catch (err) {
+    console.warn(`[syncWorkspaceViaGateway] RPC failed for ${instanceId}, falling back to container sync:`, err);
+    // Graceful degradation: fall back to Docker exec approach
+    await syncWorkspaceFromContainer(instanceId);
+  }
+}
+
+/**
+ * Full state reconciliation after gateway WebSocket reconnect.
+ * Runs: extension reconciliation + config hash sync + workspace file sync.
+ * Called from PersistentGatewayClient after every successful reconnect.
+ */
+export async function syncGatewayState(instanceId: string): Promise<void> {
+  console.log(`[syncGatewayState] Starting state sync for ${instanceId}`);
+
+  // 1. Extension reconciliation (calls tools.catalog + config.get + skills.status internally)
+  try {
+    // reconcileExtensions still accepts controlEndpoint/authToken params but uses gatewayCall internally.
+    // Pass empty strings -- they are unused since Phase 9 migration.
+    const result = await reconcileExtensions(instanceId, '', '');
+    console.log(
+      `[syncGatewayState] Extension reconciliation for ${instanceId}: promoted=${result.promoted.length}, demoted=${result.demoted.length}`,
+    );
+  } catch (err) {
+    console.warn(`[syncGatewayState] Extension reconciliation failed for ${instanceId}:`, err);
+    // Non-fatal -- continue with remaining sync steps
+  }
+
+  // 2. Config hash sync from gateway's authoritative state
+  try {
+    const configResult = await gatewayCall(instanceId, 'config.get', {}, 15_000) as {
+      hash?: string;
+      config?: unknown;
+    };
+    if (configResult?.hash) {
+      await db('instances').where({ id: instanceId }).update({
+        config_hash: configResult.hash,
+        updated_at: db.fn.now(),
+      });
+    }
+  } catch (err) {
+    console.warn(`[syncGatewayState] Config hash sync failed for ${instanceId}:`, err);
+    // Non-fatal -- hash will be stale until next config operation
+  }
+
+  // 3. Workspace file sync via gateway RPC
+  try {
+    await syncWorkspaceViaGateway(instanceId);
+  } catch (err) {
+    console.warn(`[syncGatewayState] Workspace sync failed for ${instanceId}:`, err);
+    // Non-fatal -- files will sync on next health monitor cycle
+  }
+
+  console.log(`[syncGatewayState] State sync complete for ${instanceId}`);
 }
 
 export async function reseedConfigFiles(instanceId: string): Promise<void> {
@@ -348,7 +464,7 @@ export async function cloneInstance(sourceId: string, userId: string): Promise<I
       image_tag: source.imageTag,
       deployment_target: source.deploymentTarget,
       billing_mode: source.billingMode || 'platform',
-      security_profile: source.securityProfile || 'standard',
+      security_profile: source.securityProfile || (config.isCE ? 'unrestricted' : 'standard'),
       auth_token: authToken,
       config: JSON.stringify(sourceConfig),
     })
@@ -381,45 +497,37 @@ export async function updateSecurityProfile(
   const updated = await getInstance(id, userId);
   if (!updated) throw new Error('Instance not found after update');
 
-  if (updated.status === 'running') {
-    await reseedConfigFiles(id);
-    const { adapter } = getAgentType(updated.agentType);
-    if (adapter?.translateRPC && updated.controlEndpoint) {
-      try {
-        const cfg = await adapter.translateRPC({
-          method: 'config.get',
-          params: {},
-          endpoint: updated.controlEndpoint,
-          token: updated.authToken,
-          instanceId: id,
-        }) as { hash?: string } | null;
-        if (cfg?.hash) {
-          // Gateway 2026.3.13+ expects { raw: <full JSON string> }
-          const engine2 = getRuntimeEngine(updated.deploymentTarget);
-          const { manifest: m2 } = getAgentType(updated.agentType);
-          let rawConfig: string | null | undefined;
-          if (engine2.readFile && updated.runtimeId) {
-            const volPath = m2.volumes[0]?.mountPath || '/home/node/.openclaw';
-            try {
-              rawConfig = await engine2.readFile(updated.runtimeId, `${volPath}/openclaw.json`);
-            } catch { /* fallback */ }
-          }
-          await adapter.translateRPC({
-            method: 'config.patch',
-            params: {
-              ...(rawConfig ? { raw: rawConfig } : { patch: {} }),
-              baseHash: cfg.hash,
-              note: `Platform: security profile → ${profile}`,
-              restartDelayMs: 2000,
-            },
-            endpoint: updated.controlEndpoint,
-            token: updated.authToken,
-            instanceId: id,
+  if (updated.status === 'running' && updated.controlEndpoint) {
+    try {
+      // Build a security config delta using seedConfig to extract the
+      // security-profile-dependent keys (hooks, cron, models, approval).
+      let securityDelta: Record<string, unknown> = {};
+      const { adapter } = getAgentType(updated.agentType);
+      if (adapter?.seedConfig) {
+        try {
+          const creds = await getDecryptedCredentials(id);
+          const configFiles = await adapter.seedConfig({
+            instance: updated,
+            userConfig: updated.config || {},
+            credentials: creds,
           });
+          const openclawJson = configFiles.get('openclaw.json');
+          if (openclawJson) {
+            const fullConfig = JSON.parse(openclawJson) as Record<string, unknown>;
+            // Extract security-profile-dependent sections
+            if (fullConfig.hooks !== undefined) securityDelta.hooks = fullConfig.hooks;
+            if (fullConfig.cron !== undefined) securityDelta.cron = fullConfig.cron;
+            if (fullConfig.models !== undefined) securityDelta.models = fullConfig.models;
+            if (fullConfig.approval !== undefined) securityDelta.approval = fullConfig.approval;
+          }
+        } catch (seedErr) {
+          console.warn(`[security-profile] seedConfig failed for ${id}, sending empty delta:`, seedErr);
+          // Fall through with empty delta — patchGatewayConfig still triggers SIGUSR1 restart
         }
-      } catch (err) {
-        console.error(`[security-profile] config.patch failed for ${id}:`, err);
       }
+      await patchGatewayConfig(id, userId, securityDelta, `Security profile \u2192 ${profile}`);
+    } catch (err) {
+      console.error(`[security-profile] config.patch failed for ${id}:`, err);
     }
   }
 
@@ -491,7 +599,8 @@ async function startInstanceAsync(id: string, userId: string, instance: Instance
       control_endpoint: controlEndpoint,
     }, 'Provisioning pod...');
 
-    // Seed config files into running container
+    // Phase 1: generate config for active/degraded extensions only (plugins + skills)
+    // Pending extensions are excluded here — they are handled by Phase 3 replay below.
     const userConfig = instance.config || {};
     if (adapter?.seedConfig && engine.writeFiles) {
       await updateStatus(id, 'starting', {}, 'Waiting for pod ready...');
@@ -516,6 +625,19 @@ async function startInstanceAsync(id: string, userId: string, instance: Instance
         if (filesToWrite.size > 0) {
           await updateStatus(id, 'starting', {}, 'Seeding config files...');
           await engine.writeFiles(result.runtimeId, volumeMountPath, filesToWrite);
+        }
+
+        // Create symlink so doubled workspace paths resolve correctly.
+        // The gateway creates .openclaw/ inside workspace for state tracking.
+        // The agent LLM sometimes constructs paths like ".openclaw/workspace/USER.md"
+        // instead of just "USER.md", doubling the workspace prefix. This symlink
+        // makes those paths resolve to the correct location.
+        if (engine.exec) {
+          const wsPath = `${volumeMountPath}/workspace`;
+          await engine.exec(result.runtimeId, [
+            'sh', '-c',
+            `mkdir -p '${wsPath}/.openclaw' && ln -sfn '${wsPath}' '${wsPath}/.openclaw/workspace' 2>/dev/null || true`,
+          ]).catch(() => { /* best-effort */ });
         }
 
         // Store SHA-256 hash of openclaw.json for integrity verification
@@ -566,6 +688,32 @@ async function startInstanceAsync(id: string, userId: string, instance: Instance
     // Eagerly establish persistent gateway connection (don't wait for 10s poll)
     if (controlEndpoint && instance.authToken) {
       connectGateway(id, controlEndpoint, instance.authToken);
+    }
+
+    // Phase 2: boot + reconcile extension state with gateway reality (non-blocking)
+    if (controlEndpoint && instance.authToken) {
+      try {
+        const result = await reconcileExtensions(id, controlEndpoint, instance.authToken);
+        console.log(`[extensions] Reconciliation for ${id}: promoted=${result.promoted.length}, demoted=${result.demoted.length}`);
+      } catch (err) {
+        console.warn(`[extensions] Reconciliation failed for ${id}:`, err);
+        // Non-fatal — instance continues booting
+      }
+    }
+
+    // Phase 3: replay remaining pending extensions (non-blocking)
+    // Pending extensions come from template instantiation or crash recovery.
+    // Trust was already evaluated at import/instantiation time.
+    if (controlEndpoint && instance.authToken) {
+      try {
+        const replay = await replayPendingExtensions(id, controlEndpoint, instance.authToken, userId);
+        if (replay.installed.length > 0 || replay.failed.length > 0) {
+          console.log(`[extensions] Phase 3 replay for ${id}: installed=${replay.installed.length}, failed=${replay.failed.length}, needsCredentials=${replay.needsCredentials.length}`);
+        }
+      } catch (err) {
+        console.warn(`[extensions] Phase 3 replay failed for ${id}:`, err);
+        // Non-fatal — instance continues running
+      }
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -698,29 +846,20 @@ export async function patchGatewayConfig(
   configPatch: Record<string, unknown>,
   note?: string,
 ): Promise<void> {
-  // 1. DB-first: fetch instance, deep-merge config, persist
   const instance = await getInstance(instanceId, userId);
   if (!instance) throw new Error('Instance not found');
   await safeAutoSnapshot(instanceId, userId, '修改 Gateway 配置');
 
+  // Validate merged config before any writes
   const mergedConfig = deepMerge(
     (instance.config || {}) as Record<string, unknown>,
     configPatch,
   );
 
-  // Validate merged config against gateway schema before persisting to DB
   const fetchSchema = async (): Promise<object | null> => {
     if (instance.status !== 'running' || !instance.controlEndpoint) return null;
     try {
-      const { adapter } = getAgentType(instance.agentType);
-      if (!adapter?.translateRPC) return null;
-      const result = await adapter.translateRPC({
-        method: 'config.schema',
-        params: {},
-        endpoint: instance.controlEndpoint,
-        token: instance.authToken,
-        instanceId,
-      }) as { schema?: object } | null;
+      const result = await gatewayCall(instanceId, 'config.schema', {}) as { schema?: object } | null;
       return result?.schema ?? null;
     } catch { return null; }
   };
@@ -730,77 +869,114 @@ export async function patchGatewayConfig(
     throw new Error('Config validation failed: ' + (validation.errors?.join('; ') ?? 'Unknown error'));
   }
 
-  await updateInstanceConfig(instanceId, userId, mergedConfig);
-
-  // 2. Gateway push (only if running)
+  // Stopped instances: DB-only deep-merge, no gateway call
   if (instance.status !== 'running' || !instance.controlEndpoint) {
+    await updateInstanceConfig(instanceId, userId, mergedConfig);
     return;
   }
 
-  try {
-    const { adapter } = getAgentType(instance.agentType);
-    if (!adapter?.translateRPC) return;
+  // Running instances: gateway-first flow
+  // Strip platform-only fields that are NOT part of the gateway's config schema
+  // (additionalProperties: false rejects unknown keys like soulmd, agentName, etc.)
+  const PLATFORM_ONLY_KEYS = new Set([
+    'defaultProvider', 'defaultModel', 'provider', 'model',
+    'billingMode', 'imageTag', 'securityProfile', 'agentName',
+    'mcpServers', 'toolPermissions', 'vaultConfig',
+    '__setupCommands', '__templateSecurity',
+    // Workspace file keys (stored in DB config, not gateway config)
+    ...WORKSPACE_FILE_KEYS.map(wf => wf.key),
+  ]);
 
-    const endpoint = instance.controlEndpoint;
-    const token = instance.authToken;
-    const MAX_RETRIES = 3;
-
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      // Fetch current config hash
-      const cfgResult = await adapter.translateRPC({
-        method: 'config.get',
-        params: {},
-        endpoint,
-        token,
-        instanceId,
-      }) as { hash?: string } | null;
-
-      const baseHash = cfgResult?.hash;
-
-      // Gateway 2026.3.13+ expects { raw: <full JSON string> } instead of { patch: <object> }.
-      // Re-seed config files to disk first, then read the full config to send as raw.
-      await reseedConfigFiles(instanceId);
-
-      // Read the seeded config file content
-      const { manifest: m2, adapter: a2 } = getAgentType(instance.agentType);
-      const engine2 = getRuntimeEngine(instance.deploymentTarget);
-      let rawConfig: string | null | undefined;
-      if (a2?.seedConfig && engine2.readFile && instance.runtimeId) {
-        const volumeMountPath = m2.volumes[0]?.mountPath || '/home/node/.openclaw';
-        try {
-          rawConfig = await engine2.readFile(instance.runtimeId, `${volumeMountPath}/openclaw.json`);
-        } catch { /* fallback: send without raw */ }
-      }
-
-      try {
-        await adapter.translateRPC({
-          method: 'config.patch',
-          params: {
-            ...(rawConfig ? { raw: rawConfig } : { patch: configPatch }),
-            baseHash,
-            note: note || 'Platform config update',
-            restartDelayMs: 2000,
-          },
-          endpoint,
-          token,
-          instanceId,
-        });
-        console.log(`[config-patch] Pushed config.patch for ${instanceId}`);
-        return;
-      } catch (patchErr: unknown) {
-        const errMsg = patchErr instanceof Error ? patchErr.message : String(patchErr);
-        if ((errMsg.includes('config changed') || errMsg.includes('CONFLICT')) && attempt < MAX_RETRIES) {
-          console.warn(`[config-patch] baseHash conflict for ${instanceId}, retrying (${attempt}/${MAX_RETRIES})`);
-          continue;
-        }
-        throw patchErr;
-      }
+  const gatewayPatch: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(configPatch)) {
+    if (!PLATFORM_ONLY_KEYS.has(key)) {
+      gatewayPatch[key] = value;
     }
-  } catch (err: unknown) {
-    // Gateway push failure is non-critical -- DB is already updated.
-    // Config will be picked up on next reseedConfigFiles.
-    console.error(`[config-patch] Gateway push failed for ${instanceId}:`, err);
   }
+
+  const MAX_RETRIES = 3;
+  const hasGatewayFields = Object.keys(gatewayPatch).length > 0;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    // (a) Get current baseHash from gateway
+    const cfgResult = await gatewayCall(instanceId, 'config.get', {}) as { hash?: string } | null;
+    const baseHash = cfgResult?.hash;
+
+    // If no gateway-relevant fields changed, skip config.patch but still update DB
+    if (!hasGatewayFields) {
+      await updateInstanceConfig(instanceId, userId, mergedConfig);
+      if (baseHash) {
+        await db('instances').where({ id: instanceId }).update({ config_hash: baseHash });
+      }
+      console.log(`[config-patch] Platform-only config update for ${instanceId} (no gateway fields changed)`);
+      return;
+    }
+
+    try {
+      // (b) Send merge-patch to gateway with correct { raw, baseHash } format
+      await gatewayCall(instanceId, 'config.patch', {
+        raw: JSON.stringify(gatewayPatch),
+        baseHash,
+        note: note || 'Platform config update',
+        restartDelayMs: 2000,
+      });
+
+      console.log(`[config-patch] Gateway accepted config.patch for ${instanceId}`);
+
+      // (f) Read-back authoritative hash from gateway
+      let authoritativeHash = baseHash;
+      try {
+        const readBack = await gatewayCall(instanceId, 'config.get', {}) as { hash?: string } | null;
+        if (readBack?.hash) {
+          authoritativeHash = readBack.hash;
+        }
+      } catch (readBackErr: unknown) {
+        // Gateway may be restarting due to SIGUSR1 — fall back to pre-patch hash
+        console.warn(`[config-patch] config.get read-back failed for ${instanceId}, using pre-patch hash:`, readBackErr);
+      }
+
+      // (g) Deep-merge configPatch into platform's config (preserves credential placeholders)
+      // (h) Persist to DB synchronously
+      const patch: Record<string, unknown> = {
+        config: JSON.stringify(mergedConfig),
+        config_hash: authoritativeHash,
+        updated_at: db.fn.now(),
+      };
+
+      // Sync platform-level columns from config
+      if (mergedConfig.billingMode === 'platform' || mergedConfig.billingMode === 'byok') {
+        patch.billing_mode = mergedConfig.billingMode;
+      }
+      if (typeof mergedConfig.agentName === 'string' && (mergedConfig.agentName as string).trim()) {
+        patch.name = mergedConfig.agentName;
+      }
+
+      await db('instances').where({ id: instanceId }).update(patch);
+      return;
+    } catch (patchErr: unknown) {
+      const errMsg = patchErr instanceof Error ? patchErr.message : String(patchErr);
+
+      // (c) Stale hash conflict — retry from config.get
+      if ((errMsg.includes('config changed since last load') || errMsg.includes('CONFLICT')) && attempt < MAX_RETRIES) {
+        console.warn(`[config-patch] baseHash conflict for ${instanceId}, retrying (${attempt}/${MAX_RETRIES})`);
+        continue;
+      }
+
+      // (d) Rate limit — wait and retry
+      if (errMsg.includes('rate limit')) {
+        const match = errMsg.match(/retry after (\d+)s/);
+        const delayMs = match ? parseInt(match[1], 10) * 1000 + 1000 : 21_000;
+        console.warn(`[config-patch] Rate limited for ${instanceId}, waiting ${delayMs}ms before retry`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        continue;
+      }
+
+      // (e) Any other error: throw immediately (fail visibly)
+      throw patchErr;
+    }
+  }
+
+  throw new Error(`Config patch failed after ${MAX_RETRIES} retries for instance ${instanceId}`);
 }
 
 export async function deleteInstance(id: string, userId: string, purge = false): Promise<void> {

@@ -1,8 +1,10 @@
 import type { AgentTypeAdapter, ConfigFileCategories } from '../types.js';
-import type { ToolPermissions, TemplateSecurityConfig } from '@aquarium/shared';
+import type { ToolPermissions, TemplateSecurityConfig, PluginSource } from '@aquarium/shared';
 import { DEFAULT_TOOL_PERMISSIONS } from '@aquarium/shared';
-import { GatewayRPCClient } from './gateway-rpc.js';
-import { getGatewayClient, connectGateway } from '../../services/gateway-event-relay.js';
+import { gatewayCall } from './gateway-rpc.js';
+// gateway-event-relay imports removed — all RPC goes through gatewayCall
+import { db } from '../../db/index.js';
+import { getAdapter } from '../../db/adapter.js';
 
 /** Recursively deep-merge source into target (objects only; arrays are replaced). */
 function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
@@ -109,6 +111,14 @@ export const openclawAdapter: AgentTypeAdapter = {
     const files = new Map<string, string>();
 
     const cfg: Record<string, unknown> = {};
+
+    // Extract vault config from instance config for exec SecretRef resolution
+    const vaultConfig = (userConfig as Record<string, unknown>).vaultConfig as {
+      type: 'onepassword' | 'hashicorp';
+      address?: string;
+      namespace?: string;
+      mountPath?: string;
+    } | undefined;
 
     const agentDefaults: Record<string, unknown> = {};
     {
@@ -356,9 +366,9 @@ export const openclawAdapter: AgentTypeAdapter = {
           appPassword: '${MSTEAMS_APP_PASSWORD}',
           tenantId: '${MSTEAMS_TENANT_ID}',
           webhook: { port: 3978, path: '/api/messages' },
-          dmPolicy: 'pairing',
+          dmPolicy: 'open',
           allowFrom: ['*'],
-          groupPolicy: 'allowlist',
+          groupPolicy: 'open',
         }),
       },
       zalo: {
@@ -367,7 +377,7 @@ export const openclawAdapter: AgentTypeAdapter = {
         configBuilder: (ref) => ({
           enabled: true,
           botToken: ref,
-          dmPolicy: 'pairing',
+          dmPolicy: 'open',
           allowFrom: ['*'],
         }),
       },
@@ -378,9 +388,9 @@ export const openclawAdapter: AgentTypeAdapter = {
           enabled: true,
           channelAccessToken: ref,
           channelSecret: '${LINE_CHANNEL_SECRET}',
-          dmPolicy: 'pairing',
+          dmPolicy: 'open',
           allowFrom: ['*'],
-          groupPolicy: 'allowlist',
+          groupPolicy: 'open',
         }),
       },
     };
@@ -533,8 +543,41 @@ export const openclawAdapter: AgentTypeAdapter = {
       },
     };
 
+    // Managed plugins from extension management (Phase 2)
+    // Include active and degraded plugins in seedConfig — degraded may still work from cache
+    const dbAdapter = getAdapter();
+    const managedPlugins = await db('instance_plugins')
+      .where({ instance_id: instance.id })
+      .whereIn('status', ['active', 'degraded'])
+      .select('plugin_id', 'source', 'config', 'enabled') as Array<Record<string, unknown>>;
+
+    for (const mp of managedPlugins) {
+      const pluginId = mp.plugin_id as string;
+      const pluginConfig = dbAdapter.parseJson<Record<string, unknown>>(mp.config);
+      // Only include if enabled (active plugins should always be enabled, but check)
+      if (mp.enabled) {
+        pluginEntries[pluginId] = { enabled: true, ...pluginConfig };
+      }
+    }
+
+    // Build dynamic load.paths: platform-bridge (always) + npm-installed managed plugins
+    const loadPaths: string[] = ['/opt/openclaw-plugins/platform-bridge'];
+    for (const mp of managedPlugins) {
+      const pluginId = mp.plugin_id as string;
+      const pluginSource = dbAdapter.parseJson<PluginSource>(mp.source);
+      // Non-bundled plugins are installed via npm to a plugin-specific path
+      if (pluginSource && pluginSource.type !== 'bundled') {
+        loadPaths.push(`/home/node/.openclaw/plugins/${pluginId}`);
+      }
+    }
+
     // OpenClaw schema: plugins.entries is Record<id, {enabled, config}>, load.paths for external
-    const pluginsCfg: Record<string, unknown> = { entries: pluginEntries };
+    // platform-bridge must be explicitly enabled in entries (load.paths only makes it discoverable)
+    pluginEntries['platform-bridge'] = { enabled: true };
+    const pluginsCfg: Record<string, unknown> = {
+      entries: pluginEntries,
+      load: { paths: loadPaths },
+    };
     cfg.plugins = pluginsCfg;
 
     const securityCfg = getSecurityConfig(instance.securityProfile ?? 'standard');
@@ -545,13 +588,122 @@ export const openclawAdapter: AgentTypeAdapter = {
     if (securityCfg.plugins) {
       cfg.plugins = deepMerge(cfg.plugins as Record<string, unknown> || {}, securityCfg.plugins as Record<string, unknown>);
     }
+    // Ensure platform-bridge plugin is always loadable regardless of security profile.
+    // The security profile may set plugins.enabled=false which blocks all plugins
+    // including our platform-bridge (needed for platform.ping readiness checks).
+    const finalPlugins = cfg.plugins as Record<string, unknown>;
+    if (finalPlugins.enabled === false) {
+      finalPlugins.enabled = true;
+      finalPlugins.allow = [];
+    }
+    // Preserve load.paths after security deep-merge (security config may overwrite it)
+    if (!(finalPlugins.load as Record<string, unknown> | undefined)?.paths) {
+      finalPlugins.load = { paths: loadPaths };
+    }
     cfg.skills = securityCfg.skills;
+
+    // Phase 1 of 3-phase startup (PRD §5.4): include active/degraded skills in config
+    // Pending, installed, failed, and disabled skills are excluded — they are handled
+    // by Phase 2 reconciliation or Phase 3 replay on first boot.
+    const managedSkills = await db('instance_skills')
+      .where({ instance_id: instance.id })
+      .whereIn('status', ['active', 'degraded'])
+      .select('skill_id', 'source', 'config', 'enabled') as Array<Record<string, unknown>>;
+
+    if (managedSkills.length > 0) {
+      const skillsObj = (cfg.skills ?? {}) as Record<string, unknown>;
+      const skillEntries = (skillsObj.entries ?? {}) as Record<string, unknown>;
+      for (const ms of managedSkills) {
+        const skillId = ms.skill_id as string;
+        const skillConfig = dbAdapter.parseJson<Record<string, unknown>>(ms.config);
+        if (ms.enabled) {
+          skillEntries[skillId] = { enabled: true, ...skillConfig };
+        }
+      }
+      if (Object.keys(skillEntries).length > 0) {
+        skillsObj.entries = skillEntries;
+        cfg.skills = skillsObj;
+      }
+    }
+
+    // PLUG-10: Disable chat-based plugin management for managed instances
+    // The dashboard is the single writer for extension state — prevents state divergence
+    cfg.commands = { ...(cfg.commands as Record<string, unknown> || {}), plugins: false };
 
     // SecretRef: when the Gateway image supports it, inject a secrets provider
     // so that keyRef/tokenRef entries in auth-profiles.json can resolve env vars.
     const useSecretRef = supportsSecretRef(instance.imageTag);
     if (useSecretRef) {
-      cfg.secrets = { providers: { default: { source: 'env' } } };
+      if (vaultConfig) {
+        // Vault configured: add vault exec provider alongside default env provider
+        cfg.secrets = {
+          providers: {
+            default: { source: 'env' },
+            vault: { source: 'exec' },
+          },
+        };
+      } else {
+        cfg.secrets = { providers: { default: { source: 'env' } } };
+      }
+    }
+
+    // Inject exec SecretRefs for vault-backed extension credentials (OAUTH-03)
+    // When a credential has metadata.source === 'vault' and vaultConfig is set, generate
+    // an exec SecretRef instead of env-backed. This is gated on SecretRef support.
+    if (useSecretRef && vaultConfig) {
+      const skillsObj = (cfg.skills ?? {}) as Record<string, unknown>;
+      const skillEntries = (skillsObj.entries ?? {}) as Record<string, unknown>;
+      const pluginsObj = (cfg.plugins ?? {}) as Record<string, unknown>;
+      const pluginEntries = (pluginsObj.entries ?? {}) as Record<string, unknown>;
+
+      for (const cred of credentials) {
+        const credMeta = cred.metadata as {
+          extensionKind?: string;
+          extensionId?: string;
+          targetField?: string;
+          source?: string;
+          vaultPath?: string;
+        } | undefined;
+
+        if (credMeta?.source === 'vault' && credMeta.vaultPath && credMeta.extensionKind && credMeta.extensionId && credMeta.targetField) {
+          // Build exec command based on vault type
+          let execCommand: string[];
+          if (vaultConfig.type === 'onepassword') {
+            execCommand = ['op', 'read', `op://${credMeta.vaultPath}`];
+          } else {
+            const mount = vaultConfig.mountPath ?? 'secret';
+            execCommand = ['vault', 'kv', 'get', '-field=value', `-mount=${mount}`, credMeta.vaultPath];
+          }
+          const execSecretRef = { source: 'exec', command: execCommand };
+
+          if (credMeta.extensionKind === 'skill') {
+            const entry = (skillEntries[credMeta.extensionId] ?? {}) as Record<string, unknown>;
+            const envSection = (entry.env ?? {}) as Record<string, unknown>;
+            envSection[credMeta.targetField] = execSecretRef;
+            entry.env = envSection;
+            skillEntries[credMeta.extensionId] = entry;
+          } else if (credMeta.extensionKind === 'plugin') {
+            const entry = (pluginEntries[credMeta.extensionId] ?? {}) as Record<string, unknown>;
+            const configSection = (entry.config ?? {}) as Record<string, unknown>;
+            configSection[credMeta.targetField] = execSecretRef;
+            entry.config = configSection;
+            pluginEntries[credMeta.extensionId] = entry;
+          }
+        }
+      }
+
+      // Write back if we added any vault exec SecretRefs
+      if (Object.keys(skillEntries).length > 0) {
+        skillsObj.entries = skillEntries;
+        cfg.skills = skillsObj;
+      }
+      if (Object.keys(pluginEntries).length > 0) {
+        pluginsObj.entries = pluginEntries;
+        cfg.plugins = pluginsObj;
+      }
+
+      // For HashiCorp Vault, inject VAULT_ADDR and optionally VAULT_NAMESPACE
+      // These are needed by the vault CLI exec commands at container startup
     }
 
     files.set('openclaw.json', JSON.stringify(cfg, null, 2));
@@ -661,68 +813,25 @@ export const openclawAdapter: AgentTypeAdapter = {
       files.set('workspace/TOOLS.md', existingTools + geoToolSection);
     }
 
-    // Seed empty memory directory so the agent doesn't error on first boot
-    // when BOOTSTRAP.md instructs it to read memory/YYYY-MM-DD.md
+    // Seed memory directory with today's empty daily file so the agent doesn't
+    // error on first boot when AGENTS.md instructs it to read memory/YYYY-MM-DD.md.
     files.set('workspace/memory/.gitkeep', '');
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    files.set(`workspace/memory/${today}.md`, `# ${today}\n`);
 
     return files;
   },
 
   async translateRPC({ method, params, endpoint, token, instanceId }) {
-    const timeoutMs = method === 'web.login.wait' ? 180_000 : method.startsWith('web.login.') ? 60_000 : 30_000;
+    const timeoutMs = method === 'web.login.wait' ? 180_000
+      : method.startsWith('web.login.') ? 60_000
+      : 30_000;
 
-    // Try persistent client first (if instanceId provided and client connected)
-    if (instanceId) {
-      const persistent = getGatewayClient(instanceId);
-      if (persistent) {
-        return await persistent.call(method, params, timeoutMs);
-      }
+    if (!instanceId) {
+      throw new Error('instanceId required for translateRPC');
     }
 
-    // Fallback to ephemeral connection with retry.
-    // The gateway WS server may not be ready yet (takes ~47-150s after container start),
-    // so transient connection failures (close code 1006, ECONNREFUSED) are retried.
-    const MAX_RETRIES = 2;
-    const RETRY_DELAY_MS = 2_000;
-    let lastError: Error | undefined;
-
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      if (attempt > 0) {
-        await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
-        // Re-check persistent client — it may have connected during the delay
-        if (instanceId) {
-          const persistent = getGatewayClient(instanceId);
-          if (persistent) {
-            return await persistent.call(method, params, timeoutMs);
-          }
-        }
-      }
-
-      const client = new GatewayRPCClient(endpoint, token);
-      try {
-        const result = await client.call(method, params, timeoutMs);
-
-        // If we reached the gateway via ephemeral but the persistent client isn't
-        // connected, force-reconnect it now.  Event-producing RPCs like chat.send
-        // need the persistent WebSocket to relay streaming events back to the browser.
-        if (instanceId && !getGatewayClient(instanceId)) {
-          connectGateway(instanceId, endpoint, token);
-        }
-
-        return result;
-      } catch (err) {
-        client.close();
-        lastError = err instanceof Error ? err : new Error(String(err));
-        // Only retry on transient connection errors, not on RPC-level errors
-        const msg = lastError.message;
-        const isTransient = msg.includes('closed unexpectedly') ||
-          msg.includes('ECONNREFUSED') ||
-          msg.includes('socket hang up') ||
-          msg.includes('connect failed');
-        if (!isTransient) throw lastError;
-      }
-    }
-    throw lastError;
+    return gatewayCall(instanceId, method, params, timeoutMs);
   },
 
   async resolveEnv({ instance, credentials, litellmKey }) {
@@ -732,6 +841,23 @@ export const openclawAdapter: AgentTypeAdapter = {
       OPENCLAW_GATEWAY_PORT: '18789',
       NODE_OPTIONS: '--max-old-space-size=3072',
     };
+
+    // Extract vault config from instance config for env var injection
+    const instanceConfig = (instance.config ?? {}) as Record<string, unknown>;
+    const vaultConfig = instanceConfig.vaultConfig as {
+      type: 'onepassword' | 'hashicorp';
+      address?: string;
+      namespace?: string;
+    } | undefined;
+
+    // For HashiCorp Vault, inject VAULT_ADDR and optionally VAULT_NAMESPACE
+    // These env vars are consumed by the vault CLI exec commands at container startup
+    if (vaultConfig?.type === 'hashicorp' && vaultConfig.address) {
+      env['VAULT_ADDR'] = vaultConfig.address;
+      if (vaultConfig.namespace) {
+        env['VAULT_NAMESPACE'] = vaultConfig.namespace;
+      }
+    }
 
     // Dual-mode: platform mode injects LiteLLM proxy URL only, BYOK injects provider keys
     const registry = new ProviderRegistry();
@@ -749,6 +875,14 @@ export const openclawAdapter: AgentTypeAdapter = {
           continue;
         }
 
+        // Skip vault-backed extension credentials — they are resolved by the gateway via exec,
+        // not via env vars. Injecting them as AQUARIUM_CRED_xxx would expose the raw secret
+        // in the container environment unnecessarily.
+        const credMeta = cred.metadata as { source?: string } | undefined;
+        if (credMeta?.source === 'vault') {
+          continue;
+        }
+
         const envVar = registry.getEnvVarName(cred.provider);
         if (envVar) {
           env[envVar] = cred.value;
@@ -760,6 +894,10 @@ export const openclawAdapter: AgentTypeAdapter = {
     // regardless of billing mode — these are tool/channel keys, not AI provider keys.
     for (const cred of credentials) {
       if (registry.isNonProviderCredential(cred.provider)) {
+        // Skip vault-backed credentials
+        const credMeta = cred.metadata as { source?: string } | undefined;
+        if (credMeta?.source === 'vault') continue;
+
         const envVar = registry.getEnvVarName(cred.provider);
         if (envVar && !(envVar in env)) {
           env[envVar] = cred.value;
@@ -772,15 +910,7 @@ export const openclawAdapter: AgentTypeAdapter = {
 
   async checkReady({ instance, endpoint }) {
     try {
-      const persistent = getGatewayClient(instance.id);
-      if (persistent) {
-        const result = await persistent.call('platform.ping', {}, 5_000);
-        return result !== null;
-      }
-      const client = new GatewayRPCClient(endpoint, instance.authToken);
-      const result = await client.call('platform.ping', {});
-      client.close();
-      return result !== null;
+      return await gatewayCall(instance.id, 'platform.ping', {}, 5_000) !== null;
     } catch {
       return false;
     }

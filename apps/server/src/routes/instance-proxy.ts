@@ -232,14 +232,17 @@ export function attachWebSocketProxy(
       const cookieMatch = req.headers.cookie.match(/(?:^|;\s*)token=([^;]+)/);
       if (cookieMatch) jwtToken = cookieMatch[1];
     }
-    if (!jwtToken) {
-      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-      socket.destroy();
-      return;
-    }
-
     void (async () => {
       try {
+        // Reject immediately when no token is present — do NOT pass an empty
+        // string to verifyJwt because CE's tokenVerifier treats any non-`test:`
+        // value (including '') as a valid first-user auto-login, which would
+        // allow unauthenticated WebSocket clients to bypass auth entirely.
+        if (!jwtToken) {
+          socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+          socket.destroy();
+          return;
+        }
         const auth = await verifyJwt(jwtToken);
         if (!auth) {
           socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');

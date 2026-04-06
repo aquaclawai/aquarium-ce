@@ -16,7 +16,8 @@ import {
   updateSecurityProfile,
 } from '../services/instance-manager.js';
 import { getRuntimeEngine } from '../runtime/factory.js';
-import type { ApiResponse, Instance, InstancePublic, CreateInstanceRequest, CredentialRequirement, SecurityProfile } from '@aquarium/shared';
+import { getInstanceModels } from '../services/instance-models.js';
+import type { ApiResponse, Instance, InstancePublic, CreateInstanceRequest, CredentialRequirement, SecurityProfile, InstanceModelsResponse } from '@aquarium/shared';
 
 const router = Router();
 router.use(requireAuth);
@@ -319,6 +320,103 @@ router.get('/:id/template-requirements', async (req, res) => {
   }
 });
 
+// ─── Vault Config Endpoints ────────────────────────────────────────────────────
+// Vault configuration (1Password, HashiCorp Vault) is stored in instances.config
+// JSON column under the 'vaultConfig' key.
+
+interface VaultConfigBody {
+  type: 'onepassword' | 'hashicorp';
+  address?: string;
+  namespace?: string;
+  authMethod?: string;
+  mountPath?: string;
+}
+
+router.get('/:id/vault-config', async (req, res) => {
+  try {
+    const instance = await getInstance(req.params.id, req.auth!.userId);
+    if (!instance) {
+      res.status(404).json({ ok: false, error: 'Instance not found' } satisfies ApiResponse);
+      return;
+    }
+
+    const existingConfig = typeof instance.config === 'string'
+      ? (JSON.parse(instance.config) as Record<string, unknown>)
+      : ((instance.config ?? {}) as Record<string, unknown>);
+    const vaultConfig = (existingConfig.vaultConfig ?? null) as VaultConfigBody | null;
+
+    res.json({ ok: true, data: { vaultConfig } } satisfies ApiResponse<{ vaultConfig: VaultConfigBody | null }>);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ ok: false, error: message } satisfies ApiResponse);
+  }
+});
+
+router.put('/:id/vault-config', async (req, res) => {
+  try {
+    const instance = await getInstance(req.params.id, req.auth!.userId);
+    if (!instance) {
+      res.status(404).json({ ok: false, error: 'Instance not found' } satisfies ApiResponse);
+      return;
+    }
+
+    const body = req.body as VaultConfigBody;
+
+    if (!body.type || (body.type !== 'onepassword' && body.type !== 'hashicorp')) {
+      res.status(400).json({ ok: false, error: 'type is required and must be "onepassword" or "hashicorp"' } satisfies ApiResponse);
+      return;
+    }
+    if (body.type === 'hashicorp' && !body.address) {
+      res.status(400).json({ ok: false, error: 'address is required for HashiCorp Vault' } satisfies ApiResponse);
+      return;
+    }
+
+    const validatedBody: VaultConfigBody = { type: body.type };
+    if (body.address) validatedBody.address = body.address;
+    if (body.namespace) validatedBody.namespace = body.namespace;
+    if (body.authMethod) validatedBody.authMethod = body.authMethod;
+    if (body.mountPath) validatedBody.mountPath = body.mountPath;
+
+    const existingConfig = typeof instance.config === 'string'
+      ? (JSON.parse(instance.config) as Record<string, unknown>)
+      : ((instance.config ?? {}) as Record<string, unknown>);
+    existingConfig.vaultConfig = validatedBody;
+
+    await db('instances')
+      .where({ id: instance.id, user_id: req.auth!.userId })
+      .update({ config: JSON.stringify(existingConfig), updated_at: db.fn.now() });
+
+    res.json({ ok: true, data: { vaultConfig: validatedBody } } satisfies ApiResponse<{ vaultConfig: VaultConfigBody }>);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ ok: false, error: message } satisfies ApiResponse);
+  }
+});
+
+router.delete('/:id/vault-config', async (req, res) => {
+  try {
+    const instance = await getInstance(req.params.id, req.auth!.userId);
+    if (!instance) {
+      res.status(404).json({ ok: false, error: 'Instance not found' } satisfies ApiResponse);
+      return;
+    }
+
+    const existingConfig = typeof instance.config === 'string'
+      ? (JSON.parse(instance.config) as Record<string, unknown>)
+      : ((instance.config ?? {}) as Record<string, unknown>);
+    delete existingConfig.vaultConfig;
+
+    await db('instances')
+      .where({ id: instance.id, user_id: req.auth!.userId })
+      .update({ config: JSON.stringify(existingConfig), updated_at: db.fn.now() });
+
+    res.json({ ok: true } satisfies ApiResponse);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ ok: false, error: message } satisfies ApiResponse);
+  }
+});
+
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2MB
 
 router.put('/:id/avatar', async (req, res) => {
@@ -362,6 +460,29 @@ router.put('/:id/avatar', async (req, res) => {
 
     const updated = await getInstance(req.params.id, req.auth!.userId);
     res.json({ ok: true, data: updated ?? undefined } satisfies ApiResponse<Instance>);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ ok: false, error: message } satisfies ApiResponse);
+  }
+});
+
+// --- Instance models (gateway catalog + credential status) ---
+
+router.get('/:id/models', async (req, res) => {
+  try {
+    const instance = await getInstance(req.params.id, req.auth!.userId);
+    if (!instance) {
+      res.status(404).json({ ok: false, error: 'Instance not found' } satisfies ApiResponse);
+      return;
+    }
+
+    if (instance.status !== 'running' || !instance.controlEndpoint) {
+      res.status(400).json({ ok: false, error: 'Instance is not running' } satisfies ApiResponse);
+      return;
+    }
+
+    const data = await getInstanceModels(instance);
+    res.json({ ok: true, data } satisfies ApiResponse<InstanceModelsResponse>);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ ok: false, error: message } satisfies ApiResponse);

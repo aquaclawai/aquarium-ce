@@ -11,6 +11,7 @@ import { config } from './config.js';
 import { db } from './db/index.js';
 import { setupWebSocket } from './ws/index.js';
 import { reconcileInstances } from './services/instance-manager.js';
+import { recoverOrphanedOperations } from './services/extension-lifecycle.js';
 import { getRuntimeEngine } from './runtime/factory.js';
 import { startHealthMonitor } from './services/health-monitor.js';
 import { startGatewayEventRelay } from './services/gateway-event-relay.js';
@@ -37,6 +38,10 @@ import metadataRoutes from './routes/metadata.js';
 import userRoutes from './routes/users.js';
 import notificationsRoutes from './routes/notifications.js';
 import skillRoutes from './routes/skills.js';
+import pluginRoutes from './routes/plugins.js';
+import extensionCredentialRoutes from './routes/extension-credentials.js';
+import oauthProxyRoutes from './routes/oauth-proxy.js';
+import trustOverrideRoutes from './routes/trust-overrides.js';
 import execApprovalRoutes from './routes/exec-approval.js';
 import securityRoutes from './routes/security.js';
 import dashboardRoutes from './routes/dashboard.js';
@@ -155,6 +160,10 @@ export function createApp(options: CreateAppOptions = {}): { app: express.Applic
   app.use('/api/users', userRoutes);
   app.use('/api/notifications', notificationsRoutes);
   app.use('/api/instances', skillRoutes);
+  app.use('/api/instances', pluginRoutes);
+  app.use('/api/instances', extensionCredentialRoutes);
+  app.use('/api/instances', oauthProxyRoutes);
+  app.use('/api/instances', trustOverrideRoutes);
   app.use('/api/instances', execApprovalRoutes);
   app.use('/api', securityRoutes);
   app.use('/api/dashboard', dashboardRoutes);
@@ -201,9 +210,7 @@ export async function startServer(server: HttpServer, options: StartServerOption
       );
     }
 
-    // Detect whether we're running from compiled dist/ or source src/.
-    // When running from dist/ (e.g. node dist/cli.js), migrations are .js files.
-    // When running from src/ via tsx, migrations are .ts files.
+    // Load .ts when running from source (tsx), .js when running from dist/.
     const runningFromDist = import.meta.url.includes('/dist/');
     await db.migrate.latest({
       directory: migrationDirs,
@@ -232,6 +239,9 @@ export async function startServer(server: HttpServer, options: StartServerOption
     }
 
     await reloadDynamicMiddleware();
+
+    await recoverOrphanedOperations();
+    console.log('[startup] Extension orphan recovery complete');
 
     await reconcileInstances();
 

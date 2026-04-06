@@ -44,7 +44,7 @@ HTTP Request
 - **Route handlers** parse HTTP input, validate parameters, and call service functions. They never access the database or runtime directly.
 - **Service functions** contain business logic. They call the DbAdapter for persistence and RuntimeEngine for container management.
 - **DbAdapter** abstracts database operations. CE uses SQLite; the adapter pattern allows different backends.
-- **RuntimeEngine** abstracts container management. CE primarily uses Docker; there is also a Kubernetes engine.
+- **RuntimeEngine** abstracts container management. CE uses Docker.
 
 ### Server Startup Sequence
 
@@ -73,7 +73,7 @@ CE uses **SQLite** via better-sqlite3. The database file lives at `~/.aquarium/a
 
 ### Migrations
 
-Migrations are managed by Knex and live in `apps/server/src/db/migrations/`. They use dialect-aware helpers from `migration-helpers.ts` to handle differences between SQLite and PostgreSQL syntax.
+Migrations are managed by Knex and live in `apps/server/src/db/migrations/`. They use dialect-aware helpers from `migration-helpers.ts` for schema operations.
 
 Key tables:
 

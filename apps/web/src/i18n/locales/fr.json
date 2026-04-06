@@ -56,6 +56,7 @@
       "created": "cree",
       "starting": "en cours de demarrage",
       "running": "en cours d'execution",
+      "restarting": "redemarrage",
       "stopping": "en cours d'arret",
       "stopped": "arrete",
       "error": "erreur",
@@ -194,7 +195,8 @@
       "settings": "Parametres",
       "files": "Fichiers",
       "security": "Sécurité",
-      "more": "Plus"
+      "more": "Plus",
+      "extensions": "Extensions"
     },
     "overview": {
       "title": "Details de l'instance",
@@ -1080,5 +1082,203 @@
       "file": "Fichier"
     },
     "previewNotAvailable": "Aperçu non disponible pour ce type de fichier. Utilisez le bouton Télécharger."
+  },
+  "extensions": {
+    "title": "Extensions",
+    "subTabs": {
+      "plugins": "Plugins",
+      "skills": "Compétences"
+    },
+    "sections": {
+      "installed": "Installées",
+      "available": "Disponibles",
+      "gatewayBuiltins": "Intégrées à la passerelle"
+    },
+    "status": {
+      "active": "Actif",
+      "installed": "Installé",
+      "pending": "En attente",
+      "disabled": "Désactivé",
+      "degraded": "Dégradé",
+      "failed": "Échoué"
+    },
+    "actions": {
+      "install": "Installer",
+      "installing": "Installation...",
+      "uninstall": "Désinstaller",
+      "enable": "Activer",
+      "disable": "Désactiver",
+      "configure": "Configurer",
+      "refresh": "Actualiser",
+      "activate": "Activer",
+      "activating": "Activation..."
+    },
+    "catalog": {
+      "startInstance": "Démarrez l'instance pour parcourir les extensions disponibles",
+      "noResults": "Aucune extension disponible",
+      "requiresCredentials": "Nécessite une clé API",
+      "bundled": "Inclus",
+      "clawhub": "ClawHub",
+      "requires": "Nécessite",
+      "searchPlaceholder": "Rechercher des extensions...",
+      "allCategories": "Toutes les catégories",
+      "capabilities": "Fonctionnalités",
+      "loadMore": "Charger plus",
+      "clawhubUnavailable": "Démarrez l'instance pour parcourir la marketplace"
+    },
+    "trust": {
+      "bundled": "Inclus",
+      "verified": "Vérifié",
+      "unverified": "Non vérifié",
+      "scanned": "Analysé",
+      "scanFailed": "Analyse échouée",
+      "downloads": "{{count}} téléchargements",
+      "age": "{{days}}j sur ClawHub",
+      "blockedCommunity": "Bloqué -- extension communautaire",
+      "blockedUnscanned": "Bloqué -- analyse de sécurité échouée",
+      "override": "Remplacer",
+      "credentialAccessWarning": "Cette extension communautaire s'exécute en cours avec la passerelle et aura accès à tous les identifiants de cette instance, y compris les clés API des autres extensions. N'approuvez que si vous faites confiance à l'éditeur et avez examiné le code source.",
+      "acknowledgeCheckbox": "Je reconnais le risque d'accès aux identifiants",
+      "reasonPlaceholder": "Pourquoi approuvez-vous cette extension ?",
+      "approveOverride": "Approuver",
+      "overrideSuccess": "Remplacement de confiance accordé",
+      "trustSummary": "Confiance",
+      "auditTrail": "Approuvé par l'administrateur {{userId}} le {{date}} : {{reason}}"
+    },
+    "version": {
+      "pinned": "Version : {{version}} (épinglée)",
+      "integrity": "Intégrité : {{hash}}",
+      "integrityUnavailable": "Intégrité : non disponible",
+      "checkForUpdates": "Vérifier les mises à jour",
+      "checking": "Vérification...",
+      "upToDate": "À jour",
+      "upgradeAvailable": "v{{current}} -> v{{latest}}",
+      "upgrade": "Mettre à jour",
+      "upgrading": "Mise à jour...",
+      "upgradeSuccess": "Mis à jour vers v{{version}}",
+      "restartRequired": "Redémarrage de la passerelle requis",
+      "upgradeFailed": "Échec de la mise à jour",
+      "cachedLocally": "Artefact mis en cache localement"
+    },
+    "empty": {
+      "noInstalled": "Aucune compétence installée",
+      "noBuiltins": "Aucune compétence intégrée à la passerelle",
+      "noPlugins": "Aucun plugin installé",
+      "noPluginBuiltins": "Aucun plugin intégré à la passerelle"
+    },
+    "confirm": {
+      "uninstall": "Voulez-vous vraiment désinstaller cette compétence ?",
+      "uninstallTitle": "Désinstaller la compétence",
+      "uninstallPlugin": "Voulez-vous vraiment désinstaller ce plugin ?"
+    },
+    "errors": {
+      "fetchFailed": "Échec du chargement des extensions",
+      "installFailed": "Échec de l'installation de la compétence",
+      "toggleFailed": "Échec de la mise à jour de la compétence",
+      "uninstallFailed": "Échec de la désinstallation de la compétence",
+      "conflict": "Une autre opération d'extension est en cours",
+      "pluginInstallFailed": "Échec de l'installation du plugin",
+      "pluginToggleFailed": "Échec de la mise à jour du plugin",
+      "pluginUninstallFailed": "Échec de la désinstallation du plugin",
+      "pluginActivateFailed": "Échec de l'activation du plugin",
+      "installPluginFailed": "Échec de l'installation du plugin",
+      "activateFailed": "Échec de l'activation du plugin",
+      "togglePluginFailed": "Échec de la mise à jour du plugin",
+      "uninstallPluginFailed": "Échec de la désinstallation du plugin"
+    },
+    "plugins": {
+      "comingSoon": "La gestion des plugins arrive en phase 2",
+      "requiresRestart": "L'installation de ce plugin nécessite un redémarrage de la passerelle.",
+      "activating": "Activation...",
+      "activate": "Activer",
+      "retryActivation": "Réessayer l'activation"
+    },
+    "confirmRestart": {
+      "title": "Confirmer l'activation",
+      "message": "Cela redémarrera la passerelle. Les conversations actives pourraient être interrompues. Continuer ?",
+      "cancel": "Annuler",
+      "confirm": "Activer"
+    },
+    "installDialog": {
+      "title": "Installer {{name}}",
+      "source": "Source",
+      "version": "Version",
+      "requiredCredentials": "Identifiants requis",
+      "noCredentials": "Aucun identifiant requis",
+      "restartWarning": "Cela redémarrera la passerelle. Les conversations actives pourraient être interrompues.",
+      "cancel": "Annuler",
+      "install": "Installer",
+      "installing": "Installation..."
+    },
+    "restart": {
+      "banner": "Redémarrage de la passerelle pour {{name}}...",
+      "actionsDisabled": "Toutes les actions de plugin sont désactivées pendant le redémarrage."
+    },
+    "rollback": {
+      "title": "Échec de l'activation",
+      "message": "La passerelle n'a pas pu démarrer avec le plugin \"{{name}}\". Elle a été restaurée à la configuration précédente.",
+      "showDetails": "Afficher les détails techniques",
+      "hideDetails": "Masquer les détails techniques",
+      "close": "Fermer",
+      "retry": "Réessayer l'activation"
+    },
+    "oauth": {
+      "connectWith": "Se connecter avec {{provider}}",
+      "connecting": "Connexion en cours...",
+      "connected": "{{provider}} authentifié",
+      "failed": "Autorisation échouée",
+      "tryAgain": "Réessayer",
+      "requiresReAuth": "Cette extension nécessite une ré-authentification. Connectez votre compte pour l'activer.",
+      "popupBlocked": "La fenêtre contextuelle a été bloquée. Veuillez autoriser les popups pour ce site.",
+      "callbackError": "Le rappel OAuth a échoué. Veuillez réessayer."
+    },
+    "vault": {
+      "title": "Intégration coffre-fort",
+      "configure": "Configurer le coffre-fort",
+      "edit": "Modifier",
+      "remove": "Supprimer le coffre-fort",
+      "removeConfirm": "Supprimer la configuration du coffre-fort ? Les identifiants sauvegardés dans le coffre-fort ne seront plus résolus.",
+      "type": "Type de coffre-fort",
+      "onepassword": "1Password CLI (op)",
+      "hashicorp": "HashiCorp Vault",
+      "address": "Adresse du coffre-fort",
+      "addressPlaceholder": "https://vault.example.com:8200",
+      "namespace": "Espace de noms",
+      "namespacePlaceholder": "admin",
+      "authMethod": "Méthode d'authentification",
+      "authToken": "Jeton",
+      "authAppRole": "AppRole",
+      "authCli": "Connexion CLI",
+      "mountPath": "Chemin de montage",
+      "mountPathPlaceholder": "secret",
+      "save": "Enregistrer la config du coffre-fort",
+      "saving": "Enregistrement...",
+      "saved": "Coffre-fort configuré",
+      "removed": "Configuration du coffre-fort supprimée",
+      "opNote": "Assurez-vous que le CLI op est disponible dans le conteneur de la passerelle.",
+      "vaultNote": "Assurez-vous que le CLI vault est disponible dans le conteneur de la passerelle."
+    },
+    "credentials": {
+      "title": "Configurer les identifiants",
+      "requiresCredentials": "Cette compétence nécessite des identifiants pour s'activer.",
+      "fieldLabel": "Champ d'identification",
+      "valueLabel": "Clé API / Valeur",
+      "save": "Enregistrer l'identifiant",
+      "saving": "Enregistrement...",
+      "saved": "Identifiant enregistré avec succès",
+      "saveFailed": "Échec de l'enregistrement de l'identifiant",
+      "source": "Source des identifiants",
+      "sourceDirect": "Valeur directe",
+      "sourceVault": "Depuis le coffre-fort",
+      "vaultPath": "Chemin du coffre-fort",
+      "vaultPathPlaceholderOp": "op://vault/item/field",
+      "vaultPathPlaceholderHc": "secret/data/myapp/api-key"
+    },
+    "alerts": {
+      "failed": "{{name}} a échoué : {{error}}",
+      "degraded": "{{name}} est dégradé — il est peut-être encore en cours d'exécution depuis le cache",
+      "retry": "Réessayer",
+      "integrityMismatch": "Incohérence d'intégrité détectée"
+    }
   }
 }

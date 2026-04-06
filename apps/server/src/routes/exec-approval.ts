@@ -2,10 +2,11 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { getInstance } from '../services/instance-manager.js';
 import {
-  getGatewayClient,
+  isGatewayConnected,
   consumePendingApproval,
   getPendingApprovalsForInstance,
 } from '../services/gateway-event-relay.js';
+import { gatewayCall } from '../agent-types/openclaw/gateway-rpc.js';
 import { broadcastToUser } from '../ws/index.js';
 import type { ApiResponse, ExecApprovalResponse } from '@aquarium/shared';
 
@@ -28,14 +29,13 @@ router.post('/:id/exec-approval', async (req, res) => {
       return;
     }
 
-    const client = getGatewayClient(id);
-    if (!client) {
+    if (!isGatewayConnected(id)) {
       res.status(502).json({ ok: false, error: 'Gateway not connected' } satisfies ApiResponse);
       return;
     }
 
     try {
-      await client.call('exec.approval.resolve', { id: approvalId, approved }, 10_000);
+      await gatewayCall(id, 'exec.approval.resolve', { id: approvalId, approved }, 10_000);
     } catch (err) {
       res.status(502).json({ ok: false, error: `Gateway RPC failed: ${(err as Error).message}` } satisfies ApiResponse);
       return;

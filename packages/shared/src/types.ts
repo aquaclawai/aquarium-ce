@@ -1,6 +1,6 @@
 // === Status Types ===
 
-export type InstanceStatus = 'created' | 'starting' | 'running' | 'stopping' | 'stopped' | 'error';
+export type InstanceStatus = 'created' | 'starting' | 'running' | 'restarting' | 'stopping' | 'stopped' | 'error';
 export type DeploymentTarget = 'docker' | 'kubernetes';
 export type CredentialType = 'api_key' | 'oauth_token';
 export type BillingMode = 'platform' | 'byok';
@@ -8,6 +8,23 @@ export type SecurityProfile = 'strict' | 'standard' | 'developer' | 'unrestricte
 export type UserRole = 'admin' | 'user' | 'viewer';
 export type ModelMode = 'auto' | 'specific';
 export type ChatErrorCategory = 'timeout' | 'auth' | 'quota' | 'model' | 'gateway' | 'unknown';
+
+/** A model returned by the gateway, enriched with credential status. */
+export interface GatewayModel {
+  id: string;
+  name: string;
+  provider: string;
+  contextWindow?: number;
+  reasoning?: boolean;
+  /** Whether the instance has a credential configured for this model's provider. */
+  usable: boolean;
+}
+
+/** Response shape for GET /instances/:id/models. */
+export interface InstanceModelsResponse {
+  models: GatewayModel[];
+  configuredProviders: string[];
+}
 
 /** Attachment sent with a chat message (image only, base64-encoded). */
 export interface ChatAttachment {
@@ -625,6 +642,33 @@ export interface InstantiateTemplateRequest {
 export interface InstantiateTemplateResponse {
   instance: Instance;
   credentialStatus: Record<string, 'provided' | 'from_vault' | 'missing'>;
+  /** Extensions that were blocked by trust policy and omitted from the instance */
+  blockedExtensions?: Array<{
+    id: string;
+    kind: ExtensionKind;
+    reason: string;
+  }>;
+  /** Extensions that require fresh admin trust override before they can be installed */
+  requiresTrustOverride?: Array<{
+    id: string;
+    kind: ExtensionKind;
+    source: PluginSource | ExtensionSkillSource;
+    reason: string;
+  }>;
+  /** Count of extensions successfully inserted as lifecycle rows */
+  extensionsImported?: number;
+}
+
+export interface TemplateExtensionDeclaration {
+  id: string;
+  kind: ExtensionKind;
+  source: PluginSource | ExtensionSkillSource;
+  lockedVersion: string | null;
+  integrityHash: string | null;
+  enabled: boolean;
+  needsCredentials: boolean;
+  requiresReAuth?: boolean;   // extension uses OAuth credentials that cannot be exported
+  config?: Record<string, unknown>;
 }
 
 export interface ExportTemplateResponse {
@@ -636,12 +680,13 @@ export interface ExportTemplateResponse {
     openclawConfig: Record<string, unknown>;
     setupCommands: SetupCommand[];
     customImage: string | null;
+    extensions?: TemplateExtensionDeclaration[];
   };
   securityWarnings: SecurityWarning[];
 }
 
 export interface SecurityWarning {
-  type: 'possible_hardcoded_key';
+  type: 'possible_hardcoded_key' | 'redacted_secret';
   location: string;
   pattern: string;
   suggestion: string;
@@ -721,6 +766,135 @@ export interface ChannelEnableRequest {
 export interface ChannelPolicyUpdate {
   dmPolicy?: 'open' | 'pairing' | 'allowlist' | 'disabled';
   groupPolicy?: 'open' | 'disabled' | 'allowlist';
+  allowFrom?: string[];
+  groupAllowFrom?: string[];
+}
+
+// === Channel Registry ===
+
+export interface ChannelFieldDef {
+  key: string;
+  label: string;
+  labelKey: string;
+  type: 'text' | 'password' | 'textarea' | 'select' | 'number';
+  placeholder?: string;
+  placeholderKey?: string;
+  required: boolean;
+  helpText?: string;
+  helpTextKey?: string;
+  helpUrl?: string;
+  options?: Array<{ value: string; label: string; labelKey?: string }>;
+  pattern?: string;
+  patternError?: string;
+}
+
+export interface ChannelCapabilitiesInfo {
+  dm: boolean;
+  groups: boolean;
+  media: boolean;
+  reactions: boolean;
+  threads: boolean;
+  streaming: boolean;
+}
+
+export interface ChannelRegistryEntry {
+  id: string;
+  label: string;
+  labelKey: string;
+  description: string;
+  descriptionKey: string;
+  setupType: 'token' | 'qr' | 'token+qr';
+  pluginRequired: boolean;
+  pluginInstall?: {
+    pluginId: string;
+    source: PluginSource;
+    minVersion?: string;
+  };
+  category: 'popular' | 'enterprise' | 'community' | 'experimental';
+  order: number;
+  fields: ChannelFieldDef[];
+  helpUrl?: string;
+  helpTextKey?: string;
+  capabilities: ChannelCapabilitiesInfo;
+  supportedDmPolicies: Array<NonNullable<ChannelPolicyUpdate['dmPolicy']>>;
+  supportedGroupPolicies: Array<NonNullable<ChannelPolicyUpdate['groupPolicy']>>;
+  nestedDmPolicy: boolean;
+  icon: string;
+  serverValidation?: Record<string, { pattern: string; message: string }>;
+}
+
+export interface ChannelRegistryItem extends ChannelRegistryEntry {
+  status: ChannelStatusDetail | null;
+  pluginInstalled: boolean;
+  hasCredentials: boolean;
+  compatible: boolean;
+  incompatibleReason?: string;
+}
+
+// === Cron Jobs ===
+
+export type CronJobSchedule =
+  | { kind: 'cron'; expr: string; tz?: string }
+  | { kind: 'at'; at: string }
+  | { kind: 'every'; everyMs: number };
+
+export type CronJobPayload =
+  | { kind: 'systemEvent'; text: string }
+  | { kind: 'agentTurn'; message: string; model?: string; timeoutSeconds?: number };
+
+export interface CronJobDelivery {
+  mode: 'announce' | 'none';
+  channel?: string;
+  to?: string;
+}
+
+export interface CronJobState {
+  nextRunAtMs?: number;
+  lastRunAtMs?: number;
+  lastRunStatus?: 'ok' | 'error' | 'skipped';
+  lastError?: string;
+  lastDurationMs?: number;
+  consecutiveErrors?: number;
+  lastDeliveryStatus?: 'delivered' | 'not-delivered' | 'unknown' | 'not-requested';
+}
+
+export interface CronJob {
+  id: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+  schedule: CronJobSchedule;
+  payload: CronJobPayload;
+  delivery?: CronJobDelivery;
+  sessionTarget?: 'main' | 'isolated';
+  wakeMode?: 'now' | 'next-heartbeat';
+  deleteAfterRun?: boolean;
+  createdAtMs: number;
+  updatedAtMs: number;
+  state: CronJobState;
+  nextRunAt?: string;
+  lastRunAt?: string;
+}
+
+export interface CronJobRun {
+  id: string;
+  jobId: string;
+  startedAt: string;
+  finishedAt?: string;
+  status: 'running' | 'completed' | 'failed';
+  durationMs?: number;
+  error?: string;
+  deliveryStatus?: string;
+}
+
+export interface CronListResponse {
+  total: number;
+  jobs: CronJob[];
+}
+
+export interface CronRunsResponse {
+  total: number;
+  entries: CronJobRun[];
 }
 
 // === Admin ===
@@ -1364,4 +1538,173 @@ export interface AdminUserWithRole {
   role: UserRole;
   createdAt: string;
   instanceCount: number;
+}
+
+// === Extension Lifecycle Types ===
+
+export type ExtensionStatus = 'pending' | 'installed' | 'active' | 'disabled' | 'degraded' | 'failed';
+
+export type ExtensionKind = 'plugin' | 'skill';
+
+export type PluginSource =
+  | { type: 'bundled' }
+  | { type: 'clawhub'; spec: string }
+  | { type: 'npm'; spec: string };
+
+export type ExtensionSkillSource =
+  | { type: 'bundled' }
+  | { type: 'clawhub'; spec: string }
+  | { type: 'url'; url: string };
+
+export interface ExtensionCredentialRequirement {
+  field: string;
+  label: string;
+  type: 'api_key' | 'env_var' | 'oauth_token';
+  required: boolean;
+  description?: string;
+}
+
+export interface GatewayExtensionInfo {
+  id: string;
+  name: string;
+  description: string;
+  version: string;
+  source: 'bundled';
+  enabled: boolean;
+}
+
+export interface InstancePlugin {
+  id: string;
+  instanceId: string;
+  pluginId: string;
+  source: PluginSource;
+  version: string | null;
+  lockedVersion: string | null;
+  integrityHash: string | null;
+  enabled: boolean;
+  config: Record<string, unknown>;
+  status: ExtensionStatus;
+  errorMessage: string | null;
+  failedAt: string | null;
+  pendingOwner: string | null;
+  retryCount: number;
+  installedAt: string;
+  updatedAt: string;
+  trustOverride?: TrustOverride | null;
+}
+
+export interface InstanceSkill {
+  id: string;
+  instanceId: string;
+  skillId: string;
+  source: ExtensionSkillSource;
+  version: string | null;
+  lockedVersion: string | null;
+  integrityHash: string | null;
+  enabled: boolean;
+  config: Record<string, unknown>;
+  status: ExtensionStatus;
+  errorMessage: string | null;
+  failedAt: string | null;
+  pendingOwner: string | null;
+  retryCount: number;
+  installedAt: string;
+  updatedAt: string;
+  trustOverride?: TrustOverride | null;
+}
+
+export interface SkillCatalogEntry {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  category: string;
+  source: 'bundled' | 'clawhub';
+  version: string;
+  requiredCredentials: ExtensionCredentialRequirement[];
+  requiredBinaries: string[];
+  requiredEnvVars: string[];
+  trustSignals?: TrustSignals;
+  trustTier?: TrustTier;
+  trustDecision?: TrustDecision;
+  blockReason?: string;
+}
+
+export interface PluginCatalogEntry {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  source: 'bundled' | 'clawhub';
+  version: string;
+  requiredCredentials: ExtensionCredentialRequirement[];
+  capabilities: string[];
+  trustSignals?: TrustSignals;
+  trustTier?: TrustTier;
+  trustDecision?: TrustDecision;
+  blockReason?: string;
+}
+
+export interface ExtensionOperation {
+  id: string;
+  instanceId: string;
+  fencingToken: string;
+  operationType: string;
+  targetExtension: string;
+  extensionKind: ExtensionKind;
+  pendingOwner: string;
+  cancelRequested: boolean;
+  startedAt: string;
+  completedAt: string | null;
+  result: string | null;
+  errorMessage: string | null;
+}
+
+// === Trust Policy Types ===
+
+export type TrustTier = 'bundled' | 'verified' | 'community' | 'unscanned';
+
+export interface TrustSignals {
+  verifiedPublisher: boolean;
+  downloadCount: number;
+  ageInDays: number;
+  virusTotalPassed: boolean | null;  // null = not scanned
+}
+
+export interface TrustOverride {
+  id: string;
+  instanceId: string;
+  extensionId: string;
+  extensionKind: ExtensionKind;
+  action: 'allow';
+  reason: string;
+  userId: string;
+  credentialAccessAcknowledged: boolean;
+  createdAt: string;
+}
+
+export type TrustDecision = 'allow' | 'block';
+
+export interface TrustEvaluation {
+  tier: TrustTier;
+  decision: TrustDecision;
+  signals: TrustSignals | null;   // null for bundled (no ClawHub metadata)
+  override: TrustOverride | null; // non-null if admin overrode
+  blockReason: string | null;     // human-readable reason when blocked
+}
+
+// ClawHub catalog entry — extends base catalog entries with trust signals
+export interface ClawHubCatalogEntry {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  version: string;
+  kind: ExtensionKind;
+  publisher: string;
+  trustSignals: TrustSignals;
+  requiredCredentials: ExtensionCredentialRequirement[];
+  capabilities?: string[];        // plugins only
+  requiredBinaries?: string[];    // skills only
+  hasScripts?: boolean;           // skills only — true if contains scripts/ dir
 }

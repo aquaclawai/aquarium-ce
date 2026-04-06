@@ -147,7 +147,7 @@ export function DashboardPage() {
             <div className="instance-header">
               <h3>{inst.name}</h3>
               <span className={`status-badge status-${inst.status}`}>
-                {(inst.status === 'starting' || inst.status === 'stopping') && <span className="spinner" />}{' '}
+                {(inst.status === 'starting' || inst.status === 'stopping' || inst.status === 'restarting') && <span className="spinner" />}{' '}
                 {t(`common.status.${inst.status}`)}
               </span>
             </div>
