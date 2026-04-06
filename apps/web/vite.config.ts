@@ -1,10 +1,16 @@
 import { defineConfig, type UserConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'node:path'
 
 /** Shared Vite config used by both CE and EE builds. */
 export function createBaseConfig(overrides?: Partial<UserConfig>) {
   return defineConfig({
     plugins: [react()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
+    },
     server: {
       proxy: {
         '/api': {

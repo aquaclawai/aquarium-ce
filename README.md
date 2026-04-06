@@ -2,6 +2,8 @@
 
 Self-hosted AI agent management platform. Deploy and manage AI agent instances locally with a single command.
 
+**[aquaclaw.ai](https://www.aquaclaw.ai/en)** -- Our website is entirely managed by CAT (Citronetic Autonomous Technician), an AI agent running on the Aquarium platform itself.
+
 ## Quick Start
 
 ```bash
