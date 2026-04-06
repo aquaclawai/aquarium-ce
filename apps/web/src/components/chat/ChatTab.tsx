@@ -138,6 +138,11 @@ function formatMessageTime(isoString?: string): string {
     ' ' + date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
+/** Strip gateway-internal prefix (e.g. 'agent:main:chat-123' → 'chat-123'). */
+function normalizeSessionKey(key: string): string {
+  return key.replace(/^agent:[^:]+:/, '');
+}
+
 function getDocumentTypeLabel(mime: string): string {
   if (mime.includes('spreadsheet') || mime.includes('ms-excel')) return 'XLS';
   if (mime.includes('wordprocessingml') || mime.includes('msword')) return 'DOC';
@@ -183,8 +188,9 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
   // --- Session state ---
   const storageKey = `chat-session-${instanceId}`;
   const [sessionKey, setSessionKey] = useState(() => {
-    if (initialSessionKey) return initialSessionKey;
-    return localStorage.getItem(storageKey) || `chat-${Date.now()}`;
+    if (initialSessionKey) return normalizeSessionKey(initialSessionKey);
+    const stored = localStorage.getItem(storageKey);
+    return stored ? normalizeSessionKey(stored) : `chat-${Date.now()}`;
   });
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sessionRefreshFlag, setSessionRefreshFlag] = useState(0);
@@ -232,8 +238,8 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
 
   // Handle initialSessionKey changes after mount
   useEffect(() => {
-    if (initialSessionKey && initialSessionKey !== sessionKey) {
-      setSessionKey(initialSessionKey);
+    if (initialSessionKey && normalizeSessionKey(initialSessionKey) !== sessionKey) {
+      setSessionKey(normalizeSessionKey(initialSessionKey));
       setMessages([]);
       imageStoreRef.current = new Map();
       setStreamText(null);
@@ -401,7 +407,7 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
 
   const handleSelectSession = useCallback((key: string) => {
     if (isStreaming) return;
-    setSessionKey(key);
+    setSessionKey(normalizeSessionKey(key));
     setMessages([]);
     imageStoreRef.current = new Map();
     setStreamText(null);
