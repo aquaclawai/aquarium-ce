@@ -1,92 +1,71 @@
 import './AssistantChatPage.css';
 import './MyAssistantsPage.css';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useChatSession } from '../components/assistant/useChatSession';
-import { ChatTopbar } from '../components/assistant/ChatTopbar';
-import { ChatMessageList } from '../components/assistant/ChatMessageList';
-import { ChatInputBar } from '../components/assistant/ChatInputBar';
-import { SessionDrawer } from '../components/chat/SessionDrawer';
+import { api } from '../api';
+import { useWebSocket } from '../context/WebSocketContext';
+import { ChatTab } from '../components/chat/ChatTab';
 import { ChatSkeleton } from '@/components/skeletons';
+import type { InstancePublic, AgentTypeInfo, WsMessage } from '@aquarium/shared';
 
 export function AssistantChatPage() {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
-  const chat = useChatSession(id);
+  const { subscribe, unsubscribe, addHandler, removeHandler } = useWebSocket();
 
-  if (chat.loading) return <div className="achat-page"><ChatSkeleton /></div>;
-  if (!chat.instance) return <div className="achat-page"><div className="achat-loading">{t('instance.notFound')}</div></div>;
+  const [instance, setInstance] = useState<InstancePublic | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+
+  // Fetch instance + agent type suggestions
+  useEffect(() => {
+    if (!id) return;
+    api.get<InstancePublic>(`/instances/${id}`)
+      .then(inst => {
+        setInstance(inst);
+        api.get<AgentTypeInfo>(`/agent-types/${inst.agentType}`)
+          .then(at => setSuggestions(at.wizard?.chatSuggestions ?? []))
+          .catch(() => setSuggestions([]));
+      })
+      .catch(() => setInstance(null))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  // Subscribe to instance status updates
+  useEffect(() => {
+    if (!id) return;
+    subscribe(id);
+    return () => unsubscribe(id);
+  }, [id, subscribe, unsubscribe]);
+
+  const handleStatusUpdate = useCallback((msg: WsMessage) => {
+    if (msg.instanceId !== id) return;
+    const p = msg.payload as { status?: string; statusMessage?: string };
+    if (p.status) {
+      setInstance(prev => prev
+        ? { ...prev, status: p.status as InstancePublic['status'], statusMessage: (p.statusMessage as string) ?? null }
+        : null,
+      );
+    }
+  }, [id]);
+
+  useEffect(() => {
+    addHandler('instance:status', handleStatusUpdate);
+    return () => removeHandler('instance:status', handleStatusUpdate);
+  }, [addHandler, removeHandler, handleStatusUpdate]);
+
+  if (loading) return <div className="achat-page"><ChatSkeleton /></div>;
+  if (!instance) return <div className="achat-page"><div className="achat-loading">{t('instance.notFound')}</div></div>;
 
   return (
-    <div className="achat-page">
-      <ChatTopbar
-        instance={chat.instance}
-        showSettings={chat.showSettings}
-        onToggleSettings={() => chat.setShowSettings(!chat.showSettings)}
-        sessionModel={chat.sessionModel}
-        onSessionModelChange={chat.setSessionModel}
-        sessionThinking={chat.sessionThinking}
-        onSessionThinkingChange={chat.setSessionThinking}
-        savingSettings={chat.savingSettings}
-        onSaveSettings={chat.handleSaveSettings}
-        modelSuggestions={chat.modelSuggestions}
-        onNewChat={chat.handleNewChat}
-        onOpenDrawer={() => chat.setDrawerOpen(!chat.drawerOpen)}
-        drawerOpen={chat.drawerOpen}
-      />
-
-      <div className="achat-body" style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
-        <SessionDrawer
-          instanceId={id!}
-          currentSessionKey={chat.sessionKey}
-          isOpen={chat.drawerOpen}
-          isStreaming={chat.isStreaming}
-          onSelectSession={chat.handleSelectSession}
-          onNewChat={chat.handleNewChat}
-          onClose={() => chat.setDrawerOpen(false)}
-          refreshFlag={chat.sessionRefreshFlag}
-          mode="sidebar"
-        />
-        <div className="achat-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-          <ChatMessageList
-            messages={chat.messages}
-            streamText={chat.streamText}
-            isStreaming={chat.isStreaming}
-            sending={chat.sending}
-            chatError={chat.chatError}
-            onDismissError={() => chat.setChatError(null)}
-            onRetry={chat.handleRetry}
-            retrying={chat.retrying}
-            isAtBottom={chat.isAtBottom}
-            onScrollToBottom={chat.scrollToBottom}
-            messagesContainerRef={chat.messagesContainerRef}
-            instance={chat.instance}
-            copiedIdx={chat.copiedIdx}
-            onCopyMessage={chat.handleCopyMessage}
-            onSuggestionClick={chat.sendMessage}
-            onMessagesScroll={chat.handleMessagesScroll}
-            suggestions={chat.suggestions}
-            onOpenSettings={() => chat.setShowSettings(true)}
-          />
-          <ChatInputBar
-            inputValue={chat.input}
-            onInputChange={chat.setInput}
-            onSend={chat.sendMessage}
-            onAbort={chat.handleAbort}
-            sending={chat.sending}
-            isStreaming={chat.isStreaming}
-            attachments={chat.attachments}
-            onRemoveAttachment={chat.removeAttachment}
-            onFileSelect={chat.processFiles}
-            onLoadHistory={chat.loadHistory}
-            onPaste={chat.handlePaste}
-            onDrop={chat.handleDrop}
-            instance={chat.instance}
-            textareaRef={chat.textareaRef}
-            fileInputRef={chat.fileInputRef}
-          />
-        </div>
-      </div>
-    </div>
+    <ChatTab
+      key={instance.id}
+      mode="page"
+      instanceId={instance.id}
+      instanceStatus={instance.status}
+      instanceName={instance.name}
+      suggestions={suggestions}
+    />
   );
 }

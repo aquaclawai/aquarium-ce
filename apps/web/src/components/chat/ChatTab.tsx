@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useWebSocket } from '../../context/WebSocketContext.js';
 import { rpc } from '../../utils/rpc.js';
 import { api } from '../../api.js';
 import { MessageRenderer } from './MessageRenderer.js';
+import { ChatErrorBanner } from './ChatErrorBanner.js';
+import { classifyChatError } from './classifyError.js';
 import { useInstanceModels } from '../../hooks/useInstanceModels';
 import { SessionDrawer } from './SessionDrawer.js';
-import type { Instance, WsMessage } from '@aquarium/shared';
+import type { Instance, WsMessage, ChatErrorCategory } from '@aquarium/shared';
 import { isImageMime, ALLOWED_ATTACHMENT_TYPES, MAX_FILE_UPLOAD_SIZE, FILE_INPUT_ACCEPT } from '@aquarium/shared';
 import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Separator, Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui';
 import '../../pages/AssistantChatPage.css';
@@ -23,6 +26,13 @@ interface ChatAttachment {
   data: string; // Base64 (without prefix)
   preview: string; // Data URL for display
   name: string;
+}
+
+interface ChatError {
+  message: string;
+  category: ChatErrorCategory;
+  lastUserMessage?: string;
+  timestamp: number;
 }
 
 /** Returns true if a message content value contains image blocks with actual data. */
@@ -94,6 +104,28 @@ function extractText(content: unknown): string {
   return '';
 }
 
+/** Filter raw history messages: remove tool messages and empty assistant messages. */
+function filterHistoryMessages(raw: Array<{ role: string; content: unknown; timestamp?: number }>): ChatMessage[] {
+  return raw
+    .filter(m => {
+      if (m.role === 'user') return true;
+      if (m.role === 'tool' || m.role === 'toolResult') return false;
+      // Filter out assistant messages with no visible text (only thinking + toolCall)
+      if (m.role === 'assistant' && Array.isArray(m.content)) {
+        const hasText = m.content.some(
+          (b: Record<string, unknown>) => b.type === 'text' && typeof b.text === 'string' && b.text.trim().length > 0,
+        );
+        if (!hasText) return false;
+      }
+      return true;
+    })
+    .map(m => ({
+      role: m.role === 'user' ? 'user' as const : 'agent' as const,
+      content: m.content,
+      timestamp: m.timestamp ? new Date(m.timestamp).toISOString() : undefined,
+    }));
+}
+
 function formatMessageTime(isoString?: string): string {
   if (!isoString) return '';
   const date = new Date(isoString);
@@ -113,45 +145,92 @@ function getDocumentTypeLabel(mime: string): string {
   return 'FILE';
 }
 
+const AgentAvatarSvg = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <rect x="2" y="5.5" width="12" height="8.5" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
+    <path d="M5.5 5.5V4.5A1.5 1.5 0 0 1 7 3h2a1.5 1.5 0 0 1 1.5 1.5V5.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+  </svg>
+);
+
 interface ChatTabProps {
   instanceId: string;
   instanceStatus: Instance['status'];
   initialSessionKey?: string | null;
   onSessionKeyConsumed?: () => void;
+  /** 'tab' = embedded in a page (default), 'page' = standalone full-page layout */
+  mode?: 'tab' | 'page';
+  /** Instance name shown in page mode topbar */
+  instanceName?: string;
+  /** Quick suggestions shown on empty chat state in page mode */
+  suggestions?: string[];
 }
 
-export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessionKeyConsumed }: ChatTabProps) {
+export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessionKeyConsumed, mode = 'tab', instanceName, suggestions }: ChatTabProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { isConnected, addHandler, removeHandler, subscribeChatSession, unsubscribeChatSession } = useWebSocket();
+
+  // --- Core chat state ---
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [chatError, setChatError] = useState<ChatError | null>(null);
   const [streamText, setStreamText] = useState<string | null>(null);
-  const activeRunIdRef = useRef<string | null>(null);
-  const abortedRunIdsRef = useRef<Set<string>>(new Set());
-  const imageStoreRef = useRef<Map<number, unknown>>(new Map());
-  const chatTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [retrying, setRetrying] = useState(false);
+
+  // --- Session state ---
   const storageKey = `chat-session-${instanceId}`;
   const [sessionKey, setSessionKey] = useState(() => {
     if (initialSessionKey) return initialSessionKey;
     return localStorage.getItem(storageKey) || `chat-${Date.now()}`;
   });
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sessionRefreshFlag, setSessionRefreshFlag] = useState(0);
 
-  useEffect(() => {
-    localStorage.setItem(storageKey, sessionKey);
-  }, [storageKey, sessionKey]);
+  // --- Settings state ---
+  const [showSettings, setShowSettings] = useState(false);
+  const [sessionModel, setSessionModel] = useState('');
+  const [sessionThinking, setSessionThinking] = useState('');
+  const [savingSettings, setSavingSettings] = useState(false);
 
-  // Consume initialSessionKey on mount (clear parent's pendingSessionKey)
+  // --- Attachment state ---
+  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+
+  // --- Refs ---
+  const activeRunIdRef = useRef<string | null>(null);
+  const abortedRunIdsRef = useRef<Set<string>>(new Set());
+  const imageStoreRef = useRef<Map<number, unknown>>(new Map());
+  const chatTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+  const initialScrollDone = useRef(false);
+  const prevConnectedRef = useRef(isConnected);
+  const sendingRef = useRef(sending);
+  sendingRef.current = sending;
+  const streamTextRef = useRef(streamText);
+  streamTextRef.current = streamText;
+
+  const isStreaming = streamText !== null || sending;
+  const isRunning = instanceStatus === 'running';
+  const { models: gatewayModels } = useInstanceModels(instanceId, instanceStatus);
+
+  // --- Effects: session persistence ---
+  useEffect(() => { localStorage.setItem(storageKey, sessionKey); }, [storageKey, sessionKey]);
+  useEffect(() => () => { if (chatTimeoutRef.current) clearTimeout(chatTimeoutRef.current); }, []);
+
+  // Consume initialSessionKey on mount
   useEffect(() => {
     if (initialSessionKey && sessionKey === initialSessionKey) {
       onSessionKeyConsumed?.();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only on mount
+  }, []);
 
-  // Handle initialSessionKey changes after mount (e.g., user picks another session while ChatTab is mounted)
+  // Handle initialSessionKey changes after mount
   useEffect(() => {
     if (initialSessionKey && initialSessionKey !== sessionKey) {
       setSessionKey(initialSessionKey);
@@ -159,18 +238,20 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
       imageStoreRef.current = new Map();
       setStreamText(null);
       activeRunIdRef.current = null;
-      setError(null);
+      setChatError(null);
       initialScrollDone.current = false;
       onSessionKeyConsumed?.();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialSessionKey]);
 
+  // --- Effects: WebSocket subscriptions ---
   useEffect(() => {
     subscribeChatSession(instanceId, sessionKey);
     return () => unsubscribeChatSession(instanceId, sessionKey);
   }, [instanceId, sessionKey, subscribeChatSession, unsubscribeChatSession]);
 
+  // --- Effects: textarea auto-resize ---
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -178,46 +259,33 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
     ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
   }, [input]);
 
-  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [sessionRefreshFlag, setSessionRefreshFlag] = useState(0);
-
-  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const dropZoneRef = useRef<HTMLDivElement>(null);
-
+  // --- File handling ---
   const processFiles = useCallback((files: FileList | null) => {
     if (!files || files.length === 0) return;
-
-    const maxAttachments = 5;
-
-    if (attachments.length + files.length > maxAttachments) {
-      setError(t('chat.attachments.maxReached'));
+    if (attachments.length + files.length > 5) {
+      setChatError({ message: t('chat.attachments.maxReached'), category: 'unknown', timestamp: Date.now() });
       return;
     }
-
     Array.from(files).forEach(file => {
       if (!ALLOWED_ATTACHMENT_TYPES.has(file.type)) {
-        setError(t('chat.attachments.invalidType'));
+        setChatError({ message: t('chat.attachments.invalidType'), category: 'unknown', timestamp: Date.now() });
         return;
       }
       const maxSize = isImageMime(file.type) ? 5 * 1024 * 1024 : MAX_FILE_UPLOAD_SIZE;
       if (file.size > maxSize) {
-        setError(t('chat.attachments.tooLarge'));
+        setChatError({ message: t('chat.attachments.tooLarge'), category: 'unknown', timestamp: Date.now() });
         return;
       }
-
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
-        // extract base64 data
         const base64 = result.split(',')[1];
         setAttachments(prev => [...prev, {
           id: crypto.randomUUID(),
           type: file.type,
           data: base64,
           preview: result,
-          name: file.name
+          name: file.name,
         }]);
       };
       reader.readAsDataURL(file);
@@ -225,34 +293,26 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
   }, [attachments.length, t]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
-    if (e.clipboardData.files.length > 0) {
-      e.preventDefault();
-      processFiles(e.clipboardData.files);
-    }
+    if (e.clipboardData.files.length > 0) { e.preventDefault(); processFiles(e.clipboardData.files); }
   }, [processFiles]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.dataTransfer.files.length > 0) {
-      processFiles(e.dataTransfer.files);
-    }
+    e.preventDefault(); e.stopPropagation();
+    if (e.dataTransfer.files.length > 0) processFiles(e.dataTransfer.files);
   }, [processFiles]);
 
   const removeAttachment = useCallback((id: string) => {
     setAttachments(prev => prev.filter(a => a.id !== id));
   }, []);
 
-
+  // --- Copy ---
   const handleCopyMessage = useCallback((content: unknown, idx: number) => {
-    const text = extractText(content);
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(extractText(content));
     setCopiedIdx(idx);
     setTimeout(() => setCopiedIdx(prev => prev === idx ? null : prev), 2000);
   }, []);
 
-  const isStreaming = streamText !== null || sending;
-
+  // --- History loading ---
   const loadHistory = useCallback(async () => {
     if (instanceStatus !== 'running') return;
     try {
@@ -260,24 +320,7 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
         instanceId, 'chat.history', { sessionKey, limit: 50 },
       );
       if (res.messages) {
-        const historyMsgs = res.messages
-          .filter(m => {
-            if (m.role === 'user') return true;
-            if (m.role === 'tool' || m.role === 'toolResult') return false;
-            // Filter out assistant messages with no visible text (only thinking + toolCall)
-            if (m.role === 'assistant' && Array.isArray(m.content)) {
-              const hasText = m.content.some(
-                (b: Record<string, unknown>) => b.type === 'text' && typeof b.text === 'string' && b.text.trim().length > 0,
-              );
-              if (!hasText) return false;
-            }
-            return true;
-          })
-          .map(m => ({
-            role: m.role === 'user' ? 'user' as const : 'agent' as const,
-            content: m.content,
-            timestamp: m.timestamp ? new Date(m.timestamp).toISOString() : undefined,
-          }));
+        const historyMsgs = filterHistoryMessages(res.messages);
         setMessages(() => mergeHistoryPreservingImages(historyMsgs, imageStoreRef.current));
       }
     } catch { /* history may not exist yet */ }
@@ -285,17 +328,9 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
 
   useEffect(() => { loadHistory(); }, [loadHistory]);
 
-  // Reconnection-aware history reload: detect isConnected false->true transitions
-  const prevConnectedRef = useRef(isConnected);
-  const sendingRef = useRef(sending);
-  sendingRef.current = sending;
-  const streamTextRef = useRef(streamText);
-  streamTextRef.current = streamText;
-
+  // --- Reconnection-aware history reload ---
   useEffect(() => {
     if (isConnected && !prevConnectedRef.current) {
-      // Reconnected after a drop -- reload history to catch any missed messages
-      // If streaming was in progress, clear streaming state (stream is lost)
       if (streamTextRef.current !== null || sendingRef.current) {
         setSending(false);
         setStreamText(null);
@@ -306,69 +341,52 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
     prevConnectedRef.current = isConnected;
   }, [isConnected, loadHistory]);
 
+  // --- WebSocket chat event handler ---
   useEffect(() => {
     if (instanceStatus !== 'running') return;
-
     const handler = (msg: WsMessage) => {
       if (msg.instanceId !== instanceId) return;
       const payload = msg.payload as { event?: string; data?: Record<string, unknown> };
       if (!payload.event || !payload.data) return;
+      if (payload.event !== 'chat') return;
 
-      const { event, data } = payload;
+      const chatData = payload.data as {
+        runId?: string;
+        sessionKey?: string;
+        state?: 'delta' | 'final' | 'aborted' | 'error';
+        content?: unknown;
+        message?: unknown;
+        errorMessage?: string;
+      };
+      if (chatData.sessionKey !== sessionKey) return;
+      if (chatData.runId && abortedRunIdsRef.current.has(chatData.runId)) return;
 
-      if (event === 'chat') {
-        const chatData = data as {
-          runId?: string;
-          sessionKey?: string;
-          state?: 'delta' | 'final' | 'aborted' | 'error';
-          content?: unknown;
-          message?: unknown;
-          errorMessage?: string;
-        };
-        if (chatData.sessionKey !== sessionKey) return;
-        if (chatData.runId && abortedRunIdsRef.current.has(chatData.runId)) return;
-
-        if (chatData.state === 'delta') {
-          // Clear the no-response timeout — we're receiving data
-          if (chatTimeoutRef.current) {
-            clearTimeout(chatTimeoutRef.current);
-            chatTimeoutRef.current = null;
-          }
-          const text = extractText(chatData.content ?? chatData.message);
-          if (text) {
-            setStreamText(prev => {
-              // Gateway sends full accumulated text per delta, not incremental.
-              // Length check prevents out-of-order WebSocket frames from overwriting newer content.
-              if (!prev || text.length >= prev.length) return text;
-              return prev;
-            });
-          }
-        } else if (chatData.state === 'final') {
-          if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
-          setStreamText(null);
-          activeRunIdRef.current = null;
-          setSending(false);
-          loadHistory();
-        } else if (chatData.state === 'aborted') {
-          if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
-          setStreamText(null);
-          activeRunIdRef.current = null;
-          setSending(false);
-        } else if (chatData.state === 'error') {
-          if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
-          setStreamText(null);
-          activeRunIdRef.current = null;
-          setSending(false);
-          setError(chatData.errorMessage ?? t('chat.chatError'));
+      if (chatData.state === 'delta') {
+        if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
+        const text = extractText(chatData.content ?? chatData.message);
+        if (text) {
+          setStreamText(prev => (!prev || text.length >= prev.length) ? text : prev);
         }
+      } else if (chatData.state === 'final') {
+        if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
+        setStreamText(null); activeRunIdRef.current = null; setSending(false);
+        loadHistory();
+      } else if (chatData.state === 'aborted') {
+        if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
+        setStreamText(null); activeRunIdRef.current = null; setSending(false);
+      } else if (chatData.state === 'error') {
+        if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
+        setStreamText(null); activeRunIdRef.current = null; setSending(false);
+        const errMsg = chatData.errorMessage ?? t('chat.chatError');
+        setChatError({ message: errMsg, category: classifyChatError(errMsg), timestamp: Date.now() });
       }
     };
-
     addHandler('instance:gateway_event', handler);
     return () => removeHandler('instance:gateway_event', handler);
   }, [instanceId, instanceStatus, sessionKey, addHandler, removeHandler, loadHistory, t]);
 
-  const handleNewChat = (): string => {
+  // --- Session management ---
+  const handleNewChat = useCallback((): string => {
     const newKey = `chat-${Date.now()}`;
     if (isStreaming) return newKey;
     setSessionKey(newKey);
@@ -377,9 +395,9 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
     setStreamText(null);
     initialScrollDone.current = false;
     activeRunIdRef.current = null;
-    setError(null);
+    setChatError(null);
     return newKey;
-  };
+  }, [isStreaming]);
 
   const handleSelectSession = useCallback((key: string) => {
     if (isStreaming) return;
@@ -389,22 +407,16 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
     setStreamText(null);
     initialScrollDone.current = false;
     activeRunIdRef.current = null;
-    setError(null);
-    setDrawerOpen(false);
-  }, [isStreaming]);
+    setChatError(null);
+    if (mode === 'page' && window.innerWidth < 768) setDrawerOpen(false);
+    else if (mode === 'tab') setDrawerOpen(false);
+  }, [isStreaming, mode]);
 
-  // --- Inline session settings ---
-  const [showSettings, setShowSettings] = useState(false);
-  const [sessionModel, setSessionModel] = useState('');
-  const [sessionThinking, setSessionThinking] = useState('');
-  const [savingSettings, setSavingSettings] = useState(false);
-
-  const { models: gatewayModels } = useInstanceModels(instanceId, instanceStatus);
-
+  // --- Settings ---
   useEffect(() => {
     if (!showSettings) return;
     rpc<{ sessions?: Array<{ key: string; model?: string; thinkingLevel?: string }> }>(
-      instanceId, 'sessions.list', { limit: 50, includeGlobal: true }
+      instanceId, 'sessions.list', { limit: 50, includeGlobal: true },
     ).then(res => {
       const session = res.sessions?.find(s => s.key === sessionKey);
       if (session) {
@@ -414,7 +426,7 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
     }).catch(() => {});
   }, [showSettings, instanceId, sessionKey]);
 
-  const handleSaveSettings = async () => {
+  const handleSaveSettings = useCallback(async () => {
     setSavingSettings(true);
     try {
       await rpc(instanceId, 'sessions.patch', {
@@ -424,42 +436,48 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
       });
       setShowSettings(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('chat.failedToUpdateSettings'));
+      const errMsg = err instanceof Error ? err.message : t('chat.failedToUpdateSettings');
+      setChatError({ message: errMsg, category: classifyChatError(errMsg), timestamp: Date.now() });
     } finally {
       setSavingSettings(false);
     }
-  };
+  }, [instanceId, sessionKey, sessionModel, sessionThinking, t]);
 
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const initialScrollDone = useRef(false);
+  // --- Scroll management ---
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    requestAnimationFrame(() => {
+      messagesContainerRef.current?.scrollTo({ top: messagesContainerRef.current.scrollHeight, behavior });
+    });
+  }, []);
 
-  useEffect(() => {
+  const handleMessagesScroll = useCallback(() => {
     const el = messagesContainerRef.current;
     if (!el) return;
+    setIsAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 60);
+  }, []);
+
+  useEffect(() => {
     if (messages.length > 0 && !initialScrollDone.current) {
       initialScrollDone.current = true;
-      requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight, behavior: 'instant' }));
+      scrollToBottom('instant');
       return;
     }
-    // Auto-scroll on new messages if user is near bottom
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    if (nearBottom) {
-      requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }));
-    }
-  }, [messages, streamText]);
+    if (isAtBottom) scrollToBottom('smooth');
+  }, [messages, streamText, isAtBottom, scrollToBottom]);
 
-  const sendMessage = async () => {
-    const text = input.trim();
-    if ((!text && attachments.length === 0) || isStreaming) return;
+  // --- Send message ---
+  const sendMessage = useCallback(async (text?: string) => {
+    const msg = (text ?? input).trim();
+    if ((!msg && attachments.length === 0) || isStreaming) return;
     setInput('');
     const currentAttachments = [...attachments];
     setAttachments([]);
-    setError(null);
+    setChatError(null);
 
-    let content: unknown = text;
+    let content: unknown = msg;
     if (currentAttachments.length > 0) {
       const parts: unknown[] = [];
-      if (text) parts.push({ type: 'text', text });
+      if (msg) parts.push({ type: 'text', text: msg });
       currentAttachments.forEach(a => {
         parts.push({
           type: isImageMime(a.type) ? 'image' : 'file',
@@ -471,13 +489,12 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
       content = parts;
     }
 
-    const userMsg: ChatMessage = { role: 'user', content, timestamp: new Date().toISOString() };
     setMessages(prev => {
       if (contentHasImages(content)) {
         const userIdx = prev.filter(m => m.role === 'user').length;
         imageStoreRef.current.set(userIdx, content);
       }
-      return [...prev, userMsg];
+      return [...prev, { role: 'user', content, timestamp: new Date().toISOString() }];
     });
     setSending(true);
 
@@ -488,7 +505,6 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
     try {
       const documentAttachments = currentAttachments.filter(a => !isImageMime(a.type));
       const uploadedPaths = new Map<string, string>();
-
       if (documentAttachments.length > 0) {
         await Promise.all(documentAttachments.map(async (a) => {
           const result = await api.uploadFile(instanceId, a.name, a.data, a.type);
@@ -498,78 +514,407 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
 
       const payload: Record<string, unknown> = {
         sessionKey,
-        message: text,
+        message: msg,
         idempotencyKey: runId,
       };
 
       if (uploadedPaths.size > 0) {
-        const fileList = Array.from(uploadedPaths.values())
-          .map(p => `- ${p}`)
-          .join('\n');
-        payload.message = `[Uploaded files to workspace:\n${fileList}]\n\n${text}`;
+        const fileList = Array.from(uploadedPaths.values()).map(p => `- ${p}`).join('\n');
+        payload.message = `[Uploaded files to workspace:\n${fileList}]\n\n${msg}`;
       }
 
-      if (currentAttachments.length > 0) {
-        const imageAttachments = currentAttachments
-          .filter(a => isImageMime(a.type))
-          .map(a => ({
-            type: 'image' as const,
-            mimeType: a.type,
-            content: a.data,
-            fileName: a.name,
-          }));
-        if (imageAttachments.length > 0) {
-          payload.attachments = imageAttachments;
-        }
-      }
+      const imageAttachments = currentAttachments
+        .filter(a => isImageMime(a.type))
+        .map(a => ({ type: 'image' as const, mimeType: a.type, content: a.data, fileName: a.name }));
+      if (imageAttachments.length > 0) payload.attachments = imageAttachments;
 
       await rpc(instanceId, 'chat.send', payload);
       setSessionRefreshFlag(f => f + 1);
 
-      // Start a no-response timeout — if no chat events arrive within 60s,
-      // the persistent WebSocket relay likely isn't connected. Reset UI.
       chatTimeoutRef.current = setTimeout(() => {
         chatTimeoutRef.current = null;
         if (activeRunIdRef.current === runId) {
-          setError(t('chat.noResponseError'));
-          setSending(false);
-          setStreamText(null);
-          activeRunIdRef.current = null;
+          setChatError({ message: t('chat.noResponseError'), category: 'timeout', lastUserMessage: msg, timestamp: Date.now() });
+          setSending(false); setStreamText(null); activeRunIdRef.current = null;
         }
       }, 60_000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('chat.failedToSend'));
-      setSending(false);
-      setStreamText(null);
-      activeRunIdRef.current = null;
+      const errMsg = err instanceof Error ? err.message : t('chat.failedToSend');
+      setChatError({ message: errMsg, category: classifyChatError(errMsg), lastUserMessage: msg, timestamp: Date.now() });
+      setSending(false); setStreamText(null); activeRunIdRef.current = null;
     }
-  };
+  }, [input, attachments, isStreaming, instanceId, sessionKey, t]);
 
+  // --- Abort ---
   const handleAbort = useCallback(() => {
-    // 1. Client-first: immediately clear UI state
     if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
     setSending(false);
     setStreamText(null);
     const runIdToAbort = activeRunIdRef.current;
     activeRunIdRef.current = null;
-
-    // 2. Track aborted runId to ignore late-arriving events
     if (runIdToAbort) {
       abortedRunIdsRef.current.add(runIdToAbort);
       setTimeout(() => abortedRunIdsRef.current.delete(runIdToAbort), 2000);
     }
-
-    // 3. Fire-and-forget: propagate abort to gateway via double-hop
-    const abortParams = runIdToAbort
-      ? { sessionKey, runId: runIdToAbort }
-      : { sessionKey };
-    rpc(instanceId, 'chat.abort', abortParams).catch(() => {});
-
-    // 4. Reload history to show whatever the gateway saved
+    rpc(instanceId, 'chat.abort', runIdToAbort ? { sessionKey, runId: runIdToAbort } : { sessionKey }).catch(() => {});
     loadHistory();
   }, [instanceId, sessionKey, loadHistory]);
 
-  if (instanceStatus !== 'running') {
+  // --- Retry ---
+  const handleRetry = useCallback(async () => {
+    if (!chatError?.lastUserMessage) return;
+    setRetrying(true); setChatError(null);
+    try { await sendMessage(chatError.lastUserMessage); } finally { setRetrying(false); }
+  }, [chatError, sendMessage]);
+
+  // --- Shared rendered elements ---
+
+  const settingsPanel = (
+    <div className={mode === 'page' ? 'achat-settings-panel' : 'chat-settings-panel'}>
+      <div className={mode === 'page' ? 'achat-settings-field' : 'chat-settings-field'}>
+        <label>{t('chat.sessionSettings.modelLabel')}</label>
+        <Input
+          type="text"
+          value={sessionModel}
+          onChange={e => setSessionModel(e.target.value)}
+          placeholder={t('chat.sessionSettings.modelPlaceholder')}
+          list={`model-suggestions-${instanceId}`}
+        />
+        <datalist id={`model-suggestions-${instanceId}`}>
+          {gatewayModels.map(m => (
+            <option key={m.name} value={m.name} label={m.provider ? `${m.provider}/${m.name}${m.usable ? '' : ' (no key)'}` : m.name} />
+          ))}
+        </datalist>
+      </div>
+      <div className={mode === 'page' ? 'achat-settings-field' : 'chat-settings-field'}>
+        <label>{t('chat.sessionSettings.thinkingLevelLabel')}</label>
+        <Select value={sessionThinking || '__default__'} onValueChange={(val) => setSessionThinking(val === '__default__' ? '' : val)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__default__">{t('chat.sessionSettings.thinkingLevels.default')}</SelectItem>
+            <SelectItem value="off">{t('chat.sessionSettings.thinkingLevels.off')}</SelectItem>
+            <SelectItem value="low">{t('chat.sessionSettings.thinkingLevels.low')}</SelectItem>
+            <SelectItem value="medium">{t('chat.sessionSettings.thinkingLevels.medium')}</SelectItem>
+            <SelectItem value="high">{t('chat.sessionSettings.thinkingLevels.high')}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className={mode === 'page' ? 'achat-settings-actions' : 'chat-settings-actions'}>
+        <Button size="sm" className={mode === 'page' ? 'achat-settings-save-btn' : undefined} onClick={handleSaveSettings} disabled={savingSettings}>
+          {savingSettings ? t('chat.sessionSettings.saving') : t('chat.sessionSettings.save')}
+        </Button>
+        <Button variant={mode === 'page' ? 'ghost' : 'secondary'} size="sm" onClick={() => setShowSettings(false)}>{t('common.buttons.cancel')}</Button>
+      </div>
+    </div>
+  );
+
+  const errorBanner = chatError && (
+    <ChatErrorBanner
+      errorMessage={chatError.message}
+      category={chatError.category}
+      onRetry={chatError.lastUserMessage ? handleRetry : undefined}
+      onDismiss={() => setChatError(null)}
+      onNavigate={(path) => navigate(path)}
+      onOpenSettings={() => setShowSettings(true)}
+      instanceId={instanceId}
+      retrying={retrying}
+    />
+  );
+
+  const scrollToBottomButton = !isAtBottom && (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="achat-scroll-bottom-btn"
+      onClick={() => scrollToBottom('smooth')}
+      aria-label={t('chat.scrollToBottom')}
+      title={t('chat.scrollToBottom')}
+    >
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <path d="M9 3v12M4 10l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </Button>
+  );
+
+  // ==================== PAGE MODE ====================
+  if (mode === 'page') {
+    if (!isRunning) {
+      return (
+        <div className="achat-page">
+          <header className="achat-topbar">
+            <Button variant="ghost" className="achat-topbar__back" onClick={() => navigate('/assistants')}>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Button>
+            <div className="achat-topbar__avatar">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <rect x="3" y="7" width="14" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M7 7V5.5A1.5 1.5 0 0 1 8.5 4h3A1.5 1.5 0 0 1 13 5.5V7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </div>
+            <div className="achat-topbar__info">
+              <span className="achat-topbar__name">{instanceName ?? ''}</span>
+              <span className="achat-topbar__status">
+                {t(`common.status.${instanceStatus}`)}
+              </span>
+            </div>
+          </header>
+          <div className="achat-body" style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
+            <div className="achat-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+              <div className="achat-messages">
+                <div className="achat-not-running">{t('assistantChat.notRunning')}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="achat-page">
+        {/* Topbar */}
+        <header className="achat-topbar">
+          <Button variant="ghost" className="achat-topbar__back" onClick={() => navigate('/assistants')}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </Button>
+          <div className="achat-topbar__avatar">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <rect x="3" y="7" width="14" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M7 7V5.5A1.5 1.5 0 0 1 8.5 4h3A1.5 1.5 0 0 1 13 5.5V7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </div>
+          <div className="achat-topbar__info">
+            <span className="achat-topbar__name">{instanceName ?? ''}</span>
+            <span className="achat-topbar__status">
+              <span className="achat-topbar__dot" />
+              {`${t('assistantChat.online')} · ${t('assistantChat.alwaysReady')}`}
+            </span>
+          </div>
+          <Button variant="ghost" className="achat-settings-btn" onClick={() => setShowSettings(!showSettings)}>
+            {t('chat.settings')}
+          </Button>
+          <Button
+            variant="ghost"
+            className={`achat-drawer-toggle${drawerOpen ? ' achat-drawer-toggle--shifted' : ''}`}
+            onClick={() => setDrawerOpen(!drawerOpen)}
+            title={t('chat.sessionDrawer.toggleSessions')}
+            aria-label={t('chat.sessionDrawer.toggleSessions')}
+          >
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+              <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </Button>
+        </header>
+
+        {showSettings && settingsPanel}
+
+        <div className="achat-body" style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
+          <SessionDrawer
+            instanceId={instanceId}
+            currentSessionKey={sessionKey}
+            isOpen={drawerOpen}
+            isStreaming={isStreaming}
+            onSelectSession={handleSelectSession}
+            onNewChat={handleNewChat}
+            onClose={() => setDrawerOpen(false)}
+            refreshFlag={sessionRefreshFlag}
+            mode="sidebar"
+          />
+          <div className="achat-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+            {/* Messages */}
+            <div className="achat-messages" ref={messagesContainerRef} onScroll={handleMessagesScroll}>
+              {messages.map((msg, i) => {
+                const isUser = msg.role === 'user';
+                return (
+                  <div key={i} className={`achat-msg achat-msg--${isUser ? 'user' : 'agent'}`}>
+                    <div className="achat-msg__row">
+                      {!isUser && (
+                        <div className="achat-msg__avatar"><AgentAvatarSvg /></div>
+                      )}
+                      <div className="achat-msg__bubble">
+                        <MessageRenderer content={msg.content} />
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="achat-msg-copy-btn"
+                      onClick={() => handleCopyMessage(msg.content, i)}
+                      title={copiedIdx === i ? t('common.buttons.copied') : t('common.buttons.copy')}
+                      aria-label={copiedIdx === i ? t('common.buttons.copied') : t('common.buttons.copy')}
+                    >
+                      {copiedIdx === i
+                        ? <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        : <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="5.5" y="5.5" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.3" /><path d="M5 10.5H4.5A1 1 0 0 1 3.5 9.5V4A1 1 0 0 1 4.5 3H10a1 1 0 0 1 1 1v.5" stroke="currentColor" strokeWidth="1.3" /></svg>
+                      }
+                    </Button>
+                    {msg.timestamp && (
+                      <div className={`achat-msg__time${isUser ? ' achat-msg__time--right' : ' achat-msg__time--left'}`}>
+                        {formatMessageTime(msg.timestamp)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {streamText !== null && (
+                <div className="achat-msg achat-msg--agent">
+                  <div className="achat-msg__row">
+                    <div className="achat-msg__avatar"><AgentAvatarSvg /></div>
+                    <div className="achat-msg__bubble achat-msg__bubble--streaming">
+                      {streamText ? <MessageRenderer content={streamText} isStreaming /> : <span className="spinner" />}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {sending && streamText === null && (
+                <div className="achat-msg achat-msg--agent">
+                  <div className="achat-msg__row">
+                    <div className="achat-msg__avatar"><AgentAvatarSvg /></div>
+                    <div className="achat-msg__bubble"><span className="spinner" /></div>
+                  </div>
+                </div>
+              )}
+              {errorBanner}
+            </div>
+
+            {scrollToBottomButton}
+
+            {/* Suggestions */}
+            {messages.length === 0 && !isStreaming && suggestions && suggestions.length > 0 && (
+              <div className="achat-suggestions">
+                <div className="achat-suggestions__label">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M8 2L4 8h4l-2 4 6-6H8l2-4z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  {t('assistantChat.quickSuggestions')}
+                </div>
+                <div className="achat-suggestions__list">
+                  {suggestions.map((s, i) => (
+                    <Button key={i} variant="ghost" className="achat-suggestions__item" onClick={() => sendMessage(s)}>
+                      {s}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Input bar */}
+            <div className="achat-input-bar" onPaste={handlePaste} onDrop={handleDrop} onDragOver={e => e.preventDefault()}>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={e => processFiles(e.target.files)}
+                accept={FILE_INPUT_ACCEPT}
+                multiple
+                style={{ display: 'none' }}
+              />
+              {attachments.length > 0 && (
+                <div className="achat-attachment-preview">
+                  {attachments.map(a => (
+                    <div key={a.id} className="achat-attachment-thumb">
+                      {isImageMime(a.type) ? (
+                        <img src={a.preview} alt={a.name} />
+                      ) : (
+                        <div style={{
+                          width: '100%', height: '100%', borderRadius: '4px',
+                          background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)',
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                          gap: '2px', padding: '4px', overflow: 'hidden',
+                          fontSize: '0.55rem', color: 'var(--color-text-secondary)', textAlign: 'center',
+                        }}>
+                          <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>{getDocumentTypeLabel(a.type)}</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{a.name}</span>
+                        </div>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="achat-attachment-remove"
+                        onClick={() => removeAttachment(a.id)}
+                        aria-label={t('chat.attachments.removeAttachment')}
+                      >
+                        &times;
+                      </Button>
+                      <span className="achat-attachment-name">{a.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="achat-input-bar__row">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`achat-input-bar__icon${isStreaming || !isRunning ? ' achat-input-bar__icon--disabled' : ''}`}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isStreaming || !isRunning}
+                  title={t('chat.attachments.attachFile')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                  </svg>
+                </Button>
+                <textarea
+                  ref={textareaRef}
+                  className="achat-input-bar__textarea"
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (isStreaming) handleAbort();
+                      else sendMessage();
+                    }
+                  }}
+                  placeholder={t('assistantChat.inputPlaceholder')}
+                  disabled={!isRunning || isStreaming}
+                  rows={1}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="achat-input-bar__icon"
+                  onClick={loadHistory}
+                  disabled={!isRunning}
+                >
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <path d="M16 3v4h-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M2 9a7 7 0 0 1 12-4.9L16 7M2 15v-4h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M16 9a7 7 0 0 1-12 4.9L2 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </Button>
+                {isStreaming || sending ? (
+                  <Button variant="ghost" size="sm" className="achat-input-bar__send achat-input-bar__send--stop" onClick={handleAbort}>
+                    <span className="achat-stop-icon" />
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="achat-input-bar__send"
+                    onClick={() => sendMessage()}
+                    disabled={(!input.trim() && attachments.length === 0) || !isRunning}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <path d="M2 2l14 7-14 7V10.5l10-1.5-10-1.5V2z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </Button>
+                )}
+              </div>
+              <div className="achat-disclaimer">{t('assistantChat.disclaimer')}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==================== TAB MODE (default) ====================
+  if (!isRunning) {
     return <div className="info-message">{t('chat.startRequired')}</div>;
   }
 
@@ -621,47 +966,8 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
           {t('chat.newChat')}
         </Button>
       </div>
-      {showSettings && (
-        <div className="chat-settings-panel">
-          <div className="chat-settings-field">
-            <label>{t('chat.sessionSettings.modelLabel')}</label>
-            <Input
-              type="text"
-              value={sessionModel}
-              onChange={e => setSessionModel(e.target.value)}
-              placeholder={t('chat.sessionSettings.modelPlaceholder')}
-              list="model-suggestions"
-            />
-            <datalist id="model-suggestions">
-              {gatewayModels.map(m => (
-                <option key={m.name} value={m.name} label={m.provider ? `${m.provider}/${m.name}${m.usable ? '' : ' (no key)'}` : m.name} />
-              ))}
-            </datalist>
-          </div>
-          <div className="chat-settings-field">
-            <label>{t('chat.sessionSettings.thinkingLevelLabel')}</label>
-            <Select value={sessionThinking || '__default__'} onValueChange={(val) => setSessionThinking(val === '__default__' ? '' : val)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__default__">{t('chat.sessionSettings.thinkingLevels.default')}</SelectItem>
-                <SelectItem value="off">{t('chat.sessionSettings.thinkingLevels.off')}</SelectItem>
-                <SelectItem value="low">{t('chat.sessionSettings.thinkingLevels.low')}</SelectItem>
-                <SelectItem value="medium">{t('chat.sessionSettings.thinkingLevels.medium')}</SelectItem>
-                <SelectItem value="high">{t('chat.sessionSettings.thinkingLevels.high')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="chat-settings-actions">
-            <Button size="sm" onClick={handleSaveSettings} disabled={savingSettings}>
-              {savingSettings ? t('chat.sessionSettings.saving') : t('chat.sessionSettings.save')}
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => setShowSettings(false)}>{t('common.buttons.cancel')}</Button>
-          </div>
-        </div>
-      )}
-      <div className="chat-messages" ref={messagesContainerRef}>
+      {showSettings && settingsPanel}
+      <div className="chat-messages" ref={messagesContainerRef} onScroll={handleMessagesScroll}>
         {messages.length === 0 && !isStreaming && (
           <div className="chat-empty">{t('chat.emptyState')}</div>
         )}
@@ -703,14 +1009,10 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
             </div>
           </div>
         )}
+        {errorBanner}
       </div>
+      {scrollToBottomButton}
       <div className="chat-input-area">
-      {error && (
-        <div className="error-message chat-error" role="alert">
-          {error}
-          <Button type="button" variant="ghost" size="icon" className="error-dismiss" onClick={() => setError(null)} aria-label="Dismiss">&times;</Button>
-        </div>
-      )}
       <div
         className="chat-input-row"
         onPaste={handlePaste}
@@ -790,7 +1092,7 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
         {isStreaming ? (
           <Button variant="destructive" onClick={handleAbort} className="chat-send-btn danger">{t('common.buttons.stop')}</Button>
         ) : (
-          <Button onClick={sendMessage} disabled={(!input.trim() && attachments.length === 0)} className="chat-send-btn">{t('common.buttons.send')}</Button>
+          <Button onClick={() => sendMessage()} disabled={(!input.trim() && attachments.length === 0)} className="chat-send-btn">{t('common.buttons.send')}</Button>
         )}
       </div>
       </div>
