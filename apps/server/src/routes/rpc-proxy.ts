@@ -27,6 +27,14 @@ const ALLOWED_RPC_METHODS = new Set([
   'tools.catalog',
   'tools.effective',
   'skills.status',
+  'skills.search',
+  'cron.list',
+  'cron.status',
+  'cron.add',
+  'cron.update',
+  'cron.remove',
+  'cron.run',
+  'cron.runs',
 ]);
 
 const router = Router();

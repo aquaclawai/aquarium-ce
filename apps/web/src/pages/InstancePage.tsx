@@ -22,8 +22,8 @@ import { SecurityStatusBadge } from '../components/SecurityStatusBadge';
 import { ChatTab } from '../components/chat/ChatTab';
 import { ExtensionsTab } from '../components/extensions/ExtensionsTab';
 import { VaultConfigSection } from '../components/extensions/VaultConfigSection';
-import { CronTab } from '../components/CronTab';
 import { ChannelsTab } from '../components/channels/ChannelsTab';
+import { CronTab } from '../components/CronTab';
 import { PageHeaderSkeleton, TabsSkeleton } from '@/components/skeletons';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -271,8 +271,8 @@ export function InstancePage() {
           </Button>
         )}
         <div className="tabs-more" ref={moreRef}>
-          <Button variant="ghost" className={moreOpen ? 'active' : ''} onClick={() => setMoreOpen(prev => !prev)}>
-            {t('instance.tabs.more')} ▾
+          <Button variant="outline" size="sm" className={`tabs-more__trigger${moreOpen ? ' active' : ''}`} onClick={() => setMoreOpen(prev => !prev)}>
+            {t('instance.tabs.advanced', 'Advanced')} ▾
           </Button>
           {moreOpen && (
             <div className="tabs-more-menu">
@@ -281,7 +281,7 @@ export function InstancePage() {
               <Button variant="ghost" onClick={() => { setActiveTab('security'); setMoreOpen(false); }}>{t('instance.tabs.security')}</Button>
               <Button variant="ghost" onClick={() => { setActiveTab('logs'); setMoreOpen(false); }}>{t('instance.tabs.logs')}</Button>
               <Button variant="ghost" onClick={() => { setActiveTab('events'); setMoreOpen(false); }}>{t('instance.tabs.events')}</Button>
-              <Button variant="ghost" onClick={() => { setActiveTab('cron'); setMoreOpen(false); }}>{t('instance.tabs.cron')}</Button>
+              <Button variant="ghost" onClick={() => { setActiveTab('cron'); setMoreOpen(false); }}>{t('instance.tabs.cron', 'Scheduled Tasks')}</Button>
             </div>
           )}
         </div>

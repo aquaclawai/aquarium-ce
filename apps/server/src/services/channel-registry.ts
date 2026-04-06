@@ -286,15 +286,23 @@ const CHANNEL_UI_METADATA: ChannelRegistryEntry[] = [
 ];
 
 /**
+ * Channels confirmed and enabled for v1.1 release.
+ * Others remain in CHANNEL_UI_METADATA for future activation.
+ */
+const ENABLED_CHANNELS = new Set(['telegram', 'discord', 'slack']);
+
+/**
  * Build the effective channel registry by intersecting UI metadata
- * with actual backend route support. A channel appears ONLY if it has route support.
+ * with actual backend route support AND the enabled whitelist.
  */
 export function buildChannelRegistry(): ChannelRegistryEntry[] {
   const supportedIds = new Set([
     ...Object.keys(CHANNEL_REQUIRED_FIELDS),
     ...DEDICATED_ROUTE_CHANNELS,
   ]);
-  return CHANNEL_UI_METADATA.filter(entry => supportedIds.has(entry.id));
+  return CHANNEL_UI_METADATA.filter(entry =>
+    ENABLED_CHANNELS.has(entry.id) && supportedIds.has(entry.id)
+  );
 }
 
 /** All credential provider keys used by a given channel entry. */

@@ -831,6 +831,72 @@ export interface ChannelRegistryItem extends ChannelRegistryEntry {
   incompatibleReason?: string;
 }
 
+// === Cron Jobs ===
+
+export type CronJobSchedule =
+  | { kind: 'cron'; expr: string; tz?: string }
+  | { kind: 'at'; at: string }
+  | { kind: 'every'; everyMs: number };
+
+export type CronJobPayload =
+  | { kind: 'systemEvent'; text: string }
+  | { kind: 'agentTurn'; message: string; model?: string; timeoutSeconds?: number };
+
+export interface CronJobDelivery {
+  mode: 'announce' | 'none';
+  channel?: string;
+  to?: string;
+}
+
+export interface CronJobState {
+  nextRunAtMs?: number;
+  lastRunAtMs?: number;
+  lastRunStatus?: 'ok' | 'error' | 'skipped';
+  lastError?: string;
+  lastDurationMs?: number;
+  consecutiveErrors?: number;
+  lastDeliveryStatus?: 'delivered' | 'not-delivered' | 'unknown' | 'not-requested';
+}
+
+export interface CronJob {
+  id: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+  schedule: CronJobSchedule;
+  payload: CronJobPayload;
+  delivery?: CronJobDelivery;
+  sessionTarget?: 'main' | 'isolated';
+  wakeMode?: 'now' | 'next-heartbeat';
+  deleteAfterRun?: boolean;
+  createdAtMs: number;
+  updatedAtMs: number;
+  state: CronJobState;
+  nextRunAt?: string;
+  lastRunAt?: string;
+}
+
+export interface CronJobRun {
+  id: string;
+  jobId: string;
+  startedAt: string;
+  finishedAt?: string;
+  status: 'running' | 'completed' | 'failed';
+  durationMs?: number;
+  error?: string;
+  deliveryStatus?: string;
+}
+
+export interface CronListResponse {
+  total: number;
+  jobs: CronJob[];
+}
+
+export interface CronRunsResponse {
+  total: number;
+  entries: CronJobRun[];
+}
+
 // === Admin ===
 
 export interface AdminStats {
