@@ -101,7 +101,7 @@ function formFromJob(job: CronJob): FormState {
   form.name = job.name;
   form.description = job.description ?? '';
   form.enabled = job.enabled;
-  form.sessionTarget = job.sessionTarget;
+  form.sessionTarget = job.sessionTarget ?? 'isolated';
 
   switch (job.schedule.kind) {
     case 'cron':

@@ -876,6 +876,34 @@ export interface CronJob {
   lastRunAt?: string;
 }
 
+export interface CreateCronJobRequest {
+  name: string;
+  description?: string;
+  enabled?: boolean;
+  deleteAfterRun?: boolean;
+  agentId?: string;
+  sessionKey?: string;
+  schedule: CronJobSchedule;
+  sessionTarget?: 'main' | 'isolated';
+  wakeMode?: 'now' | 'next-heartbeat';
+  payload: CronJobPayload;
+  delivery?: CronJobDelivery;
+}
+
+export interface UpdateCronJobRequest {
+  name?: string;
+  description?: string;
+  enabled?: boolean;
+  deleteAfterRun?: boolean;
+  agentId?: string;
+  sessionKey?: string;
+  schedule?: CronJobSchedule;
+  sessionTarget?: 'main' | 'isolated';
+  wakeMode?: 'now' | 'next-heartbeat';
+  payload?: CronJobPayload;
+  delivery?: CronJobDelivery;
+}
+
 export interface CronJobRun {
   id: string;
   jobId: string;
