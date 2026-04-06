@@ -366,9 +366,9 @@ export const openclawAdapter: AgentTypeAdapter = {
           appPassword: '${MSTEAMS_APP_PASSWORD}',
           tenantId: '${MSTEAMS_TENANT_ID}',
           webhook: { port: 3978, path: '/api/messages' },
-          dmPolicy: 'pairing',
+          dmPolicy: 'open',
           allowFrom: ['*'],
-          groupPolicy: 'allowlist',
+          groupPolicy: 'open',
         }),
       },
       zalo: {
@@ -377,7 +377,7 @@ export const openclawAdapter: AgentTypeAdapter = {
         configBuilder: (ref) => ({
           enabled: true,
           botToken: ref,
-          dmPolicy: 'pairing',
+          dmPolicy: 'open',
           allowFrom: ['*'],
         }),
       },
@@ -388,9 +388,9 @@ export const openclawAdapter: AgentTypeAdapter = {
           enabled: true,
           channelAccessToken: ref,
           channelSecret: '${LINE_CHANNEL_SECRET}',
-          dmPolicy: 'pairing',
+          dmPolicy: 'open',
           allowFrom: ['*'],
-          groupPolicy: 'allowlist',
+          groupPolicy: 'open',
         }),
       },
     };

@@ -766,6 +766,69 @@ export interface ChannelEnableRequest {
 export interface ChannelPolicyUpdate {
   dmPolicy?: 'open' | 'pairing' | 'allowlist' | 'disabled';
   groupPolicy?: 'open' | 'disabled' | 'allowlist';
+  allowFrom?: string[];
+  groupAllowFrom?: string[];
+}
+
+// === Channel Registry ===
+
+export interface ChannelFieldDef {
+  key: string;
+  label: string;
+  labelKey: string;
+  type: 'text' | 'password' | 'textarea' | 'select' | 'number';
+  placeholder?: string;
+  placeholderKey?: string;
+  required: boolean;
+  helpText?: string;
+  helpTextKey?: string;
+  helpUrl?: string;
+  options?: Array<{ value: string; label: string; labelKey?: string }>;
+  pattern?: string;
+  patternError?: string;
+}
+
+export interface ChannelCapabilitiesInfo {
+  dm: boolean;
+  groups: boolean;
+  media: boolean;
+  reactions: boolean;
+  threads: boolean;
+  streaming: boolean;
+}
+
+export interface ChannelRegistryEntry {
+  id: string;
+  label: string;
+  labelKey: string;
+  description: string;
+  descriptionKey: string;
+  setupType: 'token' | 'qr' | 'token+qr';
+  pluginRequired: boolean;
+  pluginInstall?: {
+    pluginId: string;
+    source: PluginSource;
+    minVersion?: string;
+  };
+  category: 'popular' | 'enterprise' | 'community' | 'experimental';
+  order: number;
+  fields: ChannelFieldDef[];
+  helpUrl?: string;
+  helpTextKey?: string;
+  capabilities: ChannelCapabilitiesInfo;
+  supportedDmPolicies: Array<NonNullable<ChannelPolicyUpdate['dmPolicy']>>;
+  supportedGroupPolicies: Array<NonNullable<ChannelPolicyUpdate['groupPolicy']>>;
+  nestedDmPolicy: boolean;
+  icon: string;
+  serverValidation?: Record<string, { pattern: string; message: string }>;
+}
+
+export interface ChannelRegistryItem extends ChannelRegistryEntry {
+  status: ChannelStatusDetail | null;
+  pluginInstalled: boolean;
+  hasCredentials: boolean;
+  compatible: boolean;
+  incompatibleReason?: string;
 }
 
 // === Admin ===

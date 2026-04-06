@@ -240,7 +240,9 @@
       "settings": "Settings",
       "security": "Security",
       "more": "More",
-      "extensions": "Extensions"
+      "extensions": "Extensions",
+      "channels": "Channels",
+      "cron": "Cron"
     },
     "overview": {
       "title": "Instance Details",
@@ -275,7 +277,23 @@
       },
       "changeSecurityProfile": "Change",
       "savingSecurityProfile": "Saving...",
-      "exportTemplate": "Export as Template"
+      "exportTemplate": "Export as Template",
+      "webhookTitle": "Notification Webhooks",
+      "webhookDescription": "Configure webhook URLs for IM push notifications (Feishu, DingTalk, WeCom).",
+      "webhookProviders": {
+        "feishu": "Feishu",
+        "dingtalk": "DingTalk",
+        "wecom": "WeCom"
+      },
+      "webhookConfigured": "Configured",
+      "webhookPlaceholder": "Enter {{provider}} webhook URL",
+      "apiKeyTitle": "Data Source API Keys",
+      "apiKeyDescription": "Optional API keys for enhanced data collection (e.g. TikHub for Xiaohongshu, Douyin, etc.). Get your key at the provider's website.",
+      "apiKeyProviders": {
+        "tikhub": "TikHub"
+      },
+      "apiKeyConfigured": "Configured",
+      "apiKeyPlaceholder": "Enter {{provider}} API key"
     },
     "credentials": {
       "title": "Credentials",
@@ -1704,6 +1722,79 @@
       "error": "Error"
     }
   },
+  "channels": {
+    "title": "Channels",
+    "subtitle": "Connect your AI agent to messaging platforms.",
+    "instanceNotRunning": "Start your instance to manage channels.",
+    "noChannelsAvailable": "No channels available for this agent type.",
+    "applying": "Applying changes...",
+    "status": {
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "stopped": "Stopped",
+      "notConfigured": "Not configured",
+      "applying": "Applying...",
+      "lastMessage": "Last msg: {{time}}"
+    },
+    "actions": {
+      "configure": "Configure",
+      "setup": "Set up",
+      "disconnect": "Disconnect",
+      "enable": "Enable",
+      "disable": "Disable",
+      "installPlugin": "Install Plugin",
+      "installing": "Installing...",
+      "save": "Save & Apply",
+      "saving": "Saving...",
+      "retry": "Retry"
+    },
+    "drawer": {
+      "status": "Status",
+      "configuration": "Configuration",
+      "configured": "Configured",
+      "notConfigured": "Not yet configured",
+      "policies": "Access Policies",
+      "pluginRequired": "Plugin Required",
+      "pluginRequiredDesc": "{{channel}} requires the {{pluginId}} plugin. Install it to continue.",
+      "disconnectConfirm": "This will remove your {{channel}} credentials and disconnect the bot. Continue?",
+      "incompatible": "This channel is not compatible with your current instance image.",
+      "learnMore": "Learn more"
+    },
+    "policies": {
+      "dmPolicy": "DM Policy",
+      "groupPolicy": "Group Policy",
+      "allowList": "Allow List",
+      "addEntry": "Add",
+      "pairing": "Pairing",
+      "pairingDesc": "New contacts must be approved before messaging.",
+      "allowlist": "Allow List",
+      "allowlistDesc": "Only listed contacts can message.",
+      "open": "Open",
+      "openDesc": "Anyone can message the bot.",
+      "disabled": "Disabled",
+      "disabledDesc": "All messages blocked."
+    },
+    "capabilities": {
+      "dm": "DM",
+      "groups": "Groups",
+      "media": "Media",
+      "reactions": "Reactions",
+      "threads": "Threads",
+      "streaming": "Streaming"
+    },
+    "whatsapp": { "label": "WhatsApp", "description": "Connect via QR code — uses your existing WhatsApp account." },
+    "telegram": { "label": "Telegram", "description": "Create a bot via @BotFather and paste the token.", "fields": { "botToken": "Bot Token", "botTokenPlaceholder": "123456789:ABCdefGHI...", "botTokenHelp": "Get this from @BotFather on Telegram." } },
+    "discord": { "label": "Discord", "description": "Create a bot in the Discord Developer Portal.", "fields": { "token": "Bot Token", "tokenHelp": "Discord Developer Portal > Bot > Token." } },
+    "feishu": { "label": "飞书 / Lark", "description": "Connect via Feishu Open Platform enterprise app.", "fields": { "appId": "App ID", "appIdHelp": "From Feishu Open Platform console.", "appSecret": "App Secret", "domain": "Domain", "domainFeishu": "飞书 (China)", "domainLark": "Lark (Global)" } },
+    "slack": { "label": "Slack", "description": "Connect via Slack Socket Mode.", "fields": { "appToken": "App Token", "appTokenHelp": "App-Level Token (starts with xapp-).", "botToken": "Bot Token", "botTokenHelp": "Bot User OAuth Token (starts with xoxb-)." } },
+    "qqbot": { "label": "QQ Bot", "description": "Connect via official QQ Bot API.", "fields": { "appId": "App ID", "appIdHelp": "From QQ Open Platform.", "clientSecret": "Client Secret" } },
+    "wechat": { "label": "WeChat", "description": "Connect via QR code login." },
+    "msteams": { "label": "Microsoft Teams", "description": "Connect via Azure Bot Framework.", "fields": { "appId": "App ID", "appPassword": "App Password", "tenantId": "Tenant ID" } },
+    "signal": { "label": "Signal", "description": "Connect via signal-cli.", "fields": { "account": "Phone Number", "accountHelp": "E.164 format." } },
+    "googlechat": { "label": "Google Chat", "description": "Connect via service account.", "fields": { "serviceAccountJson": "Service Account JSON" } },
+    "line": { "label": "LINE", "description": "Connect via LINE Messaging API.", "fields": { "channelAccessToken": "Channel Access Token", "channelSecret": "Channel Secret" } },
+    "matrix": { "label": "Matrix", "description": "Connect to any Matrix homeserver.", "fields": { "homeserver": "Homeserver URL", "accessToken": "Access Token" } }
+  },
   "exportWizard": {
     "title": "Export as Template",
     "loading": "Extracting template data...",
@@ -1783,7 +1874,8 @@
       "pending": "Pending",
       "disabled": "Disabled",
       "degraded": "Degraded",
-      "failed": "Failed"
+      "failed": "Failed",
+      "blocked": "Blocked"
     },
     "actions": {
       "install": "Install",
@@ -1807,6 +1899,7 @@
       "allCategories": "All Categories",
       "capabilities": "Capabilities",
       "loadMore": "Load more",
+      "searching": "Searching ClawHub...",
       "clawhubUnavailable": "Start instance to browse marketplace"
     },
     "trust": {
