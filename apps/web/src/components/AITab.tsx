@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { getProviderDisplayName, formatModelDisplayName } from '../utils/provider-display';
 import '../pages/CreateWizardPage.css';
+import './ModelSelector.css';
 import type {
   Instance,
   Credential,
