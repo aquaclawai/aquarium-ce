@@ -145,8 +145,8 @@ export function AITab({ instance, agentType, onInstanceUpdate }: AITabProps) {
 
 // ─── Section 1: Provider Mode (switchable, requires restart) ─
 // EE-only component — CE always uses BYOK, so this is unused in CE builds.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function ProviderModeSection({
+// Exported to suppress TS6133 (noUnusedLocals) without breaking React hooks rules.
+export function ProviderModeSection({
   instanceId,
   isPlatform,
   instanceStatus,

@@ -159,7 +159,7 @@ export function ChannelConfigDrawer({ channel, instanceId, onClose, onUpdate }: 
                     <textarea
                       className="channel-drawer__textarea"
                       value={formValues[field.key] ?? ''}
-                      onChange={e => handleFieldChange(field.key, e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleFieldChange(field.key, e.target.value)}
                       placeholder={channel.hasCredentials ? '••••••••' : (field.placeholder ?? '')}
                       rows={4}
                     />
@@ -167,7 +167,7 @@ export function ChannelConfigDrawer({ channel, instanceId, onClose, onUpdate }: 
                     <Input
                       type={field.type === 'password' ? 'password' : 'text'}
                       value={formValues[field.key] ?? ''}
-                      onChange={e => handleFieldChange(field.key, e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange(field.key, e.target.value)}
                       placeholder={channel.hasCredentials ? '••••••••' : (field.placeholder ?? '')}
                     />
                   )}

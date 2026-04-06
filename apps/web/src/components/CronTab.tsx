@@ -274,17 +274,17 @@ export function CronTab({ instanceId, instanceStatus }: CronTabProps) {
           {/* Name */}
           <div className="cron-field">
             <label>{t('cron.name')} *</label>
-            <Input value={form.name} onChange={e => updateForm({ name: e.target.value })} placeholder={t('cron.namePlaceholder')} />
+            <Input value={form.name} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ name: e.target.value })} placeholder={t('cron.namePlaceholder')} />
           </div>
           <div className="cron-field">
             <label>{t('cron.description')}</label>
-            <Input value={form.description} onChange={e => updateForm({ description: e.target.value })} placeholder={t('cron.descriptionPlaceholder')} />
+            <Input value={form.description} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ description: e.target.value })} placeholder={t('cron.descriptionPlaceholder')} />
           </div>
 
           {/* Schedule */}
           <div className="cron-field">
             <label>{t('cron.scheduleType')}</label>
-            <Select value={form.scheduleKind} onValueChange={v => updateForm({ scheduleKind: v as FormState['scheduleKind'] })}>
+            <Select value={form.scheduleKind} onValueChange={(v: string) => updateForm({ scheduleKind: v as FormState['scheduleKind'] })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="cron">{t('cron.scheduleTypes.cron')}</SelectItem>
@@ -297,32 +297,32 @@ export function CronTab({ instanceId, instanceStatus }: CronTabProps) {
             <>
               <div className="cron-field">
                 <label>{t('cron.cronExpr')} *</label>
-                <Input value={form.cronExpr} onChange={e => updateForm({ cronExpr: e.target.value })} placeholder={t('cron.cronExprPlaceholder')} />
+                <Input value={form.cronExpr} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ cronExpr: e.target.value })} placeholder={t('cron.cronExprPlaceholder')} />
                 <p className="cron-field__help">{t('cron.cronExprHelp')}</p>
               </div>
               <div className="cron-field">
                 <label>{t('cron.timezone')}</label>
-                <Input value={form.cronTz} onChange={e => updateForm({ cronTz: e.target.value })} placeholder="UTC" />
+                <Input value={form.cronTz} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ cronTz: e.target.value })} placeholder="UTC" />
               </div>
             </>
           )}
           {form.scheduleKind === 'at' && (
             <div className="cron-field">
               <label>{t('cron.atDatetime')} *</label>
-              <Input type="datetime-local" value={form.atDatetime} onChange={e => updateForm({ atDatetime: e.target.value })} />
+              <Input type="datetime-local" value={form.atDatetime} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ atDatetime: e.target.value })} />
             </div>
           )}
           {form.scheduleKind === 'every' && (
             <div className="cron-field">
               <label>{t('cron.everyMs')} *</label>
-              <Input type="number" min="1" value={form.everyMinutes} onChange={e => updateForm({ everyMinutes: e.target.value })} />
+              <Input type="number" min="1" value={form.everyMinutes} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ everyMinutes: e.target.value })} />
             </div>
           )}
 
           {/* Payload */}
           <div className="cron-field">
             <label>{t('cron.payloadType')}</label>
-            <Select value={form.payloadKind} onValueChange={v => updateForm({ payloadKind: v as FormState['payloadKind'] })}>
+            <Select value={form.payloadKind} onValueChange={(v: string) => updateForm({ payloadKind: v as FormState['payloadKind'] })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="agentTurn">{t('cron.agentTurn')}</SelectItem>
@@ -334,12 +334,12 @@ export function CronTab({ instanceId, instanceStatus }: CronTabProps) {
             <>
               <div className="cron-field">
                 <label>{t('cron.message')} *</label>
-                <textarea className="cron-textarea" rows={3} value={form.message} onChange={e => updateForm({ message: e.target.value })} placeholder={t('cron.messagePlaceholder')} />
+                <textarea className="cron-textarea" rows={3} value={form.message} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ message: e.target.value })} placeholder={t('cron.messagePlaceholder')} />
               </div>
               <div className="cron-field-row">
                 <div className="cron-field">
                   <label>{t('cron.sessionTarget')}</label>
-                  <Select value={form.sessionTarget} onValueChange={v => updateForm({ sessionTarget: v as 'main' | 'isolated' })}>
+                  <Select value={form.sessionTarget} onValueChange={(v: string) => updateForm({ sessionTarget: v as 'main' | 'isolated' })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="isolated">{t('cron.sessionIsolated')}</SelectItem>
@@ -349,21 +349,21 @@ export function CronTab({ instanceId, instanceStatus }: CronTabProps) {
                 </div>
                 <div className="cron-field">
                   <label>{t('cron.timeout')}</label>
-                  <Input type="number" min="10" value={form.timeoutSeconds} onChange={e => updateForm({ timeoutSeconds: e.target.value })} />
+                  <Input type="number" min="10" value={form.timeoutSeconds} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ timeoutSeconds: e.target.value })} />
                 </div>
               </div>
             </>
           ) : (
             <div className="cron-field">
               <label>{t('cron.eventText')} *</label>
-              <Input value={form.eventText} onChange={e => updateForm({ eventText: e.target.value })} placeholder={t('cron.eventTextPlaceholder')} />
+              <Input value={form.eventText} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ eventText: e.target.value })} placeholder={t('cron.eventTextPlaceholder')} />
             </div>
           )}
 
           {/* Delivery */}
           <div className="cron-field">
             <label>{t('cron.deliveryMode')}</label>
-            <Select value={form.deliveryMode} onValueChange={v => updateForm({ deliveryMode: v as 'none' | 'announce' })}>
+            <Select value={form.deliveryMode} onValueChange={(v: string) => updateForm({ deliveryMode: v as 'none' | 'announce' })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">{t('cron.deliveryNone')}</SelectItem>
@@ -375,11 +375,11 @@ export function CronTab({ instanceId, instanceStatus }: CronTabProps) {
             <div className="cron-field-row">
               <div className="cron-field">
                 <label>{t('cron.deliveryChannel')}</label>
-                <Input value={form.deliveryChannel} onChange={e => updateForm({ deliveryChannel: e.target.value })} placeholder="slack, telegram..." />
+                <Input value={form.deliveryChannel} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ deliveryChannel: e.target.value })} placeholder="slack, telegram..." />
               </div>
               <div className="cron-field">
                 <label>{t('cron.deliveryTo')}</label>
-                <Input value={form.deliveryTo} onChange={e => updateForm({ deliveryTo: e.target.value })} placeholder="channel:C123..." />
+                <Input value={form.deliveryTo} onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateForm({ deliveryTo: e.target.value })} placeholder="channel:C123..." />
               </div>
             </div>
           )}
