@@ -4,6 +4,9 @@ import { rpc } from '../utils/rpc.js';
 import { api } from '../api';
 import { BurnRateCard } from './BurnRateCard';
 import type { Instance, BillingMode, UsageSummary } from '@aquarium/shared';
+import { Button, Input } from '@/components/ui';
+import { KPICardSkeleton } from '@/components/skeletons';
+import '../pages/BillingCostsPage.css';
 
 /* ─── Types ─── */
 
@@ -54,7 +57,7 @@ interface UsageData {
 
 function PlatformSpendSection({ spend, loading, error }: { spend: UsageSummary | null; loading: boolean; error: string | null }) {
   const { t } = useTranslation();
-  if (loading) return <div className="usage-chart-section"><div>{t('instance.usage.loadingPlatformSpend')}</div></div>;
+  if (loading) return <div className="usage-chart-section"><KPICardSkeleton /></div>;
   if (error) return <div className="usage-chart-section"><div className="error-message" role="alert">{error}</div></div>;
   if (!spend) return null;
 
@@ -177,7 +180,7 @@ export function UsageTab({ instanceId, instanceStatus, billingMode }: UsageTabPr
     );
   }
 
-  if (loading) return <div>{t('instance.usage.loading')}</div>;
+  if (loading) return <div className="usage-container"><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 'var(--spacing-md)' }}><KPICardSkeleton /><KPICardSkeleton /><KPICardSkeleton /><KPICardSkeleton /></div></div>;
 
   if (!usage) {
     return (
@@ -210,10 +213,10 @@ export function UsageTab({ instanceId, instanceStatus, billingMode }: UsageTabPr
       <div className="sessions-header">
         <h3>{t('instance.usage.title')}</h3>
         <div className="usage-date-range">
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
           <span>{t('instance.usage.dateRangeTo')}</span>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-          <button onClick={fetchUsage}>{t('common.buttons.refresh')}</button>
+          <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+          <Button onClick={fetchUsage}>{t('common.buttons.refresh')}</Button>
         </div>
       </div>
       {error && <div className="error-message" role="alert">{error}</div>}

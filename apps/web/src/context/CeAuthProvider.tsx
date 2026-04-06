@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import type { User } from '@aquarium/shared';
 import { AuthContext } from './AuthContext';
 import type { AuthContextType } from './AuthContext';
+import { setTokenGetter } from '../api';
 
 const CE_USER: User = {
   id: 'ce-admin',
@@ -28,6 +29,10 @@ const CE_AUTH_VALUE: AuthContextType = {
 };
 
 export function CeAuthProvider({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    setTokenGetter(() => Promise.resolve('ce-admin'));
+  }, []);
+
   return (
     <AuthContext.Provider value={CE_AUTH_VALUE}>
       {children}

@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { SnapshotSummary } from '@aquarium/shared';
+import { Button } from '@/components/ui';
+import './SnapshotCard.css';
 
 interface SnapshotCardProps {
   snapshot: SnapshotSummary;
@@ -30,7 +32,7 @@ export function SnapshotCard({ snapshot, onSelect, onDelete }: SnapshotCardProps
   const { t } = useTranslation();
 
   return (
-    <button type="button" className="snapshot-card" onClick={onSelect}>
+    <Button type="button" variant="ghost" className="snapshot-card" onClick={onSelect}>
       <div className="snapshot-card-row">
         <span className={`snapshot-badge ${TRIGGER_CLASSES[snapshot.triggerType] ?? ''}`}>
           {TRIGGER_I18N_KEYS[snapshot.triggerType] ? t(TRIGGER_I18N_KEYS[snapshot.triggerType]) : snapshot.triggerType}
@@ -59,6 +61,6 @@ export function SnapshotCard({ snapshot, onSelect, onDelete }: SnapshotCardProps
           </span>
         </span>
       </div>
-    </button>
+    </Button>
   );
 }

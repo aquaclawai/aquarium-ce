@@ -12,7 +12,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       position="top-right"
       toastOptions={{
         style: {
-          background: theme === 'dark' ? 'var(--color-surface)' : '#ffffff',
+          background: theme === 'dark' ? 'var(--color-bg-elevated)' : '#ffffff',
           border: '1px solid var(--color-border)',
           color: 'var(--color-text)',
           fontSize: '14px',

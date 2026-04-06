@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import type { InstanceEvent, PaginatedResponse } from '@aquarium/shared';
+import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { ListSkeleton } from '@/components/skeletons';
+import './SecurityTimeline.css';
 
 interface SecurityTimelineProps {
   instanceId: string;
@@ -71,22 +74,32 @@ export function SecurityTimeline({ instanceId }: SecurityTimelineProps) {
       <div className="security-timeline-header">
         <h3>{t('instance.security.timeline.title')} ({total})</h3>
         <div className="security-timeline-filters">
-          <select value={severityFilter} onChange={e => setSeverityFilter(e.target.value)}>
-            <option value="">{t('instance.security.timeline.allSeverities')}</option>
-            {SEVERITY_OPTIONS.map(s => (
-              <option key={s} value={s}>{t(`instance.security.severity.${s}`)}</option>
-            ))}
-          </select>
-          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-            <option value="">{t('instance.security.timeline.allTypes')}</option>
-            {TYPE_OPTIONS.map(tp => (
-              <option key={tp} value={tp}>{t(`instance.security.eventType.${tp}`)}</option>
-            ))}
-          </select>
+          <Select value={severityFilter || '__all__'} onValueChange={(val) => setSeverityFilter(val === '__all__' ? '' : val)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">{t('instance.security.timeline.allSeverities')}</SelectItem>
+              {SEVERITY_OPTIONS.map(s => (
+                <SelectItem key={s} value={s}>{t(`instance.security.severity.${s}`)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={typeFilter || '__all__'} onValueChange={(val) => setTypeFilter(val === '__all__' ? '' : val)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">{t('instance.security.timeline.allTypes')}</SelectItem>
+              {TYPE_OPTIONS.map(tp => (
+                <SelectItem key={tp} value={tp}>{t(`instance.security.eventType.${tp}`)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      {loading && <div>{t('common.labels.loading')}</div>}
+      {loading && <ListSkeleton rows={4} showIcon />}
 
       {!loading && events.length === 0 && (
         <div className="security-timeline-empty">{t('instance.security.timeline.noEvents')}</div>
@@ -121,9 +134,9 @@ export function SecurityTimeline({ instanceId }: SecurityTimelineProps) {
 
           {totalPages > 1 && (
             <div className="security-timeline-pagination">
-              <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>&laquo;</button>
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>&laquo;</Button>
               <span>{t('instance.security.timeline.page', { page, total: totalPages })}</span>
-              <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>&raquo;</button>
+              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>&raquo;</Button>
             </div>
           )}
         </>

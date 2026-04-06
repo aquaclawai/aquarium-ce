@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { api } from '../../api';
 import type {
   InstanceSkill,
@@ -69,14 +70,14 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
 
   // Skills state
   const [managedSkills, setManagedSkills] = useState<InstanceSkill[]>([]);
-  const [gatewayBuiltins, setGatewayBuiltins] = useState<GatewayExtensionInfo[]>([]);
+  const [, setGatewayBuiltins] = useState<GatewayExtensionInfo[]>([]);
   const [catalog, setCatalog] = useState<SkillCatalogEntry[]>([]);
   const [skillsLoading, setSkillsLoading] = useState(true);
   const [installing, setInstalling] = useState<string | null>(null);
 
   // Plugins state
   const [managedPlugins, setManagedPlugins] = useState<InstancePlugin[]>([]);
-  const [pluginBuiltins, setPluginBuiltins] = useState<GatewayExtensionInfo[]>([]);
+  const [, setPluginBuiltins] = useState<GatewayExtensionInfo[]>([]);
   const [pluginCatalog, setPluginCatalog] = useState<PluginCatalogEntry[]>([]);
   const [pluginsLoading, setPluginsLoading] = useState(true);
   const [installingPlugin, setInstallingPlugin] = useState<string | null>(null);
@@ -91,9 +92,22 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
   const [installDialogEntry, setInstallDialogEntry] = useState<PluginCatalogEntry | SkillCatalogEntry | null>(null);
   const [installDialogKind, setInstallDialogKind] = useState<'plugin' | 'skill'>('skill');
 
-  // Search/filter state
+  // Search/filter state (debounced: searchQuery is immediate input, debouncedSearch triggers fetch)
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [catalogSearching, setCatalogSearching] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounce search input — wait 500ms after user stops typing
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setCatalogSearching(searchQuery.length > 0);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [searchQuery]);
 
   // ClawHub pagination state
   const [clawHubPluginPage, setClawHubPluginPage] = useState(0);
@@ -110,7 +124,7 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
   const [vaultConfigured, setVaultConfigured] = useState(false);
 
   // Shared state
-  const [error, setError] = useState<string | null>(null);
+  const showError = useCallback((msg: string) => toast.error(msg), []);
   const [configuringExtension, setConfiguringExtension] = useState<ConfiguringExtension | null>(null);
 
   const isRunning = instanceStatus === 'running';
@@ -121,7 +135,6 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
 
   const fetchSkillData = useCallback(async () => {
     setSkillsLoading(true);
-    setError(null);
     try {
       const skillsData = await api.get<SkillsResponse>(`/instances/${instanceId}/skills`);
       setManagedSkills(skillsData.managed);
@@ -129,7 +142,7 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
 
       if (isRunning) {
         const params = new URLSearchParams();
-        if (searchQuery) params.set('search', searchQuery);
+        if (debouncedSearch) params.set('search', debouncedSearch);
         if (categoryFilter !== 'all') params.set('category', categoryFilter);
         params.set('page', '0');
         params.set('limit', String(PAGE_LIMIT));
@@ -143,15 +156,15 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
         setClawHubSkillHasMore(false);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('extensions.errors.fetchFailed'));
+      showError(err instanceof Error ? err.message : t('extensions.errors.fetchFailed'));
     } finally {
       setSkillsLoading(false);
     }
-  }, [instanceId, isRunning, searchQuery, categoryFilter, t]);
+    setCatalogSearching(false);
+  }, [instanceId, isRunning, debouncedSearch, categoryFilter, t]);
 
   const fetchPluginData = useCallback(async () => {
     setPluginsLoading(true);
-    setError(null);
     try {
       const pluginsData = await api.get<PluginsResponse>(`/instances/${instanceId}/plugins`);
       setManagedPlugins(pluginsData.managed);
@@ -159,7 +172,7 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
 
       if (isRunning) {
         const params = new URLSearchParams();
-        if (searchQuery) params.set('search', searchQuery);
+        if (debouncedSearch) params.set('search', debouncedSearch);
         if (categoryFilter !== 'all') params.set('category', categoryFilter);
         params.set('page', '0');
         params.set('limit', String(PAGE_LIMIT));
@@ -173,11 +186,12 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
         setClawHubPluginHasMore(false);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('extensions.errors.fetchFailed'));
+      showError(err instanceof Error ? err.message : t('extensions.errors.fetchFailed'));
     } finally {
       setPluginsLoading(false);
     }
-  }, [instanceId, isRunning, searchQuery, categoryFilter, t]);
+    setCatalogSearching(false);
+  }, [instanceId, isRunning, debouncedSearch, categoryFilter, t]);
 
   useEffect(() => {
     void fetchSkillData();
@@ -209,11 +223,11 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
       setClawHubPluginHasMore(moreData.hasMore);
       setClawHubPluginPage(nextPage);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('extensions.errors.fetchFailed'));
+      showError(err instanceof Error ? err.message : t('extensions.errors.fetchFailed'));
     } finally {
       setLoadingMorePlugins(false);
     }
-  }, [instanceId, clawHubPluginPage, searchQuery, categoryFilter, t]);
+  }, [instanceId, clawHubPluginPage, debouncedSearch, categoryFilter, t]);
 
   const handleLoadMoreSkills = useCallback(async () => {
     setLoadingMoreSkills(true);
@@ -230,44 +244,41 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
       setClawHubSkillHasMore(moreData.hasMore);
       setClawHubSkillPage(nextPage);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('extensions.errors.fetchFailed'));
+      showError(err instanceof Error ? err.message : t('extensions.errors.fetchFailed'));
     } finally {
       setLoadingMoreSkills(false);
     }
-  }, [instanceId, clawHubSkillPage, searchQuery, categoryFilter, t]);
+  }, [instanceId, clawHubSkillPage, debouncedSearch, categoryFilter, t]);
 
   // Skills handlers
   const handleInstall = useCallback(async (skillId: string, source: string) => {
     setInstalling(skillId);
-    setError(null);
     try {
       const sourceObj = source === 'bundled' ? { type: 'bundled' } : { type: 'clawhub', spec: skillId };
       await api.post(`/instances/${instanceId}/skills/install`, { skillId, source: sourceObj });
       await fetchSkillData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('extensions.errors.installFailed'));
+      showError(err instanceof Error ? err.message : t('extensions.errors.installFailed'));
     } finally {
       setInstalling(null);
     }
   }, [instanceId, fetchSkillData, t]);
 
   const handleToggle = useCallback(async (skillId: string, enabled: boolean) => {
-    setError(null);
     try {
       await api.put(`/instances/${instanceId}/skills/${skillId}`, { enabled });
       await fetchSkillData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('extensions.errors.toggleFailed'));
+      showError(err instanceof Error ? err.message : t('extensions.errors.toggleFailed'));
     }
   }, [instanceId, fetchSkillData, t]);
 
   const handleUninstall = useCallback(async (skillId: string) => {
-    setError(null);
     try {
       await api.delete(`/instances/${instanceId}/skills/${skillId}`);
       await fetchSkillData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('extensions.errors.uninstallFailed'));
+      showError(err instanceof Error ? err.message : t('extensions.errors.uninstallFailed'));
     }
   }, [instanceId, fetchSkillData, t]);
 
@@ -280,13 +291,12 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
   // Plugin handlers
   const handlePluginInstall = useCallback(async (pluginId: string, source: string) => {
     setInstallingPlugin(pluginId);
-    setError(null);
     try {
       const sourceObj = source === 'bundled' ? { type: 'bundled' } : { type: 'clawhub', spec: pluginId };
       await api.post(`/instances/${instanceId}/plugins/install`, { pluginId, source: sourceObj });
       await fetchPluginData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('extensions.errors.installPluginFailed'));
+      showError(err instanceof Error ? err.message : t('extensions.errors.installPluginFailed'));
     } finally {
       setInstallingPlugin(null);
     }
@@ -303,13 +313,12 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
     const pluginName = pluginEntry?.pluginId ?? pluginId;
     setConfirmActivatePluginId(null);
     setActivatingPlugin(pluginId);
-    setError(null);
     try {
       await api.post(`/instances/${instanceId}/plugins/${pluginId}/activate`);
       // Show restart banner — polling happens in RestartBanner
       setRestartingPlugin({ id: pluginId, name: pluginName });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('extensions.errors.activateFailed'));
+      showError(err instanceof Error ? err.message : t('extensions.errors.activateFailed'));
     } finally {
       setActivatingPlugin(null);
     }
@@ -331,22 +340,20 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
   }, [restartingPlugin, fetchPluginData, t]);
 
   const handlePluginToggle = useCallback(async (pluginId: string, enabled: boolean) => {
-    setError(null);
     try {
       await api.put(`/instances/${instanceId}/plugins/${pluginId}`, { enabled });
       await fetchPluginData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('extensions.errors.togglePluginFailed'));
+      showError(err instanceof Error ? err.message : t('extensions.errors.togglePluginFailed'));
     }
   }, [instanceId, fetchPluginData, t]);
 
   const handlePluginUninstall = useCallback(async (pluginId: string) => {
-    setError(null);
     try {
       await api.delete(`/instances/${instanceId}/plugins/${pluginId}`);
       await fetchPluginData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('extensions.errors.uninstallPluginFailed'));
+      showError(err instanceof Error ? err.message : t('extensions.errors.uninstallPluginFailed'));
     }
   }, [instanceId, fetchPluginData, t]);
 
@@ -543,10 +550,6 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
         </button>
       </div>
 
-      {error && (
-        <div className="error-message" role="alert">{error}</div>
-      )}
-
       {subTab === 'plugins' && (
         <>
           {/* Activation confirmation dialog */}
@@ -626,40 +629,7 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
             )}
           </section>
 
-          {/* Gateway Built-in Plugins */}
-          <section className="extensions-section gateway-builtins">
-            <h3 className="section-header">{t('extensions.sections.gatewayBuiltins')}</h3>
-            {pluginsLoading ? (
-              <SkeletonRow />
-            ) : pluginBuiltins.length === 0 ? (
-              <p className="empty-state">{t('extensions.empty.noPluginBuiltins')}</p>
-            ) : (
-              <div className="skill-list">
-                {pluginBuiltins.map(builtin => (
-                  <div key={builtin.id} className="skill-row skill-row--readonly">
-                    <div className="skill-row__icon">
-                      <span className="skill-icon">{builtin.name[0]?.toUpperCase() ?? '?'}</span>
-                    </div>
-                    <div className="skill-row__info">
-                      <span className="skill-row__name">{builtin.name}</span>
-                      <span className="skill-row__description">{builtin.description}</span>
-                    </div>
-                    <div className="skill-row__status">
-                      <span className={builtin.enabled ? 'status-dot status-dot--active' : 'status-dot status-dot--disabled'} aria-hidden="true" />
-                      <span className="skill-row__status-text">
-                        {builtin.enabled ? t('extensions.status.active') : t('extensions.status.disabled')}
-                      </span>
-                    </div>
-                    <div className="skill-row__meta">
-                      <span className="skill-row__version">v{builtin.version}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* Available Plugin Catalog */}
+          {/* Available Plugins (bundled + ClawHub catalog) */}
           <section className="extensions-section">
             <h3 className="section-header">{t('extensions.sections.available')}</h3>
             {!isRunning ? (
@@ -785,40 +755,7 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
             )}
           </section>
 
-          {/* Gateway Built-ins */}
-          <section className="extensions-section gateway-builtins">
-            <h3 className="section-header">{t('extensions.sections.gatewayBuiltins')}</h3>
-            {skillsLoading ? (
-              <SkeletonRow />
-            ) : gatewayBuiltins.length === 0 ? (
-              <p className="empty-state">{t('extensions.empty.noBuiltins')}</p>
-            ) : (
-              <div className="skill-list">
-                {gatewayBuiltins.map(builtin => (
-                  <div key={builtin.id} className="skill-row skill-row--readonly">
-                    <div className="skill-row__icon">
-                      <span className="skill-icon">{builtin.name[0]?.toUpperCase() ?? '?'}</span>
-                    </div>
-                    <div className="skill-row__info">
-                      <span className="skill-row__name">{builtin.name}</span>
-                      <span className="skill-row__description">{builtin.description}</span>
-                    </div>
-                    <div className="skill-row__status">
-                      <span className={builtin.enabled ? 'status-dot status-dot--active' : 'status-dot status-dot--disabled'} aria-hidden="true" />
-                      <span className="skill-row__status-text">
-                        {builtin.enabled ? t('extensions.status.active') : t('extensions.status.disabled')}
-                      </span>
-                    </div>
-                    <div className="skill-row__meta">
-                      <span className="skill-row__version">v{builtin.version}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* Available Catalog */}
+          {/* Available Extensions (bundled + ClawHub catalog) */}
           <section className="extensions-section">
             <h3 className="section-header">{t('extensions.sections.available')}</h3>
             {!isRunning ? (
@@ -844,6 +781,12 @@ export function ExtensionsTab({ instanceId, instanceStatus }: ExtensionsTabProps
                     ))}
                   </select>
                 </div>
+                {catalogSearching && (
+                  <div className="catalog-searching">
+                    <span className="catalog-searching__spinner" />
+                    <span className="catalog-searching__text">{t('extensions.catalog.searching')}</span>
+                  </div>
+                )}
                 {skillsLoading ? (
                   <>
                     <SkeletonRow />

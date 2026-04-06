@@ -1,0 +1,65 @@
+/* ─── AgentUIFrame ─── */
+
+.agent-ui-frame-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 600px;
+  display: flex;
+  flex-direction: column;
+}
+
+.agent-ui-frame-iframe {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: var(--color-surface);
+}
+
+.agent-ui-frame-iframe--hidden {
+  display: none;
+}
+
+.agent-ui-frame-loading,
+.agent-ui-frame-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+}
+
+.agent-ui-frame-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  gap: 0.5rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.agent-ui-frame-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+
+.agent-ui-frame-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.agent-ui-frame-subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}

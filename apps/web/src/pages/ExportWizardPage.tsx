@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
+import { Button, Input } from '@/components/ui';
 import type { ExportTemplateResponse } from '@aquarium/shared';
 
 type PreviewTab = 'overview' | 'files' | 'mcp' | 'warnings';
@@ -91,9 +92,9 @@ export function ExportWizardPage() {
   return (
     <div className="export-wizard">
       <div className="export-wizard__topbar">
-        <button className="export-wizard__back-link" onClick={() => navigate(-1)}>
+        <Button className="export-wizard__back-link" variant="ghost" onClick={() => navigate(-1)}>
           &larr; {t('exportWizard.cancel')}
-        </button>
+        </Button>
       </div>
 
       <div className="export-wizard__header">
@@ -113,9 +114,9 @@ export function ExportWizardPage() {
       {!loading && error && !exportData && (
         <div className="export-wizard__error">
           <p className="export-wizard__error-msg">{error}</p>
-          <button className="export-wizard__error-btn" onClick={() => void fetchExport()}>
+          <Button className="export-wizard__error-btn" variant="secondary" onClick={() => void fetchExport()}>
             {t('exportWizard.retry')}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -131,7 +132,7 @@ export function ExportWizardPage() {
             <div className="export-wizard__metadata">
               <div className="export-wizard__field">
                 <label className="export-wizard__label">{t('exportWizard.name')}</label>
-                <input
+                <Input
                   className="export-wizard__input"
                   value={editedName}
                   onChange={e => setEditedName(e.target.value)}
@@ -139,7 +140,7 @@ export function ExportWizardPage() {
               </div>
               <div className="export-wizard__field">
                 <label className="export-wizard__label">{t('exportWizard.slug')}</label>
-                <input
+                <Input
                   className="export-wizard__input"
                   value={editedSlug}
                   onChange={e => setEditedSlug(e.target.value)}
@@ -156,7 +157,7 @@ export function ExportWizardPage() {
               </div>
               <div className="export-wizard__field">
                 <label className="export-wizard__label">{t('exportWizard.tags')}</label>
-                <input
+                <Input
                   className="export-wizard__input"
                   value={editedTags}
                   onChange={e => setEditedTags(e.target.value)}
@@ -177,16 +178,17 @@ export function ExportWizardPage() {
             <div className="export-wizard__preview">
               <div className="export-wizard__tabs">
                 {(['overview', 'files', 'mcp', 'warnings'] as const).map(tab => (
-                  <button
+                  <Button
                     key={tab}
                     className={`export-wizard__tab${activeTab === tab ? ' export-wizard__tab--active' : ''}`}
+                    variant="ghost"
                     onClick={() => setActiveTab(tab)}
                   >
                     {t(`exportWizard.tabs.${tab}`)}
                     {tab === 'warnings' && warningCount > 0 && (
                       <span className="export-wizard__tab-badge">{warningCount}</span>
                     )}
-                  </button>
+                  </Button>
                 ))}
               </div>
 
@@ -208,25 +210,27 @@ export function ExportWizardPage() {
           </div>
 
           <div className="export-wizard__actions">
-            <button
+            <Button
               className="export-wizard__btn export-wizard__btn--cancel"
+              variant="ghost"
               onClick={() => navigate(-1)}
             >
               {t('exportWizard.cancel')}
-            </button>
-            <button
+            </Button>
+            <Button
               className="export-wizard__btn export-wizard__btn--secondary"
+              variant="secondary"
               onClick={handleDownloadJson}
             >
               {t('exportWizard.downloadJson')}
-            </button>
-            <button
+            </Button>
+            <Button
               className="export-wizard__btn export-wizard__btn--primary"
               onClick={() => void handleSaveTemplate()}
               disabled={saving || !editedName.trim()}
             >
               {saving ? t('exportWizard.saving') : t('exportWizard.saveTemplate')}
-            </button>
+            </Button>
           </div>
         </>
       )}

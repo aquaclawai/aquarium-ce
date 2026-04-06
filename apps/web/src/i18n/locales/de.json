@@ -221,7 +221,18 @@
       "oauthAuthenticated": "{{provider}} authentifiziert",
       "setupRequired": "Einrichtung erforderlich: {{provider}} authentifizieren",
       "setupRequiredDescription": "Diese Instanz verwendet {{provider}} als KI-Anbieter. Schließen Sie den OAuth-Vorgang unten ab, um Ihr Konto zu verbinden.",
-      "platformAI": "Plattform-KI"
+      "platformAI": "Plattform-KI",
+      "exportTemplate": "Als Vorlage exportieren",
+      "webhookTitle": "Benachrichtigungs-Webhooks",
+      "webhookDescription": "Webhook-URLs für IM-Push-Benachrichtigungen konfigurieren (Feishu, DingTalk, WeCom).",
+      "webhookProviders": { "feishu": "Feishu", "dingtalk": "DingTalk", "wecom": "WeCom" },
+      "webhookConfigured": "Konfiguriert",
+      "webhookPlaceholder": "{{provider}} Webhook-URL eingeben",
+      "apiKeyTitle": "Datenquellen-API-Schlüssel",
+      "apiKeyDescription": "Optionale API-Schlüssel für erweiterte Datenerfassung.",
+      "apiKeyProviders": { "tikhub": "TikHub" },
+      "apiKeyConfigured": "Konfiguriert",
+      "apiKeyPlaceholder": "{{provider}} API-Schlüssel eingeben"
     },
     "credentials": {
       "title": "Zugangsdaten",
@@ -1100,7 +1111,8 @@
       "pending": "Ausstehend",
       "disabled": "Deaktiviert",
       "degraded": "Eingeschränkt",
-      "failed": "Fehlgeschlagen"
+      "failed": "Fehlgeschlagen",
+      "blocked": "Blockiert"
     },
     "actions": {
       "install": "Installieren",

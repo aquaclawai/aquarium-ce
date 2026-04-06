@@ -1,0 +1,124 @@
+/* ═══════════════════════════════════════════════════════════════
+   GroupChatsListPage — Create Dialog
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Dialog width override */
+.gc-create-dialog {
+  max-width: var(--dialog-width-lg, 640px);
+}
+
+/* Scrollable instance list inside dialog */
+.gc-list-dialog__instance-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+}
+
+/* Individual instance item in the list */
+.gc-list-dialog__instance-item {
+  margin-bottom: var(--space-3);
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Last item should not have bottom border */
+.gc-list-dialog__instance-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+/* Flex row for checkbox + label inside instance item */
+.gc-list-dialog__instance-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-1);
+  gap: var(--space-3);
+}
+
+/* Checkbox margin within instance row */
+.gc-list-dialog__instance-checkbox {
+  flex-shrink: 0;
+}
+
+/* Instance label text */
+.gc-list-dialog__instance-label {
+  font-weight: 500;
+  flex: 1;
+}
+
+/* Instance status/subtitle text */
+.gc-list-dialog__instance-status {
+  font-size: 0.8em;
+}
+
+/* Expanded fields for selected instance */
+.gc-list-dialog__instance-fields {
+  margin-left: var(--space-6);
+}
+
+/* Form field groups inside the dialog */
+.gc-list-dialog__field {
+  margin-bottom: var(--space-4);
+}
+
+.gc-list-dialog__field label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: 0.9em;
+}
+
+/* Human search results dropdown */
+.gc-list-dialog__search-results {
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  margin-top: var(--space-1);
+  border-radius: var(--radius-sm);
+}
+
+/* Individual search result item */
+.gc-list-dialog__search-item {
+  padding: var(--space-2);
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.gc-list-dialog__search-item:last-child {
+  border-bottom: none;
+}
+
+.gc-list-dialog__search-item:hover {
+  background-color: var(--color-light);
+}
+
+/* Searching hint text */
+.gc-list-dialog__search-hint {
+  font-size: 0.8em;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-1);
+}
+
+/* Selected humans chips container */
+.gc-list-dialog__selected-humans {
+  margin-top: var(--space-3);
+}
+
+.gc-list-dialog__selected-humans-label {
+  font-size: 0.9em;
+}
+
+.gc-list-dialog__selected-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+/* Remove button chip for selected humans */
+.gc-list-dialog__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}

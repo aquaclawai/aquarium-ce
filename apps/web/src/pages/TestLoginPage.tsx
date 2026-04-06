@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { api } from '../api';
+import { Button, Input } from '@/components/ui';
 
 export function TestLoginPage() {
   const { user, isLoading } = useAuth();
@@ -60,7 +61,7 @@ export function TestLoginPage() {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="email">Email</label>
-            <input
+            <Input
               id="email"
               type="email"
               value={email}
@@ -73,7 +74,7 @@ export function TestLoginPage() {
           <div className="form-group">
             <label htmlFor="password">Password</label>
             <div className="auth-password-field">
-              <input
+              <Input
                 id="password"
                 type="password"
                 value={password}
@@ -83,9 +84,9 @@ export function TestLoginPage() {
               />
             </div>
           </div>
-          <button type="submit" className="auth-submit" disabled={submitting}>
+          <Button type="submit" className="auth-submit" disabled={submitting}>
             {submitting ? 'Signing in…' : 'Sign In'}
-          </button>
+          </Button>
         </form>
         <div className="auth-switch">
           No account?{' '}

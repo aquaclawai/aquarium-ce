@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api';
 import type { AdminUser, AdminUserInstance } from '@aquarium/shared';
+import { Button } from '@/components/ui';
 
 interface UsersTabProps {
   users: AdminUser[];
@@ -64,12 +65,13 @@ export function UsersTab({ users }: UsersTabProps) {
                     <td>
                       <div style={{ display: 'flex', gap: '0.25rem' }}>
                         {u.instanceCount > 0 && (
-                          <button
-                            className="btn-small btn-secondary"
+                          <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={() => toggleUserInstances(u.id)}
                           >
                             {expandedUserId === u.id ? t('admin.users.hideInstances') : t('admin.users.showInstances')}
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </td>

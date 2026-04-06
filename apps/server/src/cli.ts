@@ -79,6 +79,10 @@ await import('./index.ce.js');
 if (hasFlag('open')) {
   const url = `http://localhost:${port}`;
   const { exec } = await import('node:child_process');
-  const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
-  exec(`${cmd} ${url}`);
+  if (process.platform === 'win32') {
+    exec(`cmd /c start "" "${url}"`);
+  } else {
+    const cmd = process.platform === 'darwin' ? 'open' : 'xdg-open';
+    exec(`${cmd} ${url}`);
+  }
 }

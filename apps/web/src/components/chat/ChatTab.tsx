@@ -8,6 +8,8 @@ import { useInstanceModels } from '../../hooks/useInstanceModels';
 import { SessionDrawer } from './SessionDrawer.js';
 import type { Instance, WsMessage } from '@aquarium/shared';
 import { isImageMime, ALLOWED_ATTACHMENT_TYPES, MAX_FILE_UPLOAD_SIZE, FILE_INPUT_ACCEPT } from '@aquarium/shared';
+import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Separator, Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui';
+import '../../pages/AssistantChatPage.css';
 
 interface ChatMessage {
   role: 'user' | 'agent' | 'assistant';
@@ -92,23 +94,6 @@ function extractText(content: unknown): string {
   return '';
 }
 
-/** Extract tool name from a delta content payload (toolCall blocks). */
-function extractToolName(content: unknown): string | null {
-  if (Array.isArray(content)) {
-    for (const block of content) {
-      if (block && typeof block === 'object') {
-        const b = block as Record<string, unknown>;
-        if ((b.type === 'toolCall' || b.type === 'tool_use') && typeof b.name === 'string') return b.name;
-      }
-    }
-  }
-  if (content && typeof content === 'object') {
-    const c = content as Record<string, unknown>;
-    if (Array.isArray(c.content)) return extractToolName(c.content);
-  }
-  return null;
-}
-
 function formatMessageTime(isoString?: string): string {
   if (!isoString) return '';
   const date = new Date(isoString);
@@ -143,7 +128,6 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [streamText, setStreamText] = useState<string | null>(null);
-  const [toolActivity, setToolActivity] = useState<string | null>(null);
   const activeRunIdRef = useRef<string | null>(null);
   const abortedRunIdsRef = useRef<Set<string>>(new Set());
   const imageStoreRef = useRef<Map<number, unknown>>(new Map());
@@ -176,6 +160,7 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
       setStreamText(null);
       activeRunIdRef.current = null;
       setError(null);
+      initialScrollDone.current = false;
       onSessionKeyConsumed?.();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -279,8 +264,14 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
           .filter(m => {
             if (m.role === 'user') return true;
             if (m.role === 'tool' || m.role === 'toolResult') return false;
-            // Hide agent messages with no visible text (thinking-only, toolCall-only, empty)
-            return extractText(m.content).length > 0;
+            // Filter out assistant messages with no visible text (only thinking + toolCall)
+            if (m.role === 'assistant' && Array.isArray(m.content)) {
+              const hasText = m.content.some(
+                (b: Record<string, unknown>) => b.type === 'text' && typeof b.text === 'string' && b.text.trim().length > 0,
+              );
+              if (!hasText) return false;
+            }
+            return true;
           })
           .map(m => ({
             role: m.role === 'user' ? 'user' as const : 'agent' as const,
@@ -337,42 +328,35 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
         if (chatData.sessionKey !== sessionKey) return;
         if (chatData.runId && abortedRunIdsRef.current.has(chatData.runId)) return;
 
-        // Clear no-response timeout on ANY chat event — tool calls, deltas, etc.
-        if (chatTimeoutRef.current) {
-          clearTimeout(chatTimeoutRef.current);
-          chatTimeoutRef.current = null;
-        }
-
         if (chatData.state === 'delta') {
+          // Clear the no-response timeout — we're receiving data
+          if (chatTimeoutRef.current) {
+            clearTimeout(chatTimeoutRef.current);
+            chatTimeoutRef.current = null;
+          }
           const text = extractText(chatData.content ?? chatData.message);
           if (text) {
-            setToolActivity(null);
             setStreamText(prev => {
               // Gateway sends full accumulated text per delta, not incremental.
               // Length check prevents out-of-order WebSocket frames from overwriting newer content.
               if (!prev || text.length >= prev.length) return text;
               return prev;
             });
-          } else {
-            // Delta with no text — likely a tool call. Extract tool name for activity indicator.
-            const content = chatData.content ?? chatData.message;
-            const toolName = extractToolName(content);
-            if (toolName) setToolActivity(toolName);
           }
         } else if (chatData.state === 'final') {
+          if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
           setStreamText(null);
-          setToolActivity(null);
           activeRunIdRef.current = null;
           setSending(false);
           loadHistory();
         } else if (chatData.state === 'aborted') {
+          if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
           setStreamText(null);
-          setToolActivity(null);
           activeRunIdRef.current = null;
           setSending(false);
         } else if (chatData.state === 'error') {
+          if (chatTimeoutRef.current) { clearTimeout(chatTimeoutRef.current); chatTimeoutRef.current = null; }
           setStreamText(null);
-          setToolActivity(null);
           activeRunIdRef.current = null;
           setSending(false);
           setError(chatData.errorMessage ?? t('chat.chatError'));
@@ -391,6 +375,7 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
     setMessages([]);
     imageStoreRef.current = new Map();
     setStreamText(null);
+    initialScrollDone.current = false;
     activeRunIdRef.current = null;
     setError(null);
     return newKey;
@@ -402,6 +387,7 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
     setMessages([]);
     imageStoreRef.current = new Map();
     setStreamText(null);
+    initialScrollDone.current = false;
     activeRunIdRef.current = null;
     setError(null);
     setDrawerOpen(false);
@@ -413,7 +399,7 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
   const [sessionThinking, setSessionThinking] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
 
-  const { models: gatewayModels, loading: modelsLoading } = useInstanceModels(instanceId, instanceStatus);
+  const { models: gatewayModels } = useInstanceModels(instanceId, instanceStatus);
 
   useEffect(() => {
     if (!showSettings) return;
@@ -444,9 +430,23 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
     }
   };
 
-  const messagesEndRef = useCallback((node: HTMLDivElement | null) => {
-    node?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const initialScrollDone = useRef(false);
+
+  useEffect(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    if (messages.length > 0 && !initialScrollDone.current) {
+      initialScrollDone.current = true;
+      requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight, behavior: 'instant' }));
+      return;
+    }
+    // Auto-scroll on new messages if user is near bottom
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (nearBottom) {
+      requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }));
+    }
+  }, [messages, streamText]);
 
   const sendMessage = async () => {
     const text = input.trim();
@@ -526,7 +526,7 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
       await rpc(instanceId, 'chat.send', payload);
       setSessionRefreshFlag(f => f + 1);
 
-      // Start a no-response timeout — if no chat events arrive within 120s,
+      // Start a no-response timeout — if no chat events arrive within 60s,
       // the persistent WebSocket relay likely isn't connected. Reset UI.
       chatTimeoutRef.current = setTimeout(() => {
         chatTimeoutRef.current = null;
@@ -534,10 +534,9 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
           setError(t('chat.noResponseError'));
           setSending(false);
           setStreamText(null);
-          setToolActivity(null);
           activeRunIdRef.current = null;
         }
-      }, 120_000);
+      }, 60_000);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('chat.failedToSend'));
       setSending(false);
@@ -589,67 +588,80 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
       />
       <div className="chat-header">
         <div className="chat-session-info">
-          <button
-            onClick={() => setDrawerOpen(!drawerOpen)}
-            className="btn-icon btn-small"
-            title={t('chat.sessionDrawer.toggleSessions')}
-          >
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          </button>
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            className="btn-icon btn-small"
-            title={t('chat.settings')}
-          >
-            {t('chat.settings')}
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setDrawerOpen(!drawerOpen)}
+              >
+                <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{t('chat.sessionDrawer.toggleSessions')}</TooltipContent>
+          </Tooltip>
+          <Separator orientation="vertical" className="chat-header-sep" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowSettings(!showSettings)}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{t('chat.settings')}</TooltipContent>
+          </Tooltip>
         </div>
-        <button onClick={handleNewChat} disabled={isStreaming} className="btn-secondary btn-small">
+        <Button variant="outline" size="sm" onClick={handleNewChat} disabled={isStreaming}>
           {t('chat.newChat')}
-        </button>
+        </Button>
       </div>
       {showSettings && (
         <div className="chat-settings-panel">
           <div className="chat-settings-field">
             <label>{t('chat.sessionSettings.modelLabel')}</label>
-            <input
+            <Input
               type="text"
               value={sessionModel}
               onChange={e => setSessionModel(e.target.value)}
-              placeholder={modelsLoading ? t('common.loading') : t('chat.sessionSettings.modelPlaceholder')}
+              placeholder={t('chat.sessionSettings.modelPlaceholder')}
               list="model-suggestions"
             />
             <datalist id="model-suggestions">
-              {[...gatewayModels]
-                .sort((a, b) => (a.usable === b.usable ? 0 : a.usable ? -1 : 1))
-                .map(m => (
-                  <option
-                    key={m.id}
-                    value={m.id}
-                    label={m.provider ? `${m.name} · ${m.provider}${m.usable ? '' : ' (no key)'}` : m.name}
-                  />
-                ))}
+              {gatewayModels.map(m => (
+                <option key={m.name} value={m.name} label={m.provider ? `${m.provider}/${m.name}${m.usable ? '' : ' (no key)'}` : m.name} />
+              ))}
             </datalist>
           </div>
           <div className="chat-settings-field">
             <label>{t('chat.sessionSettings.thinkingLevelLabel')}</label>
-            <select value={sessionThinking} onChange={e => setSessionThinking(e.target.value)}>
-              <option value="">{t('chat.sessionSettings.thinkingLevels.default')}</option>
-              <option value="off">{t('chat.sessionSettings.thinkingLevels.off')}</option>
-              <option value="low">{t('chat.sessionSettings.thinkingLevels.low')}</option>
-              <option value="medium">{t('chat.sessionSettings.thinkingLevels.medium')}</option>
-              <option value="high">{t('chat.sessionSettings.thinkingLevels.high')}</option>
-            </select>
+            <Select value={sessionThinking || '__default__'} onValueChange={(val) => setSessionThinking(val === '__default__' ? '' : val)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__default__">{t('chat.sessionSettings.thinkingLevels.default')}</SelectItem>
+                <SelectItem value="off">{t('chat.sessionSettings.thinkingLevels.off')}</SelectItem>
+                <SelectItem value="low">{t('chat.sessionSettings.thinkingLevels.low')}</SelectItem>
+                <SelectItem value="medium">{t('chat.sessionSettings.thinkingLevels.medium')}</SelectItem>
+                <SelectItem value="high">{t('chat.sessionSettings.thinkingLevels.high')}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="chat-settings-actions">
-            <button onClick={handleSaveSettings} disabled={savingSettings} className="btn-primary btn-small">
+            <Button size="sm" onClick={handleSaveSettings} disabled={savingSettings}>
               {savingSettings ? t('chat.sessionSettings.saving') : t('chat.sessionSettings.save')}
-            </button>
-            <button onClick={() => setShowSettings(false)} className="btn-small">{t('common.buttons.cancel')}</button>
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setShowSettings(false)}>{t('common.buttons.cancel')}</Button>
           </div>
         </div>
       )}
-      <div className="chat-messages">
+      <div className="chat-messages" ref={messagesContainerRef}>
         {messages.length === 0 && !isStreaming && (
           <div className="chat-empty">{t('chat.emptyState')}</div>
         )}
@@ -658,13 +670,15 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
             <div className="chat-message-content">
               <MessageRenderer content={msg.content} />
             </div>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               className="chat-msg-copy-btn"
               onClick={() => handleCopyMessage(msg.content, i)}
               title={t('chat.copyMessage')}
             >
               {copiedIdx === i ? t('common.buttons.copied') : t('common.buttons.copy')}
-            </button>
+            </Button>
             {msg.timestamp && (
               <span className="chat-msg-timestamp" title={msg.timestamp}>
                 {formatMessageTime(msg.timestamp)}
@@ -686,89 +700,79 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
           <div className="chat-message agent">
             <div className="chat-message-content">
               <span className="spinner" />
-              {toolActivity && <span className="tool-activity">{toolActivity}</span>}
             </div>
           </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
+      <div className="chat-input-area">
       {error && (
-        <div className="error-message" role="alert">
+        <div className="error-message chat-error" role="alert">
           {error}
-          <button type="button" className="error-dismiss" onClick={() => setError(null)} aria-label="Dismiss">&times;</button>
+          <Button type="button" variant="ghost" size="icon" className="error-dismiss" onClick={() => setError(null)} aria-label="Dismiss">&times;</Button>
         </div>
       )}
-      <div 
-        className="chat-input-row" 
-        style={{ alignItems: 'flex-end' }}
+      <div
+        className="chat-input-row"
         onPaste={handlePaste}
         onDrop={handleDrop}
         onDragOver={e => e.preventDefault()}
         ref={dropZoneRef}
       >
-        <input
-          type="file"
+        <input type="file"
           ref={fileInputRef}
           onChange={e => processFiles(e.target.files)}
           accept={FILE_INPUT_ACCEPT}
           multiple
           style={{ display: 'none' }}
         />
-        
-        <button 
-          className="btn-icon" 
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="chat-attach-btn"
           onClick={() => fileInputRef.current?.click()}
           title={t('chat.attachments.attachFile')}
           disabled={isStreaming}
-          style={{ marginRight: '8px', marginBottom: '6px' }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
           </svg>
-        </button>
+        </Button>
 
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div className="chat-input-wrapper">
            {attachments.length > 0 && (
-             <div style={{ display: 'flex', gap: '8px', padding: '4px 0', overflowX: 'auto' }}>
+             <div className="chat-attachments-row">
                {attachments.map(a => (
-                 <div key={a.id} style={{ position: 'relative', width: '60px', height: '60px', flexShrink: 0 }}>
+                 <div key={a.id} className="chat-attachment-thumb">
                    {isImageMime(a.type) ? (
-                     <img src={a.preview} alt={a.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }} />
+                     <img src={a.preview} alt={a.name} className="chat-attachment-img" />
                    ) : (
-                     <div style={{
-                       width: '100%', height: '100%', borderRadius: '4px',
-                       background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)',
-                       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                       gap: '2px', padding: '4px', overflow: 'hidden',
-                        fontSize: '0.55rem', color: 'var(--color-text-secondary)', textAlign: 'center',
-                      }}>
-                        <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>
+                     <div className="chat-attachment-doc">
+                        <span className="chat-attachment-doc-type">
                           {getDocumentTypeLabel(a.type)}
                         </span>
-                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                       <span className="chat-attachment-doc-name">
                          {a.name}
                        </span>
                      </div>
                    )}
-                    <button 
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="chat-attachment-remove"
                       onClick={() => removeAttachment(a.id)}
                       title={t('chat.attachments.removeAttachment')}
-                     style={{
-                       position: 'absolute', top: -6, right: -6, background: 'var(--surface-color)', 
-                       border: '1px solid var(--border-color)', borderRadius: '50%', width: '18px', height: '18px',
-                       display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0,
-                       fontSize: '14px', lineHeight: 1
-                     }}
                    >
                      ×
-                   </button>
+                   </Button>
                  </div>
                ))}
              </div>
            )}
-           
+
            <textarea
              ref={textareaRef}
+             className="chat-textarea"
              value={input}
              onChange={e => setInput(e.target.value)}
              onKeyDown={e => {
@@ -780,24 +784,15 @@ export function ChatTab({ instanceId, instanceStatus, initialSessionKey, onSessi
              placeholder={attachments.length > 0 ? t('chat.inputPlaceholder') : (t('chat.attachments.dropHint') || t('chat.inputPlaceholder'))}
              disabled={isStreaming}
              rows={1}
-             style={{
-               width: '100%',
-               resize: 'none',
-               minHeight: '2.5rem',
-               maxHeight: '200px',
-               fontFamily: 'inherit',
-               fontSize: '0.9rem',
-               lineHeight: '1.4',
-               overflowY: 'auto',
-             }}
            />
         </div>
 
         {isStreaming ? (
-          <button onClick={handleAbort} className="danger" style={{ marginLeft: '8px', marginBottom: '2px' }}>{t('common.buttons.stop')}</button>
+          <Button variant="destructive" onClick={handleAbort} className="chat-send-btn danger">{t('common.buttons.stop')}</Button>
         ) : (
-          <button onClick={sendMessage} disabled={(!input.trim() && attachments.length === 0)} style={{ marginLeft: '8px', marginBottom: '2px' }}>{t('common.buttons.send')}</button>
+          <Button onClick={sendMessage} disabled={(!input.trim() && attachments.length === 0)} className="chat-send-btn">{t('common.buttons.send')}</Button>
         )}
+      </div>
       </div>
     </div>
   );

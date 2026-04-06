@@ -1,11 +1,30 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Plus, KeyRound } from 'lucide-react';
 import { api } from '../api';
 import type { UserCredentialExtended, CredentialRole, CredentialStatus } from '@aquarium/shared';
+import { PageHeader } from '../components/PageHeader';
+import { EmptyState } from '../components/EmptyState';
+import { TabsSkeleton, CardSkeleton } from '@/components/skeletons';
 import './CredentialsPage.css';
+import {
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui';
 
-const PROVIDERS = ['openai', 'anthropic', 'google', 'azure', 'deepseek', 'groq', 'mistral', 'xai', 'custom'] as const;
-const CRED_TYPES = ['api_key', 'refresh_token', 'oauth_token'] as const;
+const PROVIDERS = ['openai', 'anthropic', 'google', 'azure', 'deepseek', 'groq', 'mistral', 'xai', 'feishu', 'dingtalk', 'wecom', 'tikhub', 'custom'] as const;
+const CRED_TYPES = ['api_key', 'refresh_token', 'oauth_token', 'webhook_url'] as const;
 const ROLES: CredentialRole[] = ['default', 'backup', 'dedicated'];
 
 const PROVIDER_COLORS: Record<string, string> = {
@@ -17,6 +36,10 @@ const PROVIDER_COLORS: Record<string, string> = {
   groq: '#f55036',
   mistral: '#ff7000',
   xai: '#1d9bf0',
+  feishu: '#3370ff',
+  dingtalk: '#0089ff',
+  wecom: '#07c160',
+  tikhub: '#ff4757',
   custom: '#78716c',
 };
 
@@ -143,31 +166,34 @@ export function CredentialsPage() {
 
   return (
     <main className="creds-page">
-      <header className="creds-page__header">
-        <div className="creds-page__header-left">
-          <h1>{t('credentials.title')}</h1>
-          <p className="creds-page__subtitle">{t('credentials.subtitle')}</p>
-        </div>
-        {activeTab === 'credentials' && (
-          <button className="creds-page__btn creds-page__btn--primary" onClick={openAddModal}>
-            + {t('credentials.addCredential')}
-          </button>
-        )}
-      </header>
+      <PageHeader
+        title={t('credentials.title')}
+        subtitle={t('credentials.subtitle')}
+        action={
+          activeTab === 'credentials' ? (
+            <Button onClick={openAddModal}>
+              <Plus size={16} />
+              {t('credentials.addCredential')}
+            </Button>
+          ) : undefined
+        }
+      />
 
       <div className="creds-page__tabs">
-        <button
+        <Button
+          variant="ghost"
           className={`creds-page__tab ${activeTab === 'credentials' ? 'creds-page__tab--active' : ''}`}
           onClick={() => setActiveTab('credentials')}
         >
           {t('credentials.tabs.myCredentials')}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
           className={`creds-page__tab ${activeTab === 'subscriptions' ? 'creds-page__tab--active' : ''}`}
           onClick={() => setActiveTab('subscriptions')}
         >
           {t('credentials.tabs.mySubscriptions')}
-        </button>
+        </Button>
       </div>
 
       {message && (
@@ -179,22 +205,33 @@ export function CredentialsPage() {
       {activeTab === 'credentials' && (
         <div className="creds-page__content">
           {loading ? (
-            <div className="creds-page__loading">{t('common.loading')}</div>
+            <>
+              <TabsSkeleton count={2} />
+              <div className="creds-page__grid">
+                {Array.from({ length: 4 }, (_, i) => (
+                  <CardSkeleton key={i} lines={4} showBadge showAction />
+                ))}
+              </div>
+            </>
           ) : error ? (
             <div className="creds-page__error">
               {error}
-              <button className="creds-page__btn creds-page__btn--secondary" onClick={loadCredentials}>
+              <Button variant="secondary" onClick={loadCredentials}>
                 {t('common.buttons.retry')}
-              </button>
+              </Button>
             </div>
           ) : credentials.length === 0 ? (
-            <div className="creds-page__empty">
-              <p className="creds-page__empty-title">{t('credentials.noCredentials')}</p>
-              <p className="creds-page__empty-desc">{t('credentials.noCredentialsDesc')}</p>
-              <button className="creds-page__btn creds-page__btn--primary" onClick={openAddModal}>
-                + {t('credentials.addCredential')}
-              </button>
-            </div>
+            <EmptyState
+              icon={<KeyRound size={24} />}
+              title={t('credentials.emptyTitle')}
+              description={t('credentials.emptyDescription')}
+              action={
+                <Button onClick={openAddModal}>
+                  <Plus size={16} />
+                  {t('credentials.addCredential')}
+                </Button>
+              }
+            />
           ) : (
             <>
               <div className="creds-page__grid">
@@ -236,24 +273,27 @@ export function CredentialsPage() {
                     </div>
 
                     <div className="creds-card__actions">
-                      <button
-                        className="creds-page__btn creds-page__btn--secondary creds-page__btn--sm"
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={() => handleToggleStatus(cred)}
                       >
                         {cred.status === 'active' ? t('credentials.disableCredential') : t('credentials.enableCredential')}
-                      </button>
-                      <button
-                        className="creds-page__btn creds-page__btn--secondary creds-page__btn--sm"
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={() => openEditModal(cred)}
                       >
                         {t('credentials.editCredential')}
-                      </button>
-                      <button
-                        className="creds-page__btn creds-page__btn--danger creds-page__btn--sm"
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
                         onClick={() => setDeleteConfirmId(cred.id)}
                       >
                         {t('common.buttons.delete')}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -266,116 +306,131 @@ export function CredentialsPage() {
 
       {activeTab === 'subscriptions' && (
         <div className="creds-page__content">
-          <div className="creds-page__empty">
-            <p className="creds-page__empty-title">{t('credentials.subscriptions.noSubscriptions')}</p>
-            <p className="creds-page__empty-desc">{t('credentials.subscriptions.noSubscriptionsDesc')}</p>
-          </div>
+          <EmptyState
+            icon={<KeyRound size={24} />}
+            title={t('credentials.subscriptions.emptyTitle')}
+            description={t('credentials.subscriptions.emptyDescription')}
+          />
         </div>
       )}
 
-      {modalOpen && (
-        <div className="modal-overlay" onClick={() => setModalOpen(false)}>
-          <div className="modal creds-modal" onClick={e => e.stopPropagation()}>
-            <h2>{editingId ? t('credentials.editCredential') : t('credentials.addCredential')}</h2>
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="creds-modal">
+          <DialogHeader>
+            <DialogTitle>{editingId ? t('credentials.editCredential') : t('credentials.addCredential')}</DialogTitle>
+            <DialogDescription>{t('credentials.valueHelpText')}</DialogDescription>
+          </DialogHeader>
 
-            <div className="creds-modal__field">
-              <label>{t('credentials.provider')}</label>
-              <select
-                value={form.provider}
-                onChange={e => setForm(prev => ({ ...prev, provider: e.target.value }))}
-                disabled={!!editingId}
-              >
+          <div className="creds-modal__field">
+            <label>{t('credentials.provider')}</label>
+            <Select
+              value={form.provider}
+              onValueChange={value => setForm(prev => ({ ...prev, provider: value }))}
+              disabled={!!editingId}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
                 {PROVIDERS.map(p => (
-                  <option key={p} value={p}>
+                  <SelectItem key={p} value={p}>
                     {t(`credentials.providerOptions.${p}`, p)}
-                  </option>
+                  </SelectItem>
                 ))}
-              </select>
-            </div>
+              </SelectContent>
+            </Select>
+          </div>
 
-            <div className="creds-modal__field">
-              <label>{t('credentials.credentialType')}</label>
-              <select
-                value={form.credentialType}
-                onChange={e => setForm(prev => ({ ...prev, credentialType: e.target.value }))}
-                disabled={!!editingId}
-              >
+          <div className="creds-modal__field">
+            <label>{t('credentials.credentialType')}</label>
+            <Select
+              value={form.credentialType}
+              onValueChange={value => setForm(prev => ({ ...prev, credentialType: value }))}
+              disabled={!!editingId}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
                 {CRED_TYPES.map(ct => (
-                  <option key={ct} value={ct}>
+                  <SelectItem key={ct} value={ct}>
                     {t(`credentials.typeOptions.${ct}`, ct)}
-                  </option>
+                  </SelectItem>
                 ))}
-              </select>
-            </div>
+              </SelectContent>
+            </Select>
+          </div>
 
-            <div className="creds-modal__field">
-              <label>{t('credentials.displayName')}</label>
-              <input
-                type="text"
-                value={form.displayName}
-                onChange={e => setForm(prev => ({ ...prev, displayName: e.target.value }))}
-                placeholder={t('credentials.displayNamePlaceholder')}
-              />
-            </div>
+          <div className="creds-modal__field">
+            <label>{t('credentials.displayName')}</label>
+            <Input
+              type="text"
+              value={form.displayName}
+              onChange={e => setForm(prev => ({ ...prev, displayName: e.target.value }))}
+              placeholder={t('credentials.displayNamePlaceholder')}
+            />
+          </div>
 
-            <div className="creds-modal__field">
-              <label>{t('credentials.value')}</label>
-              <input
-                type="password"
-                value={form.value}
-                onChange={e => setForm(prev => ({ ...prev, value: e.target.value }))}
-                placeholder={editingId ? '••••••••' : t('credentials.valuePlaceholder')}
-                required={!editingId}
-              />
-              <span className="creds-modal__help">{t('credentials.valueHelpText')}</span>
-            </div>
+          <div className="creds-modal__field">
+            <label>{t('credentials.value')}</label>
+            <Input
+              type="password"
+              value={form.value}
+              onChange={e => setForm(prev => ({ ...prev, value: e.target.value }))}
+              placeholder={editingId ? '••••••••' : t('credentials.valuePlaceholder')}
+              required={!editingId}
+            />
+          </div>
 
-            <div className="creds-modal__field">
-              <label>{t('credentials.role.label')}</label>
-              <select
-                value={form.role}
-                onChange={e => setForm(prev => ({ ...prev, role: e.target.value as CredentialRole }))}
-              >
+          <div className="creds-modal__field">
+            <label>{t('credentials.role.label')}</label>
+            <Select
+              value={form.role}
+              onValueChange={value => setForm(prev => ({ ...prev, role: value as CredentialRole }))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
                 {ROLES.map(r => (
-                  <option key={r} value={r}>
+                  <SelectItem key={r} value={r}>
                     {t(`credentials.role.${r}`)}
-                  </option>
+                  </SelectItem>
                 ))}
-              </select>
-            </div>
-
-            <div className="modal-actions">
-              <button className="creds-page__btn creds-page__btn--secondary" onClick={() => setModalOpen(false)}>
-                {t('common.buttons.cancel')}
-              </button>
-              <button
-                className="creds-page__btn creds-page__btn--primary"
-                onClick={handleSave}
-                disabled={saving || (!editingId && !form.value)}
-              >
-                {saving ? t('common.buttons.saving') : t('common.buttons.save')}
-              </button>
-            </div>
+              </SelectContent>
+            </Select>
           </div>
-        </div>
-      )}
 
-      {deleteConfirmId && (
-        <div className="modal-overlay" onClick={() => setDeleteConfirmId(null)}>
-          <div className="modal creds-modal" onClick={e => e.stopPropagation()}>
-            <h2>{t('common.buttons.delete')}</h2>
-            <p>{t('credentials.deleteConfirm')}</p>
-            <div className="modal-actions">
-              <button className="creds-page__btn creds-page__btn--secondary" onClick={() => setDeleteConfirmId(null)}>
-                {t('common.buttons.cancel')}
-              </button>
-              <button className="creds-page__btn creds-page__btn--danger" onClick={() => handleDelete(deleteConfirmId)}>
-                {t('common.buttons.delete')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setModalOpen(false)}>
+              {t('common.buttons.cancel')}
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={saving || (!editingId && !form.value)}
+            >
+              {saving ? t('common.buttons.saving') : t('common.buttons.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteConfirmId} onOpenChange={open => { if (!open) setDeleteConfirmId(null); }}>
+        <DialogContent className="creds-modal">
+          <DialogHeader>
+            <DialogTitle>{t('common.buttons.delete')}</DialogTitle>
+            <DialogDescription>{t('credentials.deleteConfirm')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setDeleteConfirmId(null)}>
+              {t('common.buttons.cancel')}
+            </Button>
+            <Button variant="destructive" onClick={() => handleDelete(deleteConfirmId!)}>
+              {t('common.buttons.delete')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

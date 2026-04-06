@@ -1,11 +1,15 @@
 import { defineConfig, type UserConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
 
 /** Shared Vite config used by both CE and EE builds. */
 export function createBaseConfig(overrides?: Partial<UserConfig>) {
   return defineConfig({
-    plugins: [react()],
+    plugins: [react(), tailwindcss()],
+    define: {
+      'import.meta.env.VITE_EDITION': JSON.stringify('ce'),
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
@@ -18,6 +22,8 @@ export function createBaseConfig(overrides?: Partial<UserConfig>) {
           changeOrigin: false,
           secure: false,
           cookieDomainRewrite: 'localhost',
+          // WS upgrades on /api/instances/*/ui are handled by the server's
+          // upgrade listener. Vite needs ws:true to forward them.
           ws: true,
         },
         '/ws': {

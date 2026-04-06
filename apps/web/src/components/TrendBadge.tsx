@@ -1,4 +1,5 @@
 import type { BurnRateTrend } from '@aquarium/shared';
+import './TrendBadge.css';
 
 interface TrendBadgeProps {
   trend: BurnRateTrend;

@@ -71,7 +71,7 @@ router.get('/:id/plugins', async (req, res) => {
             id: pluginId,
             name: pluginId,
             description: '',
-            version: '0.0.0',
+            version: '',
             source: 'bundled',
             enabled: cfg ? cfg.enabled : (presence?.loaded ?? false),
           });

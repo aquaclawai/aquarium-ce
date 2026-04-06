@@ -113,3 +113,10 @@ None — no external service configuration required.
 ---
 *Phase: 02-plugin-management*
 *Completed: 2026-04-04*
+
+## Self-Check: PASSED
+
+- FOUND: apps/server/src/routes/plugins.ts
+- FOUND: .planning/phases/02-plugin-management/02-02-SUMMARY.md
+- FOUND: commit 829e4e4 (feat: plugin routes)
+- FOUND: commit 1714e64 (docs: metadata)

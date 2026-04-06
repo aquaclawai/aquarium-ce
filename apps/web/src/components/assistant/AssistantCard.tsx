@@ -4,6 +4,7 @@ import { Zap, Clock, MessageSquare, Eye, Settings, Power } from 'lucide-react';
 import type { InstancePublic } from '@aquarium/shared';
 import { AgentAvatar } from '../AgentAvatar';
 import { formatModelDisplayName } from '../../utils/provider-display';
+import { Button } from '@/components/ui';
 import '../../pages/MyAssistantsPage.css';
 
 interface AssistantCardProps {
@@ -57,49 +58,53 @@ export function AssistantCard({ instance, modelName, onAction, actionInProgress 
       </div>
 
       <div className="assistant-card__actions">
-        <button
+        <Button
+          variant="ghost"
           className="assistant-card__action assistant-card__action--primary"
           onClick={() => navigate(`/assistants/${instance.id}/chat`)}
           disabled={isBusy}
         >
           <MessageSquare size={14} />
           {t('myAssistants.chat')}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
           className="assistant-card__action"
           onClick={() => navigate(`/instances/${instance.id}`)}
           disabled={isBusy}
         >
           <Eye size={14} />
           {t('myAssistants.view')}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
           className="assistant-card__action"
           onClick={() => navigate(`/assistants/${instance.id}/edit`)}
           disabled={isBusy}
         >
           <Settings size={14} />
           {t('myAssistants.configure')}
-        </button>
+        </Button>
         {isRunning && (
-          <button
+          <Button
+            variant="destructive"
             className="assistant-card__action assistant-card__action--danger"
             onClick={() => onAction(instance.id, 'stop')}
             disabled={isBusy}
           >
             <Power size={14} />
             {t('myAssistants.disable')}
-          </button>
+          </Button>
         )}
         {canStart && (
-          <button
+          <Button
             className="assistant-card__action assistant-card__action--success"
             onClick={() => onAction(instance.id, 'start')}
             disabled={isBusy}
           >
             <Power size={14} />
             {t('myAssistants.enable')}
-          </button>
+          </Button>
         )}
       </div>
     </div>

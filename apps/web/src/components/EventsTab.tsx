@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import type { InstanceEvent } from '@aquarium/shared';
+import { TableSkeleton } from '@/components/skeletons';
 
 interface EventsTabProps {
   instanceId: string;
@@ -20,7 +21,7 @@ export function EventsTab({ instanceId }: EventsTabProps) {
       .finally(() => setLoading(false));
   }, [instanceId, t]);
 
-  if (loading) return <div>{t('instance.events.loading')}</div>;
+  if (loading) return <div><TableSkeleton rows={8} columns={3} /></div>;
 
   return (
     <div>

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import type { FormEvent } from 'react';
 import type { SnapshotDiff } from '@aquarium/shared';
+import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface RestoreConfirmModalProps {
   instanceId: string;
@@ -45,13 +47,15 @@ export function RestoreConfirmModal({
   const affectedFiles = diff?.changes.filter(c => c.type !== 'unchanged') ?? [];
 
   return (
-    <div className="modal-overlay" onClick={restoring ? undefined : onCancel}>
-      <div className="modal" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
-        <h3>Restore Snapshot</h3>
-        <p style={{ color: 'var(--color-text-secondary)', margin: 'var(--spacing-sm) 0 var(--spacing-md)' }}>
-          This will restore the instance configuration to the state captured on{' '}
-          <strong>{new Date(snapshotDate).toLocaleString()}</strong>.
-        </p>
+    <Dialog open onOpenChange={(open) => { if (!open && !restoring) onCancel(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Restore Snapshot</DialogTitle>
+          <DialogDescription>
+            This will restore the instance configuration to the state captured on{' '}
+            <strong>{new Date(snapshotDate).toLocaleString()}</strong>.
+          </DialogDescription>
+        </DialogHeader>
 
         {isRunning && (
           <p style={{
@@ -71,9 +75,11 @@ export function RestoreConfirmModal({
         </p>
 
         {loadingDiff ? (
-          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 'var(--spacing-md)' }}>
-            Loading affected files...
-          </p>
+          <div style={{ marginBottom: 'var(--spacing-md)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-4 w-36" />
+            <Skeleton className="h-4 w-52" />
+          </div>
         ) : affectedFiles.length > 0 ? (
           <div style={{ marginBottom: 'var(--spacing-md)' }}>
             <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 'var(--spacing-xs)' }}>
@@ -106,17 +112,18 @@ export function RestoreConfirmModal({
         <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 'var(--spacing-lg)' }}>
           Snapshot ID: <code style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{snapshotId}</code>
         </p>
+
         <form onSubmit={handleSubmit}>
-          <div className="form-actions" style={{ display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'flex-end' }}>
-            <button type="button" className="btn-secondary" onClick={onCancel} disabled={restoring}>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={onCancel} disabled={restoring}>
               Cancel
-            </button>
-            <button type="submit" className="danger" disabled={restoring}>
+            </Button>
+            <Button type="submit" variant="destructive" disabled={restoring}>
               {restoring ? <><span className="spinner" /> Restoring…</> : 'Restore'}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

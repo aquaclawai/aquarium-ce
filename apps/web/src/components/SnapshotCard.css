@@ -1,0 +1,142 @@
+/* ─── Snapshot Card ─── */
+
+/* Button-reset: .snapshot-card is a <button> element */
+.snapshot-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md) var(--spacing-md);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+}
+
+.snapshot-card:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+
+.snapshot-card-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.snapshot-card-date {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.snapshot-card-desc {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.snapshot-card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.snapshot-card-size {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+}
+
+.snapshot-card-delete {
+  font-size: 0.78rem;
+  color: var(--color-on-danger);
+  background: var(--color-danger);
+  cursor: pointer;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  transition: background var(--transition-fast);
+}
+
+.snapshot-card-delete:hover {
+  background: color-mix(in srgb, var(--color-danger) 80%, black);
+}
+
+/* Trigger badges */
+.snapshot-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.snapshot-badge--manual {
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
+}
+
+.snapshot-badge--auto {
+  background: color-mix(in srgb, var(--color-warning) 15%, transparent);
+  color: var(--color-warning);
+}
+
+.snapshot-badge--daily {
+  background: color-mix(in srgb, var(--color-success) 15%, transparent);
+  color: var(--color-success);
+}
+
+/* Pagination */
+.snapshot-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+}
+
+/* Status badges (used on snapshot cards in diff view) */
+.snapshot-card-status {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.snapshot-card-status--running {
+  background: color-mix(in srgb, var(--color-success) 15%, transparent);
+  color: var(--color-success);
+}
+
+.snapshot-card-status--stopped {
+  background: color-mix(in srgb, var(--color-text-secondary) 12%, transparent);
+  color: var(--color-text-secondary);
+}
+
+.snapshot-card-status--error {
+  background: color-mix(in srgb, var(--color-danger) 15%, transparent);
+  color: var(--color-danger);
+}
+
+.snapshot-card-status--starting {
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
+}
