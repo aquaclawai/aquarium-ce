@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { rpc } from '../../utils/rpc';
 import type { Instance } from '@aquarium/shared';
+import { Button } from '@/components/ui';
+import { ListSkeleton } from '@/components/skeletons/ListSkeleton';
 
 interface FilesTabProps {
   instanceId: string;
@@ -115,20 +117,13 @@ export function FilesTab({ instanceId, instanceStatus }: FilesTabProps) {
     <div className="files-tab" style={{ padding: '1rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h3 style={{ margin: 0 }}>{t('instance.tabs.files')}</h3>
-        <button 
-          onClick={fetchFiles} 
+        <Button
+          variant="outline"
+          onClick={fetchFiles}
           disabled={loading}
-          style={{
-            background: 'var(--color-surface-hover)',
-            border: '1px solid var(--color-border)',
-            color: 'var(--color-text)',
-            padding: '0.5rem 1rem',
-            borderRadius: '4px',
-            cursor: loading ? 'not-allowed' : 'pointer'
-          }}
         >
           {loading ? '...' : t('files.refresh')}
-        </button>
+        </Button>
       </div>
 
       {error && (
@@ -144,8 +139,8 @@ export function FilesTab({ instanceId, instanceStatus }: FilesTabProps) {
       )}
 
       {loading && files.length === 0 ? (
-        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-          Loading...
+        <div style={{ padding: '1rem' }}>
+          <ListSkeleton rows={4} showIcon showAction />
         </div>
       ) : files.length === 0 ? (
         <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
@@ -177,35 +172,21 @@ export function FilesTab({ instanceId, instanceStatus }: FilesTabProps) {
                     {file.updatedAtMs ? new Date(file.updatedAtMs).toLocaleDateString() : '-'}
                   </td>
                   <td style={{ padding: '0.75rem', textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                    <button
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleView(file)}
                       disabled={previewLoading}
-                      style={{
-                        background: 'transparent',
-                        border: '1px solid var(--color-border)',
-                        color: 'var(--color-primary)',
-                        padding: '0.25rem 0.5rem',
-                        borderRadius: '4px',
-                        fontSize: '0.8rem',
-                        cursor: 'pointer'
-                      }}
                     >
                       {t('files.actions.view')}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleDownload(file)}
-                      style={{
-                        background: 'transparent',
-                        border: '1px solid var(--color-border)',
-                        color: 'var(--color-text)',
-                        padding: '0.25rem 0.5rem',
-                        borderRadius: '4px',
-                        fontSize: '0.8rem',
-                        cursor: 'pointer'
-                      }}
                     >
                       {t('files.actions.download')}
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -247,19 +228,13 @@ export function FilesTab({ instanceId, instanceStatus }: FilesTabProps) {
               alignItems: 'center'
             }}>
               <h4 style={{ margin: 0 }}>{viewingFile.name}</h4>
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setViewingFile(null)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--color-text-secondary)',
-                  cursor: 'pointer',
-                  fontSize: '1.2rem',
-                  lineHeight: 1
-                }}
               >
                 ×
-              </button>
+              </Button>
             </div>
             <div style={{ overflow: 'auto', padding: '1rem', flex: 1, display: 'flex', justifyContent: 'center' }}>
               <pre style={{ 

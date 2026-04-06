@@ -221,7 +221,18 @@
       "oauthAuthenticated": "{{provider}} autenticado",
       "setupRequired": "Configuración requerida: Autenticar {{provider}}",
       "setupRequiredDescription": "Esta instancia utiliza {{provider}} como proveedor de IA. Complete el flujo OAuth a continuación para conectar su cuenta.",
-      "platformAI": "IA de la plataforma"
+      "platformAI": "IA de la plataforma",
+      "exportTemplate": "Exportar como plantilla",
+      "webhookTitle": "Webhooks de notificación",
+      "webhookDescription": "Configurar URLs de webhook para notificaciones push de IM (Feishu, DingTalk, WeCom).",
+      "webhookProviders": { "feishu": "Feishu", "dingtalk": "DingTalk", "wecom": "WeCom" },
+      "webhookConfigured": "Configurado",
+      "webhookPlaceholder": "Ingrese la URL del webhook de {{provider}}",
+      "apiKeyTitle": "Claves API de fuente de datos",
+      "apiKeyDescription": "Claves API opcionales para recopilación de datos mejorada.",
+      "apiKeyProviders": { "tikhub": "TikHub" },
+      "apiKeyConfigured": "Configurado",
+      "apiKeyPlaceholder": "Ingrese la clave API de {{provider}}"
     },
     "credentials": {
       "title": "Credenciales",
@@ -1100,7 +1111,8 @@
       "pending": "Pendiente",
       "disabled": "Desactivado",
       "degraded": "Degradado",
-      "failed": "Fallido"
+      "failed": "Fallido",
+      "blocked": "Bloqueado"
     },
     "actions": {
       "install": "Instalar",

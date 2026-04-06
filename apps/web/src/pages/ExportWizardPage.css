@@ -95,7 +95,7 @@
 .export-wizard__error-btn {
   padding: var(--space-2) var(--space-5);
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
   border: none;
   border-radius: var(--radius-sm);
   font-family: var(--font-sans);
@@ -240,7 +240,7 @@
   font-size: 0.7rem;
   font-weight: 700;
   background: var(--color-warning);
-  color: #fff;
+  color: var(--color-on-primary);
 }
 
 .export-wizard__tab-panel {
@@ -439,7 +439,7 @@
 
 .export-wizard__btn--primary {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
 }
 
 .export-wizard__btn--primary:hover:not(:disabled) {

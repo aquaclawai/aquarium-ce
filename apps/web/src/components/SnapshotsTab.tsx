@@ -3,10 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { useWebSocket } from '../context/WebSocketContext';
+import './SnapshotsTab.css';
 import { SnapshotCard } from './SnapshotCard';
 import { SnapshotDiffView } from './SnapshotDiffView';
 import { RestoreConfirmModal } from './RestoreConfirmModal';
 import type { SnapshotSummary, PaginatedResponse } from '@aquarium/shared';
+import { Button } from '@/components/ui';
+import { TableSkeleton } from '@/components/skeletons';
 
 interface SnapshotsTabProps {
   instanceId: string;
@@ -132,14 +135,15 @@ export function SnapshotsTab({ instanceId, instanceStatus }: SnapshotsTabProps) 
       <div className="snapshots-header">
         <h3>{t('snapshots.title')}</h3>
         <div className="snapshots-header__actions">
-          <button
+          <Button
+            variant="secondary"
             onClick={() => navigate(`/assistants/${instanceId}/versions`)}
           >
             {t('snapshots.viewVersionHistory')}
-          </button>
-          <button onClick={handleCreate} disabled={!isRunning || creating}>
+          </Button>
+          <Button onClick={handleCreate} disabled={!isRunning || creating}>
             {creating ? <><span className="spinner" /> {t('snapshots.creating')}</> : t('snapshots.createButton')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -152,7 +156,7 @@ export function SnapshotsTab({ instanceId, instanceStatus }: SnapshotsTabProps) 
       )}
 
       {loading ? (
-        <div>{t('snapshots.loading')}</div>
+        <TableSkeleton rows={5} columns={3} />
       ) : snapshots.length === 0 ? (
         <div className="info-message">{t('snapshots.noSnapshots')}</div>
       ) : (
@@ -170,23 +174,25 @@ export function SnapshotsTab({ instanceId, instanceStatus }: SnapshotsTabProps) 
 
           {totalPages > 1 && (
             <div className="snapshot-pagination">
-              <button
-                className="btn-small btn-secondary"
+              <Button
+                variant="secondary"
+                size="sm"
                 disabled={page <= 1}
                 onClick={() => setPage(p => p - 1)}
               >
                 {t('common.pagination.previous')}
-              </button>
+              </Button>
               <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
                 {t('common.pagination.pageOf', { page, totalPages })}
               </span>
-              <button
-                className="btn-small btn-secondary"
+              <Button
+                variant="secondary"
+                size="sm"
                 disabled={page >= totalPages}
                 onClick={() => setPage(p => p + 1)}
               >
                 {t('common.pagination.next')}
-              </button>
+              </Button>
             </div>
           )}
         </>

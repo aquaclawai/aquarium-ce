@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Upload } from 'lucide-react';
 import { PRESET_AVATARS, AVATAR_CATEGORIES } from '../assets/avatars';
+import { Button } from '@/components/ui';
 import './AvatarPicker.css';
 
 interface AvatarPickerProps {
@@ -52,14 +53,15 @@ export function AvatarPicker({ value, onChange }: AvatarPickerProps) {
               const isSelected = value === presetValue;
               const src = PRESET_AVATARS[presetId];
               return (
-                <button
+                <Button
                   key={presetId}
                   type="button"
+                  variant="ghost"
                   className={`avatar-picker__item${isSelected ? ' avatar-picker__item--selected' : ''}`}
                   onClick={() => handlePresetClick(presetId)}
                 >
                   <img src={src} alt={presetId} />
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -69,28 +71,29 @@ export function AvatarPicker({ value, onChange }: AvatarPickerProps) {
       {value && value.startsWith('data:') && (
         <div className="avatar-picker__custom-preview">
           <img className="avatar-picker__custom-img" src={value} alt="custom" />
-          <button
+          <Button
             type="button"
+            variant="ghost"
             className="avatar-picker__remove-btn"
             onClick={() => onChange(null)}
           >
             {t('wizard.avatar.removeLabel')}
-          </button>
+          </Button>
         </div>
       )}
 
-      <button
+      <Button
         type="button"
+        variant="outline"
         className="avatar-picker__upload-btn"
         onClick={() => fileRef.current?.click()}
       >
         <Upload size={14} />
         {t('wizard.avatar.uploadLabel')}
-      </button>
+      </Button>
       <p className="avatar-picker__upload-hint">{t('wizard.avatar.uploadHint')}</p>
-      <input
+      <input type="file"
         ref={fileRef}
-        type="file"
         accept=".jpg,.jpeg,.png,.webp"
         onChange={handleFileChange}
         hidden

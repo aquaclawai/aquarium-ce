@@ -1,0 +1,59 @@
+/* ─── Burn Rate Card ─── */
+
+.burn-rate-card {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.burn-rate-card-title {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.burn-rate-card-loading,
+.burn-rate-card-error {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.burn-rate-card-error {
+  color: var(--color-danger);
+}
+
+.burn-rate-card-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.burn-rate-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.burn-rate-row-label {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.burn-rate-row-value {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.burn-rate-row-value--danger {
+  color: var(--color-danger);
+}
+
+.burn-rate-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: var(--spacing-xs) 0;
+}

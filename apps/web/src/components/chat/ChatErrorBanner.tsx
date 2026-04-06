@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { ChatErrorCategory } from '@aquarium/shared';
+import { Button } from '@/components/ui';
 
 interface ChatErrorBannerProps {
   errorMessage: string;
@@ -61,41 +62,49 @@ export function ChatErrorBanner({
           </svg>
           {title}
         </span>
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           className="achat-error-banner__dismiss"
           onClick={onDismiss}
           aria-label={t('chat.error.action.dismiss')}
         >
           &times;
-        </button>
+        </Button>
       </div>
       <div className="achat-error-banner__body">{description}</div>
       <div className="achat-error-banner__suggestion">{suggestion}</div>
       <div className="achat-error-banner__actions">
         {onRetry && (
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             className="achat-error-banner__retry"
             onClick={onRetry}
             disabled={retrying}
           >
             {retrying ? t('chat.error.action.retrying') : t('chat.error.action.retry')}
-          </button>
+          </Button>
         )}
         {navTarget && navTarget.path && onNavigate && (
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             className="achat-error-banner__link"
             onClick={() => onNavigate(navTarget.path!)}
           >
             {t(navTarget.i18nKey)}
-          </button>
+          </Button>
         )}
         {navTarget && !navTarget.path && onOpenSettings && (
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             className="achat-error-banner__link"
             onClick={onOpenSettings}
           >
             {t(navTarget.i18nKey)}
-          </button>
+          </Button>
         )}
       </div>
     </div>

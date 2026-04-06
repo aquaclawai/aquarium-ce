@@ -265,7 +265,7 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #ffffff;
+  background: var(--color-surface);
   box-shadow: var(--shadow-xs);
   transition: transform var(--transition-fast);
   pointer-events: none;
@@ -386,8 +386,8 @@
 }
 
 .sys-config__btn--danger {
-  background: var(--color-danger, #dc3545);
-  color: #ffffff;
+  background: var(--color-danger);
+  color: var(--color-on-danger);
   border: none;
 }
 
@@ -399,7 +399,7 @@
   margin-top: var(--spacing-md);
   padding: var(--spacing-md);
   background: var(--color-bg);
-  border: 1px solid var(--color-warning, #f0ad4e);
+  border: 1px solid var(--color-warning);
   border-radius: var(--radius-md);
   font-size: 0.85rem;
 }

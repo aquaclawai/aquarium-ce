@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Bell } from 'lucide-react';
 import { api } from '../api';
 import { useWebSocket } from '../context/WebSocketContext';
+import { Button } from '@/components/ui';
+import './NotificationBell.css';
 import type { NotificationSummary, PaginatedResponse, WsMessage } from '@aquarium/shared';
 
 function severityIcon(severity: NotificationSummary['severity']): string {
@@ -94,7 +96,9 @@ export function NotificationBell() {
 
   return (
     <div className="notification-bell" ref={dropdownRef}>
-      <button
+      <Button
+        variant="ghost"
+        size="icon"
         className="notification-bell-button"
         onClick={() => setIsOpen(prev => !prev)}
         aria-label={unreadCount > 0 ? t('notifications.buttonLabelWithCount', { count: unreadCount }) : t('notifications.buttonLabel')}
@@ -103,20 +107,22 @@ export function NotificationBell() {
         {unreadCount > 0 && (
           <span className="notification-badge">{unreadCount > 99 ? t('notifications.unreadBadge') : unreadCount}</span>
         )}
-      </button>
+      </Button>
 
       {isOpen && (
         <div className="notification-dropdown">
           <div className="notification-dropdown-header">
             <span className="notification-dropdown-title">{t('notifications.title')}</span>
             {unreadCount > 0 && (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 className="notification-mark-all-btn"
                 onClick={handleMarkAllRead}
                 disabled={loading}
               >
                 {t('notifications.markAllRead')}
-              </button>
+              </Button>
             )}
           </div>
 

@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { TrendBadge } from './TrendBadge';
 import type { BurnRateApiData } from '@aquarium/shared';
+import { KPICardSkeleton } from '@/components/skeletons';
+import './BurnRateCard.css';
 
 interface BurnRateCardProps {
   instanceId?: string;
@@ -35,7 +37,7 @@ export function BurnRateCard({ instanceId }: BurnRateCardProps) {
     return (
       <div className="burn-rate-card">
         <h4 className="burn-rate-card-title">{t('burnRate.title')}</h4>
-        <div className="burn-rate-card-loading">{t('burnRate.loading')}</div>
+        <KPICardSkeleton />
       </div>
     );
   }

@@ -239,12 +239,12 @@
 }
 
 .profile-page__btn--danger {
-  background: rgba(239, 68, 68, 0.08);
+  background: var(--color-danger-subtle-bg);
   color: var(--color-danger);
 }
 
 .profile-page__btn--danger:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.15);
+  background: var(--color-danger-subtle-bg);
 }
 
 .profile-page__btn--sm {
@@ -355,7 +355,7 @@
 }
 
 .profile-page__history-row--failed td {
-  background: rgba(239, 68, 68, 0.03);
+  background: var(--color-danger-subtle-bg);
 }
 
 .profile-page__history-event {
@@ -372,7 +372,7 @@
 }
 
 .profile-page__history-event--failed {
-  background: rgba(239, 68, 68, 0.08);
+  background: var(--color-danger-subtle-bg);
   color: var(--color-danger);
 }
 
@@ -401,7 +401,7 @@
 /* --- Danger Zone --- */
 
 .profile-page__section--danger {
-  border-color: rgba(239, 68, 68, 0.2);
+  border-color: var(--color-danger-subtle-border);
 }
 
 .profile-page__section--danger .profile-page__section-title {
@@ -437,7 +437,7 @@
 }
 
 .profile-page__message--error {
-  background: rgba(239, 68, 68, 0.08);
+  background: var(--color-danger-subtle-bg);
   color: var(--color-danger);
 }
 
@@ -446,7 +446,7 @@
 .profile-page__modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--color-overlay);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -573,3 +573,31 @@
     border-bottom: none;
   }
 }
+
+/* ─── Profile (legacy flat classes) ─── */
+
+.profile-page { max-width: 800px; margin: 0 auto; padding: var(--spacing-xl); }
+.profile-content { display: flex; flex-direction: column; gap: var(--spacing-xl); }
+
+.profile-section {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xl);
+  box-shadow: var(--shadow-xs);
+}
+
+.profile-section h2 { font-size: 1.15rem; margin-bottom: var(--spacing-lg); }
+
+.profile-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.profile-info-item { display: flex; flex-direction: column; gap: var(--spacing-xs); }
+.profile-info-label { font-size: 0.75rem; color: var(--color-secondary); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }
+.profile-info-value { font-size: 0.95rem; font-weight: 600; }
+.profile-id { font-family: var(--font-mono); font-size: 0.82rem; color: var(--color-secondary); }
+.profile-form { max-width: 400px; }

@@ -77,8 +77,8 @@
 }
 
 .avatar-picker__remove-btn:hover {
-  border-color: var(--color-danger, #ef4444);
-  color: var(--color-danger, #ef4444);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
 }
 
 .avatar-picker__upload-btn {

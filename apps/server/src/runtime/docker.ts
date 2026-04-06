@@ -2,9 +2,22 @@ import Docker from 'dockerode';
 import type { Readable } from 'stream';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { config } from '../config.js';
 import type { RuntimeEngine, InstanceSpec, StartResult, RuntimeStatus, ExecResult, ExecOptions } from './types.js';
 import { Buffer } from 'buffer';
+
+/**
+ * Convert a host filesystem path to a Docker-compatible mount path.
+ * On Windows, Docker Desktop expects POSIX-style paths (e.g. /c/Users/...)
+ * instead of native Windows paths (C:\Users\...).
+ */
+function toDockerHostPath(hostPath: string): string {
+  if (process.platform !== 'win32') return hostPath;
+  return hostPath
+    .replace(/\\/g, '/')
+    .replace(/^([A-Za-z]):/, (_m, drive: string) => `/${drive.toLowerCase()}`);
+}
 
 export class DockerEngine implements RuntimeEngine {
   readonly name = 'docker' as const;
@@ -265,11 +278,11 @@ export class DockerEngine implements RuntimeEngine {
     // picks up the latest code without rebuilding the Docker image.
     // Path: <repo>/openclaw/plugin relative to <repo>/apps/server/src/runtime/docker.ts
     const pluginHostPath = path.resolve(
-      path.dirname(new URL(import.meta.url).pathname),
+      path.dirname(fileURLToPath(import.meta.url)),
       '../../../../openclaw/plugin',
     );
     if (fs.existsSync(pluginHostPath)) {
-      binds.push(`${pluginHostPath}:/opt/openclaw-plugins/platform-bridge:ro`);
+      binds.push(`${toDockerHostPath(pluginHostPath)}:/opt/openclaw-plugins/platform-bridge:ro`);
     }
 
     // Env vars — inject HOME so root-user containers still use the expected data dir

@@ -1,6 +1,7 @@
 import { useState, type HTMLAttributes, type ReactNode } from 'react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui';
 
 function extractText(node: ReactNode): string {
   if (typeof node === 'string') return node;
@@ -39,9 +40,9 @@ export function CodeBlock(props: HTMLAttributes<HTMLPreElement> & { children?: R
 
   return (
     <div className="code-block-wrapper">
-      <button className="code-copy-btn" onClick={handleCopy}>
+      <Button variant="ghost" size="sm" className="code-copy-btn" onClick={handleCopy}>
         {copied ? t('common.buttons.copied') : t('common.buttons.copy')}
-      </button>
+      </Button>
       <pre {...rest}>{children}</pre>
     </div>
   );

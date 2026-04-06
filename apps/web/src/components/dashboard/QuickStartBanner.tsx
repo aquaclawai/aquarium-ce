@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Zap, Bot } from 'lucide-react';
+import { Button } from '@/components/ui';
 import './QuickStartBanner.css';
 
 export function QuickStartBanner() {
@@ -18,14 +19,14 @@ export function QuickStartBanner() {
           <p className="quick-start-banner__desc">{t('dashboard.quickStart.description')}</p>
         </div>
       </div>
-      <button
+      <Button
         type="button"
         className="quick-start-banner__btn"
         onClick={() => navigate('/create')}
       >
         <Bot size={18} />
         <span>{t('dashboard.quickStart.button')}</span>
-      </button>
+      </Button>
     </div>
   );
 }

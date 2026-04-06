@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import type { InstanceSecuritySummary, InstanceEvent } from '@aquarium/shared';
+import { Skeleton } from '@/components/ui/skeleton';
+import './SecurityStatusBadge.css';
 
 interface SecurityStatusBadgeProps {
   instanceId: string;
@@ -33,7 +35,7 @@ export function SecurityStatusBadge({ instanceId }: SecurityStatusBadgeProps) {
       .finally(() => setLoading(false));
   }, [instanceId]);
 
-  if (loading) return <div className="security-status"><div>{t('common.labels.loading')}</div></div>;
+  if (loading) return <div className="security-status"><Skeleton className="h-6 w-20 rounded-full" /></div>;
   if (!summary) return null;
 
   return (

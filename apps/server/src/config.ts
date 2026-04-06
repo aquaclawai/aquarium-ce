@@ -64,7 +64,9 @@ export const config = {
     filename: process.env.AQUARIUM_DB_PATH || path.join(os.homedir(), '.aquarium', 'aquarium.db'),
   },
   docker: {
-    socketPath: process.env.DOCKER_SOCKET || '/var/run/docker.sock',
+    socketPath: process.env.DOCKER_SOCKET || (
+      process.platform === 'win32' ? '//./pipe/docker_engine' : '/var/run/docker.sock'
+    ),
     networkName: process.env.OPENCLAW_NETWORK || 'openclaw-net',
     portRangeStart: parseInt(process.env.OPENCLAW_PORT_RANGE_START || '19000', 10),
     portRangeEnd: parseInt(process.env.OPENCLAW_PORT_RANGE_END || '19999', 10),

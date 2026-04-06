@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
+import { Button, Input } from '@/components/ui';
+import { CardSkeleton, ListSkeleton, TableSkeleton } from '@/components/skeletons';
 import type { User, UserExtended, LoginHistoryEntry } from '@aquarium/shared';
 import './ProfilePage.css';
 
@@ -130,7 +132,8 @@ export function ProfilePage() {
   if (loading || !extUser) {
     return (
       <main className="profile-page">
-        <div className="profile-page__loading">{t('common.loading')}</div>
+        <CardSkeleton lines={5} />
+        <ListSkeleton rows={5} />
       </main>
     );
   }
@@ -190,7 +193,7 @@ export function ProfilePage() {
         <form className="profile-page__form-row" onSubmit={handleProfileUpdate}>
           <div className="profile-page__form-field">
             <label htmlFor="profile-display-name">{t('profilePage.basicInfo.displayName')}</label>
-            <input
+            <Input
               id="profile-display-name"
               className="profile-page__input"
               type="text"
@@ -199,13 +202,13 @@ export function ProfilePage() {
               required
             />
           </div>
-          <button
+          <Button
             className="profile-page__btn profile-page__btn--primary"
             type="submit"
             disabled={profileSaving || displayName === extUser.displayName}
           >
             {profileSaving ? t('profilePage.basicInfo.updating') : t('profilePage.basicInfo.updateProfile')}
-          </button>
+          </Button>
         </form>
       </section>
 
@@ -230,13 +233,15 @@ export function ProfilePage() {
               <span className="profile-page__security-desc">{t('profilePage.security.loginHistoryDesc')}</span>
             </div>
             <div className="profile-page__security-right">
-              <button
+              <Button
                 className="profile-page__btn profile-page__btn--secondary profile-page__btn--sm"
+                variant="secondary"
+                size="sm"
                 type="button"
                 onClick={() => setHistoryOpen(!historyOpen)}
               >
                 {historyOpen ? t('profilePage.security.hideHistory') : t('profilePage.security.viewHistory')}
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -244,7 +249,7 @@ export function ProfilePage() {
           {historyOpen && (
             <div className="profile-page__login-history">
               {historyLoading && (
-                <div className="profile-page__login-history-loading">{t('common.loading')}</div>
+                <TableSkeleton rows={4} columns={4} />
               )}
               {historyError && (
                 <div className="profile-page__message profile-page__message--error">{historyError}</div>
@@ -292,32 +297,37 @@ export function ProfilePage() {
         <div className="profile-page__danger-content">
           <p className="profile-page__danger-text">{t('profilePage.dangerZone.deleteAccountDesc')}</p>
           {!deleteConfirmOpen ? (
-            <button
+            <Button
               className="profile-page__btn profile-page__btn--danger"
+              variant="destructive"
               type="button"
               onClick={() => setDeleteConfirmOpen(true)}
             >
               {t('profilePage.dangerZone.deleteButton')}
-            </button>
+            </Button>
           ) : (
             <div style={{ display: 'flex', gap: 'var(--spacing-sm)', alignItems: 'center' }}>
               <span style={{ fontSize: '0.85rem', color: 'var(--color-danger)', fontWeight: 500 }}>
                 {t('profilePage.dangerZone.deleteConfirm')}
               </span>
-              <button
+              <Button
                 className="profile-page__btn profile-page__btn--danger profile-page__btn--sm"
+                variant="destructive"
+                size="sm"
                 type="button"
                 onClick={handleDeleteAccount}
               >
                 {t('profilePage.dangerZone.deleteButton')}
-              </button>
-              <button
+              </Button>
+              <Button
                 className="profile-page__btn profile-page__btn--secondary profile-page__btn--sm"
+                variant="secondary"
+                size="sm"
                 type="button"
                 onClick={() => setDeleteConfirmOpen(false)}
               >
                 {t('common.buttons.cancel')}
-              </button>
+              </Button>
             </div>
           )}
         </div>

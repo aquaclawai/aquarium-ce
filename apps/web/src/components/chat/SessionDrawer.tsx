@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { rpc } from '../../utils/rpc';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui';
+import { Button } from '@/components/ui';
+import { ListSkeleton } from '@/components/skeletons';
 import './SessionDrawer.css';
 
 interface GatewaySession {
@@ -155,107 +158,120 @@ export function SessionDrawer({
   }
   const groupOrder: DateGroup[] = ['today', 'yesterday', 'thisWeek', 'older'];
 
-  const drawerClass = [
-    'achat-drawer',
-    isOpen ? 'achat-drawer--open' : 'achat-drawer--hidden',
-    mode === 'overlay' ? 'achat-drawer--overlay' : '',
-  ].filter(Boolean).join(' ');
+  const drawerContent = (
+    <>
+      <div className="achat-drawer__header">
+        <span>{t('chat.sessionDrawer.sessions')}</span>
+        <Button className="achat-drawer__new-btn" onClick={handleNewChat} disabled={isStreaming}>
+          {t('chat.sessionDrawer.newChat')}
+        </Button>
+      </div>
+
+      {loading && sessions.length === 0 ? (
+        <div className="achat-drawer__loading"><ListSkeleton rows={5} showIcon /></div>
+      ) : error && sessions.length === 0 ? (
+        <div className="achat-drawer__error">{error}</div>
+      ) : sessions.length === 0 ? (
+        <div className="achat-drawer__empty">{t('chat.sessionDrawer.emptyState')}</div>
+      ) : (
+        <div className="achat-drawer__list">
+          {groupOrder.map(group => {
+            const items = grouped[group];
+            if (items.length === 0) return null;
+            return (
+              <div key={group}>
+                <div className="achat-drawer__group-label">
+                  {t(`chat.sessionDrawer.${group}`)}
+                </div>
+                {items.map(s => {
+                  const isActive = s.key === currentSessionKey;
+                  const isDeleting = s.key === deletingKey;
+                  const title = s.derivedTitle
+                    ?? s.lastMessagePreview?.slice(0, 40)
+                    ?? t('chat.sessionDrawer.newChat');
+                  const preview = s.lastMessagePreview?.slice(0, 60);
+                  return (
+                    <div
+                      key={s.key}
+                      className={[
+                        'achat-drawer__item',
+                        isActive ? 'achat-drawer__item--active' : '',
+                        isStreaming && !isActive ? 'achat-drawer__item--disabled' : '',
+                      ].filter(Boolean).join(' ')}
+                      onClick={() => handleSelect(s.key)}
+                    >
+                      <div className="achat-drawer__item-body">
+                        <div className="achat-drawer__item-title">{title}</div>
+                        {preview && <div className="achat-drawer__item-preview">{preview}</div>}
+                      </div>
+                      <div className="achat-drawer__item-actions">
+                        {s.updatedAt && (
+                          <span className="achat-drawer__item-time">
+                            {formatRelativeTime(s.updatedAt)}
+                          </span>
+                        )}
+                        {s.key !== 'main' && !s.key.endsWith(':main') && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="achat-drawer__item-delete"
+                            onClick={(e) => handleDeleteClick(s.key, e)}
+                            disabled={isDeleting}
+                            title={t('chat.sessionDrawer.deleteConfirm')}
+                          >
+                            {isDeleting ? '…' : <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 4h9M5.5 4V3a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1M4 4v7.5a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
 
   return (
     <>
-      {mode === 'overlay' && isOpen && (
-        <div className="achat-drawer__overlay" onClick={onClose} />
+      {mode === 'overlay' ? (
+        <Sheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+          <SheetContent side="left" className="achat-sheet-content">
+            <SheetHeader>
+              <SheetTitle className="sr-only">{t('chat.sessionDrawer.sessions')}</SheetTitle>
+            </SheetHeader>
+            {drawerContent}
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <aside className={[
+          'achat-drawer',
+          isOpen ? 'achat-drawer--open' : 'achat-drawer--hidden',
+        ].filter(Boolean).join(' ')}>
+          {drawerContent}
+        </aside>
       )}
-      <aside className={drawerClass}>
-        <div className="achat-drawer__header">
-          <span>{t('chat.sessionDrawer.sessions')}</span>
-          <button className="achat-drawer__new-btn" onClick={handleNewChat} disabled={isStreaming}>
-            {t('chat.sessionDrawer.newChat')}
-          </button>
-        </div>
 
-        {loading && sessions.length === 0 ? (
-          <div className="achat-drawer__loading"><span className="spinner" /></div>
-        ) : error && sessions.length === 0 ? (
-          <div className="achat-drawer__error">{error}</div>
-        ) : sessions.length === 0 ? (
-          <div className="achat-drawer__empty">{t('chat.sessionDrawer.emptyState')}</div>
-        ) : (
-          <div className="achat-drawer__list">
-            {groupOrder.map(group => {
-              const items = grouped[group];
-              if (items.length === 0) return null;
-              return (
-                <div key={group}>
-                  <div className="achat-drawer__group-label">
-                    {t(`chat.sessionDrawer.${group}`)}
-                  </div>
-                  {items.map(s => {
-                    const isActive = s.key === currentSessionKey;
-                    const isDeleting = s.key === deletingKey;
-                    const title = s.derivedTitle
-                      ?? s.lastMessagePreview?.slice(0, 40)
-                      ?? t('chat.sessionDrawer.newChat');
-                    const preview = s.lastMessagePreview?.slice(0, 60);
-                    return (
-                      <div
-                        key={s.key}
-                        className={[
-                          'achat-drawer__item',
-                          isActive ? 'achat-drawer__item--active' : '',
-                          isStreaming && !isActive ? 'achat-drawer__item--disabled' : '',
-                        ].filter(Boolean).join(' ')}
-                        onClick={() => handleSelect(s.key)}
-                      >
-                        <div className="achat-drawer__item-body">
-                          <div className="achat-drawer__item-title">{title}</div>
-                          {preview && <div className="achat-drawer__item-preview">{preview}</div>}
-                        </div>
-                        <div className="achat-drawer__item-actions">
-                          {s.updatedAt && (
-                            <span className="achat-drawer__item-time">
-                              {formatRelativeTime(s.updatedAt)}
-                            </span>
-                          )}
-                          {s.key !== 'main' && !s.key.endsWith(':main') && (
-                            <button
-                              className="achat-drawer__item-delete"
-                              onClick={(e) => handleDeleteClick(s.key, e)}
-                              disabled={isDeleting}
-                              title={t('chat.sessionDrawer.deleteConfirm')}
-                            >
-                              {isDeleting ? '…' : <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 4h9M5.5 4V3a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1M4 4v7.5a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </aside>
-
-      {confirmDeleteKey && (
-        <div className="modal-overlay" onClick={handleDeleteCancel}>
-          <div className="modal" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
-            <h3>{t('chat.sessionDrawer.deleteTitle')}</h3>
-            <p style={{ color: 'var(--color-text-secondary)', margin: 'var(--spacing-sm) 0 var(--spacing-md)' }}>
+      <Dialog open={!!confirmDeleteKey} onOpenChange={(open) => { if (!open) handleDeleteCancel(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('chat.sessionDrawer.deleteTitle')}</DialogTitle>
+            <DialogDescription style={{ color: 'var(--color-text-secondary)' }}>
               {t('chat.sessionDrawer.deleteConfirm')}
-            </p>
-            <div className="form-actions" style={{ display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'flex-end' }}>
-              <button type="button" className="btn-secondary" onClick={handleDeleteCancel}>
-                {t('chat.sessionDrawer.deleteCancel')}
-              </button>
-              <button type="button" className="danger" onClick={handleDeleteConfirm}>
-                {t('common.buttons.delete')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={handleDeleteCancel}>
+              {t('chat.sessionDrawer.deleteCancel')}
+            </Button>
+            <Button type="button" variant="destructive" onClick={() => void handleDeleteConfirm()}>
+              {t('common.buttons.delete')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -6,7 +6,9 @@ import { api } from '../api';
 import { useWebSocket } from '../context/WebSocketContext';
 import { AgentSidebar } from '../components/AgentSidebar';
 import { ChatTab } from '../components/chat/ChatTab';
+import { Button } from '@/components/ui';
 import type { InstancePublic, WsMessage } from '@aquarium/shared';
+import { ChatSkeleton } from '@/components/skeletons';
 import './ChatHubPage.css';
 
 export function ChatHubPage() {
@@ -78,7 +80,11 @@ export function ChatHubPage() {
   };
 
   if (loading) {
-    return <div className="chat-hub chat-hub--loading"><span className="spinner" /></div>;
+    return (
+      <div className="chat-hub">
+        <ChatSkeleton />
+      </div>
+    );
   }
 
   if (instances.length === 0) {
@@ -88,10 +94,10 @@ export function ChatHubPage() {
           <div className="chat-hub__empty-icon"><Zap size={32} /></div>
           <h2 className="chat-hub__empty-title">{t('chatHub.emptyTitle')}</h2>
           <p className="chat-hub__empty-desc">{t('chatHub.emptyDesc')}</p>
-          <button className="btn-primary" onClick={() => navigate('/create')}>
+          <Button onClick={() => navigate('/create')}>
             <Bot size={18} />
             <span>{t('chatHub.createFirst')}</span>
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -119,15 +125,14 @@ export function ChatHubPage() {
                   <p className="chat-hub__offline-msg">{selectedInstance.statusMessage}</p>
                 )}
                 {(selectedInstance.status === 'stopped' || selectedInstance.status === 'created' || selectedInstance.status === 'error') && (
-                  <button
-                    className="btn-primary"
+                  <Button
                     onClick={() => handleStartInstance(selectedInstance.id)}
                     disabled={startingInstance === selectedInstance.id}
                   >
                     {startingInstance === selectedInstance.id
                       ? t('chatHub.starting')
                       : t('chatHub.startAgent')}
-                  </button>
+                  </Button>
                 )}
                 {selectedInstance.status === 'starting' && (
                   <div className="chat-hub__offline-spinner">

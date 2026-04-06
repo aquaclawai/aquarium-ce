@@ -1,10 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Plus, Server } from 'lucide-react';
 import { api } from '../api';
 import { useWebSocket } from '../context/WebSocketContext';
 import { BurnRateCard } from '../components/BurnRateCard';
+import { PageHeader } from '../components/PageHeader';
+import { EmptyState } from '../components/EmptyState';
+import { Button } from '@/components/ui';
 import type { InstancePublic, WsMessage, UsageSummary, SecuritySummary } from '@aquarium/shared';
+import { PageHeaderSkeleton, CardSkeleton } from '@/components/skeletons';
 
 export function DashboardPage() {
   const { t } = useTranslation();
@@ -56,16 +61,29 @@ export function DashboardPage() {
     return () => removeHandler('instance:status', handleStatusUpdate);
   }, [addHandler, removeHandler, handleStatusUpdate]);
 
-  if (loading) return <div className="dashboard-page">{t('common.labels.loading')}</div>;
+  if (loading) return (
+    <main className="dashboard-page">
+      <PageHeaderSkeleton />
+      <div className="instances-grid">
+        {Array.from({ length: 6 }, (_, i) => (
+          <CardSkeleton key={i} lines={3} showBadge />
+        ))}
+      </div>
+    </main>
+  );
 
   return (
     <main className="dashboard-page">
-      <header className="dashboard-header">
-        <h1>{t('dashboard.title')}</h1>
-        <div className="dashboard-header-actions">
-          <button onClick={() => navigate('/create')}>{t('common.buttons.createInstance')}</button>
-        </div>
-      </header>
+      <PageHeader
+        title={t('dashboard.instanceList.title')}
+        subtitle={t('dashboard.instanceList.subtitle')}
+        action={
+          <Button onClick={() => navigate('/create')}>
+            <Plus size={16} />
+            {t('common.buttons.createInstance')}
+          </Button>
+        }
+      />
 
       {error && <div className="error-message" role="alert">{error}</div>}
 
@@ -138,7 +156,17 @@ export function DashboardPage() {
       )}
 
       {instances.length === 0 && (
-        <div className="info-message">{t('dashboard.noInstances')}</div>
+        <EmptyState
+          icon={<Server size={24} />}
+          title={t('dashboard.instanceList.emptyTitle')}
+          description={t('dashboard.instanceList.emptyDescription')}
+          action={
+            <Button onClick={() => navigate('/create')}>
+              <Plus size={16} />
+              {t('common.buttons.createInstance')}
+            </Button>
+          }
+        />
       )}
 
       <div className="instances-grid">
@@ -147,7 +175,7 @@ export function DashboardPage() {
             <div className="instance-header">
               <h3>{inst.name}</h3>
               <span className={`status-badge status-${inst.status}`}>
-                {(inst.status === 'starting' || inst.status === 'stopping' || inst.status === 'restarting') && <span className="spinner" />}{' '}
+                {(inst.status === 'starting' || inst.status === 'stopping') && <span className="spinner" />}{' '}
                 {t(`common.status.${inst.status}`)}
               </span>
             </div>

@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { getProviderDisplayName, formatModelDisplayName } from '../utils/provider-display';
 import type { Instance, Credential, SecurityProfile } from '@aquarium/shared';
+import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+
 
 /** Minimal provider info for OAuth detection */
 const OAUTH_PROVIDERS: Record<string, { oauthFlow: 'device_code' | 'pkce' }> = {
@@ -91,21 +93,21 @@ export function OverviewTab({
   return (
     <div className="details-tab">
       <div className="overview-actions">
-        <button onClick={() => onLifecycle('start')} disabled={!(isStopped || isError) || isBusy}>
+        <Button onClick={() => onLifecycle('start')} disabled={!(isStopped || isError) || isBusy}>
           {(actionInProgress === 'start' || instance.status === 'starting') ? <><span className="spinner" /> {t('instance.overview.starting')}</> : t('instance.overview.start')}
-        </button>
-        <button onClick={() => onLifecycle('stop')} disabled={!(isRunning || isError) || isBusy}>
+        </Button>
+        <Button onClick={() => onLifecycle('stop')} disabled={!(isRunning || isError) || isBusy}>
           {(actionInProgress === 'stop' || instance.status === 'stopping') ? <><span className="spinner" /> {t('instance.overview.stopping')}</> : t('instance.overview.stop')}
-        </button>
-        <button onClick={() => onLifecycle('restart')} disabled={!(isRunning || isError) || isBusy}>
+        </Button>
+        <Button onClick={() => onLifecycle('restart')} disabled={!(isRunning || isError) || isBusy}>
           {actionInProgress === 'restart' ? <><span className="spinner" /> {t('instance.overview.restarting')}</> : t('instance.overview.restart')}
-        </button>
-        <button className="btn-secondary" onClick={onClone} disabled={cloning || isBusy}>
+        </Button>
+        <Button variant="secondary" onClick={onClone} disabled={cloning || isBusy}>
           {cloning ? <><span className="spinner" /> {t('instance.overview.cloning', 'Cloning...')}</> : t('instance.overview.clone', 'Clone')}
-        </button>
-        <button className="btn-secondary" onClick={() => navigate(`/export/${instance.id}`)}>
+        </Button>
+        <Button variant="secondary" onClick={() => navigate(`/export/${instance.id}`)}>
           {t('instance.overview.exportTemplate', 'Export as Template')}
-        </button>
+        </Button>
       </div>
 
       <h3>{t('instance.overview.title')}</h3>
@@ -121,33 +123,37 @@ export function OverviewTab({
             <td>
               {editingSecurity ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-                  <select
+                  <Select
                     value={pendingProfile}
-                    onChange={e => setPendingProfile(e.target.value as SecurityProfile)}
+                    onValueChange={(val) => setPendingProfile(val as SecurityProfile)}
                     disabled={savingSecurity}
-                    style={{ padding: '2px 4px' }}
                   >
-                    {(['strict', 'standard', 'developer', 'unrestricted'] as SecurityProfile[]).map(p => (
-                      <option key={p} value={p}>{t(`instance.overview.securityProfiles.${p}`)}</option>
-                    ))}
-                  </select>
-                  <button
+                    <SelectTrigger style={{ minWidth: '140px' }}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(['strict', 'standard', 'developer', 'unrestricted'] as SecurityProfile[]).map(p => (
+                        <SelectItem key={p} value={p}>{t(`instance.overview.securityProfiles.${p}`)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
                     type="button"
+                    size="sm"
                     onClick={handleSecurityProfileSave}
                     disabled={savingSecurity || pendingProfile === currentProfile}
-                    style={{ padding: '2px 8px', fontSize: '0.85rem' }}
                   >
                     {savingSecurity ? t('instance.overview.savingSecurityProfile') : 'OK'}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
-                    className="btn-secondary"
+                    variant="secondary"
+                    size="sm"
                     onClick={() => { setEditingSecurity(false); setPendingProfile(currentProfile); }}
                     disabled={savingSecurity}
-                    style={{ padding: '2px 8px', fontSize: '0.85rem' }}
                   >
                     ✕
-                  </button>
+                  </Button>
                 </span>
               ) : (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
@@ -161,14 +167,14 @@ export function OverviewTab({
                   }}>
                     {t(`instance.overview.securityProfiles.${currentProfile}`)}
                   </span>
-                  <button
+                  <Button
                     type="button"
-                    className="btn-secondary"
+                    variant="secondary"
+                    size="sm"
                     onClick={() => { setEditingSecurity(true); setPendingProfile(currentProfile); }}
-                    style={{ padding: '2px 8px', fontSize: '0.85rem' }}
                   >
                     {t('instance.overview.changeSecurityProfile')}
-                  </button>
+                  </Button>
                 </span>
               )}
             </td>
@@ -220,11 +226,14 @@ export function OverviewTab({
           )}
         </div>
       )}
+
     </div>
   );
 }
 
-/* ─── GitHub Copilot OAuth (Device Code Flow) ─── */
+/* ─── Webhook Credentials Section ─── */
+
+// WebhookCredentialsSection and ApiKeyCredentialsSection removed — EE-only features
 
 interface DeviceCodeData {
   deviceCode: string;
@@ -328,9 +337,9 @@ function GitHubOAuthFlow({ instanceId, onComplete }: { instanceId: string; onCom
           <p style={{ marginBottom: '0.75rem', color: '#666' }}>
             {t('instance.oauth.github.description')}
           </p>
-          <button onClick={startFlow} disabled={loading}>
+          <Button onClick={startFlow} disabled={loading}>
             {loading ? t('instance.oauth.github.startingButton') : t('instance.oauth.github.authenticateButton')}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -340,9 +349,9 @@ function GitHubOAuthFlow({ instanceId, onComplete }: { instanceId: string; onCom
             <p><strong>{t('instance.oauth.github.step1')}</strong> {t('instance.oauth.github.step1Text')}</p>
             <div className="user-code-row">
               <div className="user-code">{deviceData.userCode}</div>
-              <button className="btn-copy" onClick={copyCode}>
+              <Button variant="ghost" size="sm" className="btn-copy" onClick={copyCode}>
                 {copied ? t('instance.oauth.github.copiedCode') : t('common.buttons.copy')}
-              </button>
+              </Button>
             </div>
             <p><strong>{t('instance.oauth.github.step2')}</strong> {t('instance.oauth.github.step2Text')}</p>
             <p>
@@ -350,9 +359,9 @@ function GitHubOAuthFlow({ instanceId, onComplete }: { instanceId: string; onCom
                 {deviceData.verificationUri}
               </a>
               {' '}
-              <button className="btn-secondary btn-small" onClick={() => window.open(deviceData.verificationUri, '_blank', 'noopener,noreferrer')}>
+              <Button variant="secondary" size="sm" onClick={() => window.open(deviceData.verificationUri, '_blank', 'noopener,noreferrer')}>
                 {t('instance.oauth.github.openAgain')}
-              </button>
+              </Button>
             </p>
             <p><strong>{t('instance.oauth.github.step3')}</strong> {t('instance.oauth.github.step3Text')}</p>
           </div>
@@ -360,7 +369,7 @@ function GitHubOAuthFlow({ instanceId, onComplete }: { instanceId: string; onCom
             <p style={{ marginTop: '1rem' }}><span className="spinner" /> {t('instance.oauth.github.waitingForAuth')}</p>
           )}
           <div style={{ marginTop: '1rem' }}>
-            <button className="btn-secondary" onClick={handleCancel}>{t('common.buttons.cancel')}</button>
+            <Button variant="secondary" onClick={handleCancel}>{t('common.buttons.cancel')}</Button>
           </div>
         </div>
       )}
@@ -472,9 +481,9 @@ function OpenAIOAuthFlow({ instanceId, onComplete }: { instanceId: string; onCom
           <p style={{ marginBottom: '0.75rem', color: '#666' }}>
             {t('instance.oauth.openai.description')}
           </p>
-          <button onClick={startFlow} disabled={loading}>
+          <Button onClick={startFlow} disabled={loading}>
             {loading ? t('instance.oauth.openai.startingButton') : t('instance.oauth.openai.authenticateButton')}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -484,9 +493,9 @@ function OpenAIOAuthFlow({ instanceId, onComplete }: { instanceId: string; onCom
             <p><strong>{t('instance.oauth.openai.step1')}</strong> {t('instance.oauth.openai.step1Text')}</p>
             <div className="user-code-row">
               <div className="user-code">{deviceData.userCode}</div>
-              <button className="btn-copy" onClick={copyCode}>
+              <Button variant="ghost" size="sm" className="btn-copy" onClick={copyCode}>
                 {copied ? t('instance.oauth.openai.copiedCode') : t('common.buttons.copy')}
-              </button>
+              </Button>
             </div>
             <p><strong>{t('instance.oauth.openai.step2')}</strong> {t('instance.oauth.openai.step2Text')}</p>
             <p>
@@ -494,9 +503,9 @@ function OpenAIOAuthFlow({ instanceId, onComplete }: { instanceId: string; onCom
                 {deviceData.verificationUri}
               </a>
               {' '}
-              <button className="btn-secondary btn-small" onClick={() => window.open(deviceData.verificationUri, '_blank', 'noopener,noreferrer')}>
+              <Button variant="secondary" size="sm" onClick={() => window.open(deviceData.verificationUri, '_blank', 'noopener,noreferrer')}>
                 {t('instance.oauth.openai.openAgain')}
-              </button>
+              </Button>
             </p>
             <p><strong>{t('instance.oauth.openai.step3')}</strong> {t('instance.oauth.openai.step3Text')}</p>
           </div>
@@ -504,7 +513,7 @@ function OpenAIOAuthFlow({ instanceId, onComplete }: { instanceId: string; onCom
             <p style={{ marginTop: '1rem' }}><span className="spinner" /> {t('instance.oauth.openai.waitingForAuth')}</p>
           )}
           <div style={{ marginTop: '1rem' }}>
-            <button className="btn-secondary" onClick={handleCancel}>{t('common.buttons.cancel')}</button>
+            <Button variant="secondary" onClick={handleCancel}>{t('common.buttons.cancel')}</Button>
           </div>
         </div>
       )}
@@ -564,9 +573,9 @@ function GoogleOAuthFlow({ instanceId, onComplete }: { instanceId: string; onCom
         <p style={{ marginBottom: '0.75rem', color: '#666' }}>
           {t('instance.oauth.google.description')}
         </p>
-        <button onClick={startFlow} disabled={loading}>
+        <Button onClick={startFlow} disabled={loading}>
           {loading ? <><span className="spinner" /> {t('instance.oauth.google.redirectingButton')}</> : t('instance.oauth.google.authenticateButton')}
-        </button>
+        </Button>
       </div>
     </div>
   );

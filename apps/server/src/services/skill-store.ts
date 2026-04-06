@@ -135,24 +135,37 @@ export async function installSkill(
   const existingSkill = await getSkillById(instanceId, skillId);
 
   try {
-    // 1. Insert pending record
-    await db('instance_skills').insert({
-      id: rowId,
-      instance_id: instanceId,
-      skill_id: skillId,
-      source: adapter.jsonValue(source),
-      version: null,
-      locked_version: null,
-      integrity_hash: null,
-      enabled: 1,
-      config: adapter.jsonValue({}),
-      status: 'pending',
-      error_message: null,
-      failed_at: null,
-      pending_owner: config.serverSessionId,
-      retry_count: 0,
-      // installed_at / updated_at use column defaults
-    });
+    // 1. Insert or update pending record (handles reinstall of previously failed skills)
+    if (existingSkill) {
+      await db('instance_skills')
+        .where({ instance_id: instanceId, skill_id: skillId })
+        .update({
+          source: adapter.jsonValue(source),
+          status: 'pending',
+          error_message: null,
+          failed_at: null,
+          pending_owner: config.serverSessionId,
+          enabled: 1,
+          updated_at: db.fn.now(),
+        });
+    } else {
+      await db('instance_skills').insert({
+        id: rowId,
+        instance_id: instanceId,
+        skill_id: skillId,
+        source: adapter.jsonValue(source),
+        version: null,
+        locked_version: null,
+        integrity_hash: null,
+        enabled: 1,
+        config: adapter.jsonValue({}),
+        status: 'pending',
+        error_message: null,
+        failed_at: null,
+        pending_owner: config.serverSessionId,
+        retry_count: 0,
+      });
+    }
 
     // 2. Check cancel before making the network call
     if (await checkCancelRequested(operationId)) {
@@ -168,16 +181,26 @@ export async function installSkill(
     // Gateway native schema (anyOf):
     //   ClawHub: { source: "clawhub", slug, version?, force? }
     //   Local:   { name, installId, timeoutMs? }
-    const rpcParams =
-      source.type === 'clawhub'
-        ? { source: 'clawhub', slug: source.spec }
-        : { name: skillId, installId: skillId };
+    // Bundled/workspace skills are already on disk — skip RPC, register directly.
+    let rpcResult: { version?: string; integrityHash?: string; requiredCredentials?: ExtensionCredentialRequirement[] };
 
-    const rpcResult = await gatewayCall(instanceId, 'skills.install', rpcParams, 180_000);
+    if (source.type === 'bundled') {
+      // Skill already exists in the gateway — no install RPC needed.
+      // Fetch its metadata from skills.status to confirm it exists.
+      rpcResult = { version: undefined, integrityHash: undefined, requiredCredentials: [] };
+    } else {
+      const rpcParams =
+        source.type === 'clawhub'
+          ? { source: 'clawhub', slug: source.spec }
+          : { name: skillId, installId: skillId };
 
-    // 4. Parse response
-    if (!isInstallRPCResult(rpcResult)) {
-      throw new Error(`Unexpected skills.install RPC response: ${JSON.stringify(rpcResult)}`);
+      const rawResult = await gatewayCall(instanceId, 'skills.install', rpcParams, 180_000);
+
+      // 4. Parse response
+      if (!isInstallRPCResult(rawResult)) {
+        throw new Error(`Unexpected skills.install RPC response: ${JSON.stringify(rawResult)}`);
+      }
+      rpcResult = rawResult;
     }
 
     const requiredCredentials: ExtensionCredentialRequirement[] =
@@ -417,8 +440,11 @@ export async function uninstallSkill(
       return;
     }
 
-    // Call RPC: skills.uninstall (3-min deadline per INFRA-07)
-    await gatewayCall(instanceId, 'skills.uninstall', { skillId }, 180_000);
+    // Call RPC: skills.uninstall — skip for bundled skills (can't uninstall from container)
+    const source = existing.source as { type?: string } | undefined;
+    if (source?.type !== 'bundled') {
+      await gatewayCall(instanceId, 'skills.uninstall', { skillId }, 180_000);
+    }
 
     await db('instance_skills')
       .where({ instance_id: instanceId, skill_id: skillId })

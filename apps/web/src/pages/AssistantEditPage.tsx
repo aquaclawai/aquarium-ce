@@ -2,9 +2,20 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../api';
+import { PageHeaderSkeleton, CardSkeleton } from '@/components/skeletons';
 import type { Instance } from '@aquarium/shared';
 import { AvatarPicker } from '../components/AvatarPicker';
 import './MyAssistantsPage.css';
+import {
+  Button,
+  Input,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui';
 
 export function AssistantEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -108,7 +119,8 @@ export function AssistantEditPage() {
   if (loading) {
     return (
       <div className="aep-page aep-page--loading">
-        <span className="aep-loading-text">{t('assistantEdit.loading')}</span>
+        <PageHeaderSkeleton />
+        <CardSkeleton lines={8} />
       </div>
     );
   }
@@ -118,7 +130,7 @@ export function AssistantEditPage() {
   return (
     <div className="aep-page">
       <div className="aep-content">
-        <button className="aep-back-btn" onClick={() => navigate('/assistants')}>
+        <Button variant="ghost" className="aep-back-btn" onClick={() => navigate('/assistants')}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path
               d="M10 3L5 8L10 13"
@@ -129,7 +141,7 @@ export function AssistantEditPage() {
             />
           </svg>
           {t('assistantEdit.backButton')}
-        </button>
+        </Button>
 
         <div className="aep-header">
           <div className="aep-header-text">
@@ -140,7 +152,7 @@ export function AssistantEditPage() {
               {t('assistantEdit.subtitleOf')}
             </p>
           </div>
-          <button
+          <Button
             className={`aep-save-btn${saving ? ' aep-save-btn--saving' : ''}${saveStatus === 'saved' ? ' aep-save-btn--saved' : ''}${saveStatus === 'error' ? ' aep-save-btn--error' : ''}`}
             onClick={handleSave}
             disabled={saving}
@@ -159,7 +171,7 @@ export function AssistantEditPage() {
               : saveStatus === 'saved'
                 ? t('assistantEdit.savedText')
                 : t('assistantEdit.saveButton')}
-          </button>
+          </Button>
         </div>
 
         {loadError && (
@@ -185,7 +197,7 @@ export function AssistantEditPage() {
               </span>
               <h2 className="aep-section-title">{t('assistantEdit.nameSection')}</h2>
             </div>
-            <input
+            <Input
               className="aep-input"
               type="text"
               value={name}
@@ -260,47 +272,50 @@ export function AssistantEditPage() {
         <section className="aep-danger-zone">
           <h2 className="aep-danger-zone-title">{t('assistantEdit.dangerZone.title')}</h2>
           <p className="aep-danger-zone-desc">{t('assistantEdit.dangerZone.description')}</p>
-          <button
+          <Button
+            variant="destructive"
             className="danger"
             onClick={() => setShowDeleteModal(true)}
             disabled={deleting}
           >
             {t('assistantEdit.dangerZone.deleteButton')}
-          </button>
+          </Button>
         </section>
       </div>
 
-      {showDeleteModal && (
-        <div className="modal-overlay" onClick={deleting ? undefined : () => setShowDeleteModal(false)}>
-          <div className="modal" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
-            <h3>{t('assistantEdit.deleteModal.title')}</h3>
-            <p className="aep-modal-desc">{t('assistantEdit.deleteModal.description')}</p>
-            <p className="aep-modal-warning">{t('assistantEdit.deleteModal.warning')}</p>
-            <div className="aep-modal-actions">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setShowDeleteModal(false)}
-                disabled={deleting}
-              >
-                {t('assistantEdit.deleteModal.cancel')}
-              </button>
-              <button
-                type="button"
-                className="danger"
-                onClick={handleDelete}
-                disabled={deleting}
-              >
-                {deleting ? t('assistantEdit.dangerZone.deleting') : t('assistantEdit.deleteModal.confirm')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={showDeleteModal} onOpenChange={open => { if (!open && !deleting) setShowDeleteModal(false); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('assistantEdit.deleteModal.title')}</DialogTitle>
+            <DialogDescription>
+              {t('assistantEdit.deleteModal.description')}
+              {' '}{t('assistantEdit.deleteModal.warning')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowDeleteModal(false)}
+              disabled={deleting}
+            >
+              {t('assistantEdit.deleteModal.cancel')}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? t('assistantEdit.dangerZone.deleting') : t('assistantEdit.deleteModal.confirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      <button className="aep-help-btn" aria-label="Help">
+      <Button variant="ghost" size="icon" className="aep-help-btn" aria-label="Help">
         <span>?</span>
-      </button>
+      </Button>
     </div>
   );
 }

@@ -250,16 +250,6 @@ select:focus {
   to { transform: rotate(360deg); }
 }
 
-/* ─── Suspense fallback ─── */
-
-.page-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background: var(--color-bg);
-}
-
 /* ─── Dark Mode Overrides ─── */
 
 :root.dark button.danger:hover { background-color: #b91c1c; }

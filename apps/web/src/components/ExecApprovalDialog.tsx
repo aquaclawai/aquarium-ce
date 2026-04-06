@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui';
+import { Button } from '@/components/ui';
 import './ExecApprovalDialog.css';
 
 export interface ExecApprovalItem {
@@ -69,19 +71,20 @@ function ApprovalCard({ item, onApprove, onDeny }: {
           {seconds > 0 ? `Auto-deny in ${seconds}s` : 'Expired'}
         </span>
         <div className="exec-approval-actions">
-          <button
-            className="exec-approval-btn exec-approval-btn--deny"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => onDeny(item.approvalId)}
           >
             Deny
-          </button>
-          <button
-            className="exec-approval-btn exec-approval-btn--approve"
+          </Button>
+          <Button
+            size="sm"
             onClick={() => onApprove(item.approvalId)}
             disabled={seconds <= 0}
           >
             Approve
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -92,18 +95,26 @@ export function ExecApprovalDialog({ items, onApprove, onDeny }: ExecApprovalDia
   const handleApprove = useCallback((id: string) => onApprove(id), [onApprove]);
   const handleDeny = useCallback((id: string) => onDeny(id), [onDeny]);
 
-  if (items.length === 0) return null;
-
   return (
-    <div className="exec-approval-overlay">
-      {items.map(item => (
-        <ApprovalCard
-          key={item.approvalId}
-          item={item}
-          onApprove={handleApprove}
-          onDeny={handleDeny}
-        />
-      ))}
-    </div>
+    <Dialog open={items.length > 0} onOpenChange={() => { /* controlled by items.length */ }}>
+      <DialogContent className="exec-approval-dialog-content">
+        <DialogHeader>
+          <DialogTitle>Command Execution Approval</DialogTitle>
+          <DialogDescription>
+            Review and approve or deny pending command execution requests.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="exec-approval-list">
+          {items.map(item => (
+            <ApprovalCard
+              key={item.approvalId}
+              item={item}
+              onApprove={handleApprove}
+              onDeny={handleDeny}
+            />
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

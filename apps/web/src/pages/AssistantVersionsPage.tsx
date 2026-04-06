@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
+import { Button } from '@/components/ui';
+import { PageHeaderSkeleton, ListSkeleton } from '@/components/skeletons';
 import type { InstancePublic, SnapshotSummary, SnapshotDiff, PaginatedResponse, ConfigChangeSummary } from '@aquarium/shared';
 import './MyAssistantsPage.css';
 
@@ -93,7 +95,12 @@ export function AssistantVersionsPage() {
   }, [id]);
 
   if (loading) {
-    return <div className="aver-page"><div className="aver-loading">{t('common.labels.loading')}</div></div>;
+    return (
+      <div className="aver-page">
+        <PageHeaderSkeleton />
+        <ListSkeleton rows={5} />
+      </div>
+    );
   }
 
   const displaySnapshots: DisplaySnapshot[] = snapshots.map(toDisplaySnapshot);
@@ -104,12 +111,12 @@ export function AssistantVersionsPage() {
 
   return (
     <div className="aver-page">
-      <button className="aver-back" onClick={() => navigate('/assistants')}>
+      <Button className="aver-back" variant="ghost" onClick={() => navigate('/assistants')}>
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         {t('assistantVersions.backToAssistants')}
-      </button>
+      </Button>
 
       <header className="aver-header">
         <div>
@@ -121,15 +128,16 @@ export function AssistantVersionsPage() {
           </p>
         </div>
         <div className="aver-header__actions">
-          <button className="aver-header__btn aver-header__btn--primary" onClick={() => setSelectedDiff(null)}>
+          <Button className="aver-header__btn aver-header__btn--primary" onClick={() => setSelectedDiff(null)}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M2.5 8a5.5 5.5 0 1 0 1-3.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               <path d="M2.5 4v1.5H4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             {t('assistantVersions.versionList')}
-          </button>
-          <button
+          </Button>
+          <Button
             className="aver-header__btn"
+            variant="secondary"
             onClick={() => { if (snapshots[1]) handleViewDiff(snapshots[1].id); }}
             disabled={snapshots.length < 2}
           >
@@ -138,7 +146,7 @@ export function AssistantVersionsPage() {
               <path d="M11 13V3M11 3l-2 2M11 3l2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             {t('assistantVersions.compareDiff')}
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -146,12 +154,12 @@ export function AssistantVersionsPage() {
 
       {selectedDiff ? (
         <div className="aver-diff-panel">
-          <button className="aver-back" onClick={() => setSelectedDiff(null)}>
+          <Button className="aver-back" variant="ghost" onClick={() => setSelectedDiff(null)}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             {t('assistantVersions.versionList')}
-          </button>
+          </Button>
           <div className="aver-diff-list">
             {selectedDiff.diff.changes.filter(c => c.type !== 'unchanged').map((change, i) => (
               <div key={i} className="aver-diff-entry">
@@ -202,8 +210,10 @@ export function AssistantVersionsPage() {
                 )}
                 {!isCurrent && (
                   <div className="aver-card__footer">
-                    <button
+                    <Button
                       className="aver-card__restore"
+                      variant="secondary"
+                      size="sm"
                       onClick={() => handleRestore(snap.id)}
                       disabled={restoringId !== null}
                     >
@@ -214,7 +224,7 @@ export function AssistantVersionsPage() {
                       {restoringId === snap.id
                         ? t('assistantVersions.restoring')
                         : t('assistantVersions.restoreVersion')}
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>

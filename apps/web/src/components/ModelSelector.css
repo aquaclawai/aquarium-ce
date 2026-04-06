@@ -1,0 +1,104 @@
+/* ─── Model Selector ─── */
+
+.wiz-model-search {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  background: var(--color-bg);
+  color: var(--color-text);
+  margin-bottom: 0.5rem;
+}
+
+.wiz-model-search:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-alpha, rgba(255, 107, 53, 0.15));
+}
+
+.wiz-model-list {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+}
+
+.wiz-model-group__label {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-secondary);
+  background: var(--color-card-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.wiz-model-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.75rem;
+  border: none;
+  border-bottom: 1px solid var(--color-light);
+  background: transparent;
+  color: var(--color-text);
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.wiz-model-item:last-child {
+  border-bottom: none;
+}
+
+.wiz-model-item:hover {
+  background: var(--color-primary-alpha, rgba(255, 107, 53, 0.06));
+}
+
+.wiz-model-item--active {
+  background: var(--color-primary-alpha, rgba(255, 107, 53, 0.1));
+  border-left: 3px solid var(--color-primary);
+  padding-left: calc(0.75rem - 3px);
+}
+
+.wiz-model-item--active .wiz-model-item__name {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.wiz-model-item__name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wiz-model-item__id {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  color: var(--color-secondary);
+  font-family: var(--font-mono);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wiz-model-item__badge {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-alpha, rgba(255, 107, 53, 0.1));
+  color: var(--color-primary);
+}

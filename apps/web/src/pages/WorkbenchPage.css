@@ -4,23 +4,6 @@
   margin: 0 auto;
 }
 
-.workbench-page__header {
-  margin-bottom: var(--spacing-xl);
-}
-
-.workbench-page__title {
-  margin: 0;
-  font-size: 1.6rem;
-  font-weight: 800;
-  color: var(--color-text);
-  letter-spacing: -0.02em;
-}
-
-.workbench-page__subtitle {
-  margin: var(--spacing-xs) 0 0;
-  font-size: 0.95rem;
-  color: var(--color-text-secondary);
-}
 
 .workbench-kpi-grid {
   display: grid;
@@ -53,4 +36,34 @@
   border-radius: var(--radius-md);
   margin-bottom: var(--spacing-lg);
   font-size: 0.9rem;
+}
+
+/* ─── Dashboard ─── */
+/* NOTE: .dashboard-page/.instance-page moved to AppLayout.css (always loaded) */
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dashboard-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.dashboard-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.user-greeting {
+  color: var(--color-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
 }

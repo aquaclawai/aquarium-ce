@@ -1,10 +1,13 @@
 import { useTranslation } from 'react-i18next';
 import { Bot, MessageSquare, CreditCard, Activity } from 'lucide-react';
 import { useDashboardData } from '../hooks/useDashboardData';
+import { PageHeader } from '../components/PageHeader';
 import { QuickStartBanner } from '../components/dashboard/QuickStartBanner';
-import { KPICard } from '../components/dashboard/KPICard';
+import { KPICard } from '../components/KPICard';
 import { UsageChart } from '../components/dashboard/UsageChart';
 import { ActivityFeed } from '../components/dashboard/ActivityFeed';
+import { PageHeaderSkeleton, KPICardSkeleton } from '@/components/skeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 import './WorkbenchPage.css';
 
 function formatCurrency(amount: number, locale: string): string {
@@ -36,17 +39,26 @@ export function WorkbenchPage() {
   if (loading) {
     return (
       <main className="workbench-page">
-        <div className="workbench-page__loading">{t('dashboard.loading')}</div>
+        <PageHeaderSkeleton />
+        <div className="workbench-kpi-grid">
+          {Array.from({ length: 4 }, (_, i) => (
+            <KPICardSkeleton key={i} />
+          ))}
+        </div>
+        <div className="workbench-bottom-row">
+          <Skeleton className="h-64 w-full rounded-lg" />
+          <Skeleton className="h-64 w-full rounded-lg" />
+        </div>
       </main>
     );
   }
 
   return (
     <main className="workbench-page">
-      <header className="workbench-page__header">
-        <h1 className="workbench-page__title">{t('dashboard.title')}</h1>
-        <p className="workbench-page__subtitle">{t('dashboard.subtitle')}</p>
-      </header>
+      <PageHeader
+        title={t('dashboard.title')}
+        subtitle={t('dashboard.subtitle')}
+      />
 
       {error && (
         <div className="workbench-page__error" role="alert">{error}</div>
@@ -59,25 +71,25 @@ export function WorkbenchPage() {
           icon={<Bot size={22} />}
           value={kpi.activeAssistants}
           label={t('dashboard.kpi.activeAssistants')}
-          trend={kpi.trends.activeAssistants}
+          trend={kpi.trends.activeAssistants.value}
         />
         <KPICard
           icon={<MessageSquare size={22} />}
           value={kpi.messageGroups}
           label={t('dashboard.kpi.messageGroups')}
-          trend={kpi.trends.messageGroups}
+          trend={kpi.trends.messageGroups.value}
         />
         <KPICard
           icon={<CreditCard size={22} />}
           value={formatCurrency(kpi.todaySpend, locale)}
           label={t('dashboard.kpi.todaySpend')}
-          trend={kpi.trends.todaySpend}
+          trend={kpi.trends.todaySpend.value}
         />
         <KPICard
           icon={<Activity size={22} />}
           value={formatNumber(kpi.apiCalls, locale)}
           label={t('dashboard.kpi.apiCalls')}
-          trend={kpi.trends.apiCalls}
+          trend={kpi.trends.apiCalls.value}
         />
       </div>
 

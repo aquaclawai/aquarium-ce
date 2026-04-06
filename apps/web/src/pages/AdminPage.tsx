@@ -1,13 +1,26 @@
+import './AdminPage.css';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
 import type { AdminStats, AdminUser } from '@aquarium/shared';
+import { PageHeader } from '../components/PageHeader';
+import { PageHeaderSkeleton, TabsSkeleton, TableSkeleton } from '@/components/skeletons';
 import { OverviewTab } from '../components/admin/OverviewTab';
 import { UsersTab } from '../components/admin/UsersTab';
 import { LlmKeysTab } from '../components/admin/LlmKeysTab';
 import { LitellmUiTab } from '../components/admin/LitellmUiTab';
+import {
+  Button,
+  Input,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui';
 
 interface AdminUsageData {
   globalSpend: number;
@@ -76,28 +89,35 @@ export function AdminPage() {
     }
   };
 
-  if (loading) return <div className="admin-page">{t('admin.loading')}</div>;
+  if (loading) return (
+    <div className="admin-page">
+      <PageHeaderSkeleton />
+      <TabsSkeleton count={4} />
+      <TableSkeleton />
+    </div>
+  );
 
   return (
     <main className="admin-page">
-      <header className="dashboard-header">
-        <div>
-          <h1>{t('admin.title')}</h1>
-          <Link to="/" className="admin-back-link">{t('common.buttons.backToInstances')}</Link>
-        </div>
-        <div className="dashboard-header-actions">
-          {user && <span className="user-greeting">{t('admin.greeting', { name: user.displayName })}</span>}
-          <button className="btn-secondary" onClick={logout}>{t('common.buttons.logout')}</button>
-        </div>
-      </header>
+      <PageHeader
+        title={t('admin.title')}
+        subtitle={t('admin.subtitle')}
+        action={
+          <div className="admin-page__header-actions">
+            {user && <span className="user-greeting">{t('admin.greeting', { name: user.displayName })}</span>}
+            <Button variant="secondary" onClick={logout}>{t('common.buttons.logout')}</Button>
+          </div>
+        }
+      />
+      <Link to="/" className="admin-back-link">{t('common.buttons.backToInstances')}</Link>
 
       {error && <div className="error-message" role="alert">{error}</div>}
 
       <div className="tabs">
-        <button className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>Overview</button>
-        <button className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}>Users</button>
-        <button className={activeTab === 'llm-keys' ? 'active' : ''} onClick={() => setActiveTab('llm-keys')}>LLM Keys</button>
-        <button className={activeTab === 'litellm-ui' ? 'active' : ''} onClick={() => setActiveTab('litellm-ui')}>LiteLLM UI</button>
+        <Button variant="ghost" className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>Overview</Button>
+        <Button variant="ghost" className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}>Users</Button>
+        <Button variant="ghost" className={activeTab === 'llm-keys' ? 'active' : ''} onClick={() => setActiveTab('llm-keys')}>LLM Keys</Button>
+        <Button variant="ghost" className={activeTab === 'litellm-ui' ? 'active' : ''} onClick={() => setActiveTab('litellm-ui')}>LiteLLM UI</Button>
       </div>
 
       <div className="tab-content">
@@ -118,49 +138,43 @@ export function AdminPage() {
         {activeTab === 'litellm-ui' && <LitellmUiTab />}
       </div>
 
-      {budgetUserId && (
-        <div className="modal-overlay" onClick={() => setBudgetUserId(null)}>
-          <div
-            className="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="budget-modal-title"
-            onClick={e => e.stopPropagation()}
-          >
-            <h2 id="budget-modal-title">{t('admin.budget.title')}</h2>
-            <p>{t('admin.budget.description', { email: budgetUserEmail })}</p>
-            <form onSubmit={handleSetBudget}>
-              <div className="form-group">
-                <label>{t('admin.budget.limitLabel')}</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder={t('admin.budget.limitPlaceholder')}
-                  value={budgetLimit}
-                  onChange={e => setBudgetLimit(e.target.value)}
-                />
+      <Dialog open={!!budgetUserId} onOpenChange={open => { if (!open) setBudgetUserId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('admin.budget.title')}</DialogTitle>
+            <DialogDescription>{t('admin.budget.description', { email: budgetUserEmail })}</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSetBudget}>
+            <div className="form-group">
+              <label>{t('admin.budget.limitLabel')}</label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder={t('admin.budget.limitPlaceholder')}
+                value={budgetLimit}
+                onChange={e => setBudgetLimit(e.target.value)}
+              />
+            </div>
+            {budgetMsg && (
+              <div
+                className={budgetMsg.type === 'success' ? 'success-message' : 'error-message'}
+                role="alert"
+              >
+                {budgetMsg.text}
               </div>
-              {budgetMsg && (
-                <div
-                  className={budgetMsg.type === 'success' ? 'success-message' : 'error-message'}
-                  role="alert"
-                >
-                  {budgetMsg.text}
-                </div>
-              )}
-              <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={() => setBudgetUserId(null)}>
-                  {t('common.buttons.cancel')}
-                </button>
-                <button type="submit" className="btn-primary" disabled={budgetSaving}>
-                  {budgetSaving ? t('admin.budget.saving') : t('admin.budget.saveButton')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            )}
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setBudgetUserId(null)}>
+                {t('common.buttons.cancel')}
+              </Button>
+              <Button type="submit" disabled={budgetSaving}>
+                {budgetSaving ? t('admin.budget.saving') : t('admin.budget.saveButton')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

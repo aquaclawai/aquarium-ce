@@ -1,0 +1,47 @@
+/* ─── Status Badges ─── */
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.status-badge::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.status-running { color: var(--color-success); background: var(--color-success-subtle-bg); }
+.status-stopped { color: var(--color-neutral); background: color-mix(in srgb, var(--color-neutral) 10%, transparent); }
+.status-created { color: var(--color-info); background: var(--color-info-subtle-bg); }
+.status-starting, .status-stopping { color: var(--color-warning); background: var(--color-warning-subtle-bg); }
+.status-error { color: var(--color-danger); background: var(--color-danger-subtle-bg); }
+
+.channels-status {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+.channels-status span {
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius-full);
+  background-color: var(--color-neutral);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.channels-status span.connected {
+  background-color: var(--color-success);
+}

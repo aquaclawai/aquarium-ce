@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import type { SnapshotDiff, SnapshotDiffEntry } from '@aquarium/shared';
+import { Button } from '@/components/ui';
+import { Skeleton } from '@/components/ui/skeleton';
+import './SnapshotDiffView.css';
 
 interface SnapshotDiffViewProps {
   instanceId: string;
@@ -30,7 +33,8 @@ function DiffEntry({ entry }: { entry: SnapshotDiffEntry }) {
 
   return (
     <div className={`diff-entry ${CHANGE_CLASSES[entry.type] ?? ''}`}>
-      <button
+      <Button
+        variant="ghost"
         className="diff-entry-header"
         onClick={() => setExpanded(!expanded)}
         type="button"
@@ -40,7 +44,7 @@ function DiffEntry({ entry }: { entry: SnapshotDiffEntry }) {
         </span>
         <span className="diff-entry-file">{entry.file}</span>
         <span className="diff-entry-toggle">{expanded ? '▾' : '▸'}</span>
-      </button>
+      </Button>
       {expanded && entry.type !== 'unchanged' && (
         <div className="diff-entry-content">
           {entry.type === 'removed' && entry.snapshotContent != null && (
@@ -104,16 +108,16 @@ export function SnapshotDiffView({ instanceId, snapshotId, onRestore, onClose }:
           )}
         </div>
         <div className="snapshot-diff-actions">
-          <button onClick={onRestore} disabled={loading || !!error}>
+          <Button onClick={onRestore} disabled={loading || !!error}>
             {t('snapshots.diff.restoreButton')}
-          </button>
-          <button className="btn-secondary" onClick={onClose}>
+          </Button>
+          <Button variant="secondary" onClick={onClose}>
             {t('common.buttons.close')}
-          </button>
+          </Button>
         </div>
       </div>
 
-      {loading && <div className="snapshot-diff-loading">{t('snapshots.diff.loadingDiff')}</div>}
+      {loading && <Skeleton className="h-64 w-full rounded-lg" />}
       {error && <div className="error-message" role="alert">{error}</div>}
 
       {diff && (
