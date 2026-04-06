@@ -139,8 +139,8 @@ export function InstantiateDialog({ template, templateContent, open, onOpenChang
   }, [templateContent]);
 
   const needsSalevoice = template?.requiredCredentials.some(c => c.provider === 'salevoice') ?? false;
-  const webhookCredentials = template?.requiredCredentials.filter(c => c.credentialType === 'webhook_url') ?? [];
-  const apiKeyCredentials = template?.requiredCredentials.filter(c => c.credentialType === 'api_key') ?? [];
+  const webhookCredentials = template?.requiredCredentials.filter(c => (c.credentialType as string) === 'webhook_url') ?? [];
+  const apiKeyCredentials = template?.requiredCredentials.filter(c => (c.credentialType as string) === 'api_key') ?? [];
   const hasCronSchedule = template ? CRON_ENABLED_SLUGS.has(template.slug) : false;
   const missingCredentials = template?.requiredCredentials.filter(c =>
     c.provider !== 'salevoice' &&
