@@ -1,6 +1,7 @@
 import { getAgentType } from '../agent-types/registry.js';
 import { listCredentials } from './credential-store.js';
 import { getMetadata } from './metadata-store.js';
+import { db } from '../db/index.js';
 import type {
   Instance,
   GatewayModel,
@@ -146,4 +147,54 @@ export async function getInstanceProviders(instance: Instance): Promise<Instance
     console.warn('[instance-providers] Gateway fetch failed, using metadata fallback:', err);
     return { providers: buildMetadataProviders(), configuredProviders, source: 'metadata' };
   }
+}
+
+/**
+ * Returns providers for an agent type, suitable for the create wizard (no instance yet).
+ * Strategy:
+ *   1. Find any running instance of this agent type
+ *   2. Query its gateway via getInstanceProviders() for live data
+ *   3. Fall back to bundled metadata if no running instance exists
+ */
+export async function getAgentTypeProviders(agentTypeId: string): Promise<InstanceProvidersResponse> {
+  // Try to find any running instance of this agent type
+  try {
+    const row = await db('instances')
+      .where({ agent_type: agentTypeId, status: 'running' })
+      .first();
+
+    if (row && row.control_endpoint) {
+      // Build a minimal Instance shape for getInstanceProviders
+      const instance: Instance = {
+        id: row.id,
+        userId: row.user_id,
+        name: row.name,
+        agentType: row.agent_type,
+        imageTag: row.image_tag,
+        status: row.status,
+        statusMessage: row.status_message ?? null,
+        deploymentTarget: row.deployment_target,
+        controlEndpoint: row.control_endpoint,
+        authToken: row.auth_token,
+        config: {},
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      } as Instance;
+      return getInstanceProviders(instance);
+    }
+  } catch (err) {
+    console.warn('[agent-type-providers] DB lookup failed:', err);
+  }
+
+  // No running instance → metadata fallback
+  const metadata = getMetadata();
+  const providers: InstanceProvider[] = metadata.providers.map(pg => ({
+    name: pg.id,
+    displayName: pg.name,
+    authMethods: pg.authMethods.map(a => ({ value: a.value, label: a.label, hint: a.hint, type: a.type })),
+    models: pg.models
+      .filter(m => m.recommended !== false)
+      .map(m => ({ id: m.id, displayName: m.name, isDefault: m.recommended, contextWindow: m.contextWindow })),
+  }));
+  return { providers, configuredProviders: [], source: 'metadata' };
 }
