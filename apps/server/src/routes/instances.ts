@@ -16,8 +16,8 @@ import {
   updateSecurityProfile,
 } from '../services/instance-manager.js';
 import { getRuntimeEngine } from '../runtime/factory.js';
-import { getInstanceModels } from '../services/instance-models.js';
-import type { ApiResponse, Instance, InstancePublic, CreateInstanceRequest, CredentialRequirement, SecurityProfile, InstanceModelsResponse } from '@aquarium/shared';
+import { getInstanceModels, getInstanceProviders } from '../services/instance-models.js';
+import type { ApiResponse, Instance, InstancePublic, CreateInstanceRequest, CredentialRequirement, SecurityProfile, InstanceModelsResponse, InstanceProvidersResponse } from '@aquarium/shared';
 
 const router = Router();
 router.use(requireAuth);
@@ -483,6 +483,26 @@ router.get('/:id/models', async (req, res) => {
 
     const data = await getInstanceModels(instance);
     res.json({ ok: true, data } satisfies ApiResponse<InstanceModelsResponse>);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ ok: false, error: message } satisfies ApiResponse);
+  }
+});
+
+// --- Instance providers (gateway-first with metadata fallback) ---
+// Unlike /models, this endpoint returns providers grouped with their models
+// and succeeds even when the instance is not running (falls back to bundled metadata).
+
+router.get('/:id/providers', async (req, res) => {
+  try {
+    const instance = await getInstance(req.params.id, req.auth!.userId);
+    if (!instance) {
+      res.status(404).json({ ok: false, error: 'Instance not found' } satisfies ApiResponse);
+      return;
+    }
+
+    const data = await getInstanceProviders(instance);
+    res.json({ ok: true, data } satisfies ApiResponse<InstanceProvidersResponse>);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ ok: false, error: message } satisfies ApiResponse);
