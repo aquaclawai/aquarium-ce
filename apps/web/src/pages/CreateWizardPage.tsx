@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { formatModelDisplayName } from '../utils/provider-display';
 import { api } from '../api';
 import { AvatarPicker } from '../components/AvatarPicker';
-import type { AgentTypeInfo, BillingMode, CreateInstanceRequest, UserCredential } from '@aquarium/shared';
+import type { AgentTypeInfo, BillingMode, CreateInstanceRequest, UserCredential, InstanceProvider, InstanceProvidersResponse } from '@aquarium/shared';
 
 const isEE = import.meta.env.VITE_EDITION !== 'ce';
 
@@ -859,7 +859,24 @@ export function CreateWizardPage() {
   const defaultPrinciples = agentType?.wizard?.defaultPrinciples ?? [];
   const identityTemplates = agentType?.wizard?.identityTemplates ?? [];
   const temperaturePresets = agentType?.wizard?.temperaturePresets ?? [];
-  const providers = agentType?.wizard?.providers ?? [];
+  // Providers: prefer live gateway data for the selected agent type (queries any
+  // running instance of that type and falls back to bundled metadata if none).
+  const [gatewayProviders, setGatewayProviders] = useState<InstanceProvider[] | null>(null);
+  useEffect(() => {
+    if (!agentType?.id) return;
+    let cancelled = false;
+    api.get<InstanceProvidersResponse>(`/agent-types/${agentType.id}/providers`)
+      .then(res => { if (!cancelled) setGatewayProviders(res.providers); })
+      .catch(() => { if (!cancelled) setGatewayProviders(null); });
+    return () => { cancelled = true; };
+  }, [agentType?.id]);
+  // Normalize hint to string for compatibility with the wizard's local ProviderAuthMethod type.
+  const providers = (gatewayProviders
+    ? gatewayProviders.map(p => ({
+        ...p,
+        authMethods: p.authMethods?.map(a => ({ ...a, hint: a.hint ?? '' })),
+      }))
+    : agentType?.wizard?.providers) ?? [];
   const contextOptions = agentType?.wizard?.contextOptions ?? CONTEXT_OPTIONS_FALLBACK;
 
   // ─── OAuth device flow ───────────────────────────────────────────────

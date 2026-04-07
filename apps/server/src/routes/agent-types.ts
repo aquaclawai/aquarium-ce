@@ -4,7 +4,8 @@ import { listAgentTypes, getAgentType } from '../agent-types/registry.js';
 const DEFAULT_MODEL_NAME = '';
 import { fetchOpenRouterModels } from '../services/openrouter-models.js';
 import { getWizardConfigs, type WizardConfigs } from '../services/wizard-config-store.js';
-import type { ApiResponse, AgentTypeInfo } from '@aquarium/shared';
+import { getAgentTypeProviders } from '../services/instance-models.js';
+import type { ApiResponse, AgentTypeInfo, InstanceProvidersResponse } from '@aquarium/shared';
 
 const router = Router();
 
@@ -93,6 +94,18 @@ router.get('/:typeId', async (req, res) => {
       getWizardConfigs(reg.manifest.id, locale),
     ]);
     res.json({ ok: true, data: toInfo(reg, platformModels, dbConfigs) } satisfies ApiResponse<AgentTypeInfo>);
+  } catch {
+    res.status(404).json({ ok: false, error: 'Agent type not found' } satisfies ApiResponse);
+  }
+});
+
+// Providers for a given agent type — used by the create wizard (no instance yet).
+// Finds any running instance and queries its gateway; falls back to bundled metadata.
+router.get('/:typeId/providers', async (req, res) => {
+  try {
+    getAgentType(req.params.typeId); // Validate agent type exists
+    const data = await getAgentTypeProviders(req.params.typeId);
+    res.json({ ok: true, data } satisfies ApiResponse<InstanceProvidersResponse>);
   } catch {
     res.status(404).json({ ok: false, error: 'Agent type not found' } satisfies ApiResponse);
   }
