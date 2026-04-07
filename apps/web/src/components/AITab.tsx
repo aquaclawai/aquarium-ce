@@ -10,6 +10,8 @@ import type {
   CredentialType,
   CredentialRequirement,
   AgentTypeInfo,
+  InstanceProvider,
+  InstanceProvidersResponse,
 } from '@aquarium/shared';
 import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui';
 import { CardSkeleton } from '@/components/skeletons';
@@ -339,6 +341,18 @@ function ModelSection({
   const [byokCredSaving, setByokCredSaving] = useState(false);
   const [byokCredMessage, setByokCredMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Providers list — fetched from gateway (via /instances/:id/providers) with
+  // bundled openclaw-metadata.json as fallback when the instance isn't running.
+  const [gatewayProviders, setGatewayProviders] = useState<InstanceProvider[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.get<InstanceProvidersResponse>(`/instances/${instance.id}/providers`)
+      .then(res => { if (!cancelled) setGatewayProviders(res.providers); })
+      .catch(() => { if (!cancelled) setGatewayProviders(null); });
+    return () => { cancelled = true; };
+  }, [instance.id, instance.status]);
+
   useEffect(() => {
     if (!isPlatform) return;
     let cancelled = false;
@@ -414,7 +428,9 @@ function ModelSection({
     return groups;
   }, [dynamicModels, modelSearchQuery, selectedModel]);
 
-  const providers = agentType?.wizard?.providers ?? [];
+  // Prefer live providers from the gateway; fall back to agent type wizard config
+  // (which itself comes from bundled openclaw-metadata.json) until the fetch resolves.
+  const providers: InstanceProvider[] = gatewayProviders ?? agentType?.wizard?.providers ?? [];
   const selectedProviderInfo = providers.find(p => p.name === selectedProvider);
   const byokModels = selectedProviderInfo?.models ?? [];
 

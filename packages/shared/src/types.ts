@@ -26,6 +26,22 @@ export interface InstanceModelsResponse {
   configuredProviders: string[];
 }
 
+/** A provider returned by GET /instances/:id/providers — models grouped under their provider. */
+export interface InstanceProvider {
+  name: string;
+  displayName: string;
+  authMethods?: Array<{ value: string; label: string; hint?: string; type: string }>;
+  models: Array<{ id: string; displayName: string; isDefault?: boolean; contextWindow?: number }>;
+}
+
+/** Response shape for GET /instances/:id/providers. Source indicates where the data came from. */
+export interface InstanceProvidersResponse {
+  providers: InstanceProvider[];
+  configuredProviders: string[];
+  /** 'gateway' if live data from the running instance, 'metadata' if the static fallback was used. */
+  source: 'gateway' | 'metadata';
+}
+
 /** Attachment sent with a chat message (image only, base64-encoded). */
 export interface ChatAttachment {
   type: 'image' | 'file';
