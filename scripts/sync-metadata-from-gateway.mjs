@@ -80,7 +80,15 @@ async function main() {
   }
 
   const metadata = JSON.parse(readFileSync(METADATA_PATH, 'utf-8'));
-  const existingById = new Map(metadata.providers.map(p => [p.id, p]));
+  // Alias map: old metadata stub id → live gateway provider id.
+  // Lets us merge auth methods from the stub into the gateway entry and drop
+  // the stub so the wizard doesn't show two entries for the same provider.
+  const STUB_ALIASES = {
+    'ai-gateway': 'vercel-ai-gateway',
+    'copilot': 'github-copilot',
+  };
+  const normalizeId = (id) => STUB_ALIASES[id] ?? id;
+  const existingById = new Map(metadata.providers.map(p => [normalizeId(p.id), p]));
   const now = new Date().toISOString();
 
   const merged = gatewayProviders.map(gp => {
@@ -92,20 +100,27 @@ async function main() {
       name: existing?.name ?? gp.displayName,
       hint: existing?.hint ?? '',
       authMethods: existing?.authMethods ?? [],
-      models: gp.models.map(m => ({
-        id: m.id,
-        name: m.displayName,
-        contextWindow: m.contextWindow,
-        recommended: m.isDefault ?? false,
-      })),
+      models: gp.models.map(m => {
+        // Only set `recommended` when the model is explicitly a default.
+        // The wizard filters with `m.recommended !== false`, so leaving it
+        // undefined lets all gateway models show up in the wizard.
+        const entry = {
+          id: m.id,
+          name: m.displayName,
+          contextWindow: m.contextWindow,
+        };
+        if (m.isDefault) entry.recommended = true;
+        return entry;
+      }),
       envVars: existing?.envVars ?? [],
     };
   });
 
   // Keep metadata-only providers (stubs with 0 models) that aren't in the gateway,
   // so we don't accidentally drop providers that users might configure offline.
+  // Alias-aware: a stub whose aliased id matches a gateway provider is dropped.
   const gatewayIds = new Set(gatewayProviders.map(p => p.name));
-  const stubs = metadata.providers.filter(p => !gatewayIds.has(p.id));
+  const stubs = metadata.providers.filter(p => !gatewayIds.has(normalizeId(p.id)));
   if (stubs.length > 0) {
     console.log(`Preserving ${stubs.length} metadata-only stub providers (${stubs.map(s => s.id).join(', ')})`);
   }
