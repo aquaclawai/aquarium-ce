@@ -28,6 +28,7 @@ Users can discover and activate extensions for their AI agent instances without 
 - [x] Schema: workspace / runtimes / agents / issues / comments / agent_task_queue / task_messages / daemon_tokens tables with SQLite WAL + busy_timeout PRAGMAs and v1.4 shared types (validated in Phase 15)
 - [x] Runtime registry + bridge: unified `GET /api/runtimes` listing hosted + daemon runtimes, automatic mirroring of existing Aquarium instances into `runtimes` table via InstanceManager hooks, derived-via-JOIN status for hosted rows, and 30s offline sweeper for daemon heartbeats — all without modifying InstanceManager's write path (validated in Phase 16)
 - [x] Agents / Issues / Comments REST services: `/api/agents` with soft-archive preserving FKs + MCT validation, `/api/issues` with atomic `issue_number` allocation + fractional kanban reorder, `/api/comments` with threaded replies, and the Phase-17 slice of `task-queue-store` (enqueue + cancel only) wired into `applyIssueSideEffects` so assignment/reassignment/cancellation drive the task lifecycle atomically, plus auto-emitted `status_change` system comments (validated in Phase 17)
+- [x] Task Queue & Dispatch service surface: atomic `claimTask` under `BEGIN IMMEDIATE` + partial-unique coalescing, lifecycle transitions (`startTask` / `completeTask` / `failTask` / `cancelTask` / `isTaskCancelled`) with `.andWhere('status', <expected>)` race guards, `{ discarded: true }` semantics on complete/fail of already-cancelled tasks, 500ms `task-message-batcher` with `MAX(seq)+1` + `UNIQUE(task_id, seq)` backstop, and 30s `task-reaper` (5min `dispatched` / 2.5h `running` thresholds, `julianday()` timestamp compare) wired at `server-core.ts` Step 9c; every cancel path now fans out `task:cancelled` WS broadcasts (validated in Phase 18)
 
 ### Active
 
@@ -98,4 +99,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-16 after Phase 17 (Agent, Issue & Comment Services) completion*
+*Last updated: 2026-04-16 after Phase 18 (Task Queue & Dispatch) completion*
