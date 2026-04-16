@@ -11,7 +11,9 @@ import type { AgentTask, ClaimedTask, TaskStatus } from '@aquarium/shared';
  * Phase 17 surface:
  *   • enqueueTaskForIssue                  — ISSUE-02 assign hook
  *   • cancelPendingTasksForIssueAgent      — ISSUE-03 reassign swap
+ *                                            (18-04: returns CancelResult, opts `emitBroadcasts`)
  *   • cancelAllTasksForIssue               — ISSUE-04 issue cancellation
+ *                                            (18-04: returns CancelResult, opts `emitBroadcasts`)
  *   • getPendingTaskForIssueAgent          — idempotency check + tests
  *
  * Phase 18 surface (this file):
@@ -239,57 +241,197 @@ export interface CancelPendingArgs {
   issueId: string;
   agentId: string;
   trx?: Knex.Transaction;
-}
-
-/**
- * Cancel all pending tasks (queued|dispatched) for an (issue, agent) pair.
- * Used by ISSUE-03 reassignment swap — must run in the caller's trx so the
- * cancel + new-enqueue are atomic.
- */
-export async function cancelPendingTasksForIssueAgent(args: CancelPendingArgs): Promise<number> {
-  const r = runner(args.trx);
-  const affected = await r('agent_task_queue')
-    .where({
-      workspace_id: args.workspaceId,
-      issue_id: args.issueId,
-      agent_id: args.agentId,
-    })
-    .whereIn('status', ['queued', 'dispatched'])
-    .update({
-      status: 'cancelled',
-      cancelled_at: defaultDb.fn.now(),
-      updated_at: defaultDb.fn.now(),
-    });
-  return Number(affected);
+  /** Optional Knex override — used by unit tests to inject a throwaway SQLite. */
+  db?: Knex;
+  /**
+   * When true AND no `trx` is provided, the helper fires `task:cancelled` WS
+   * broadcasts per cancelled row AFTER its own transaction commits. When a
+   * caller supplies `trx`, this flag is ignored — the caller owns broadcasts
+   * to avoid ghost events on rollback. See 18-04-PLAN §threat_model T-18-19.
+   */
+  emitBroadcasts?: boolean;
 }
 
 export interface CancelAllTasksArgs {
   workspaceId: string;
   issueId: string;
   trx?: Knex.Transaction;
+  /** Optional Knex override — used by unit tests to inject a throwaway SQLite. */
+  db?: Knex;
+  /** See CancelPendingArgs.emitBroadcasts. */
+  emitBroadcasts?: boolean;
+}
+
+/**
+ * Uniform result shape for the two mass-cancel helpers.
+ *
+ * `count` preserves the Phase-17 contract (callers that used `.count` keep
+ * working). `cancelledTaskIds` is an id-only view for routes that only need
+ * to fan out broadcasts. `cancelledRows` carries the full (taskId, issueId,
+ * workspaceId, previousStatus) tuple so callers can broadcast AFTER their
+ * own commit without re-reading the DB.
+ */
+export interface CancelResult {
+  count: number;
+  cancelledTaskIds: string[];
+  cancelledRows: Array<{
+    taskId: string;
+    issueId: string;
+    workspaceId: string;
+    previousStatus: TaskStatus;
+  }>;
+}
+
+function emptyCancelResult(): CancelResult {
+  return { count: 0, cancelledTaskIds: [], cancelledRows: [] };
+}
+
+/**
+ * Emit a `task:cancelled` WS broadcast for each row. Fires AFTER the caller
+ * has committed its transaction (never from inside a trx — PITFALLS §SQ5).
+ */
+function broadcastCancelledRows(rows: CancelResult['cancelledRows']): void {
+  for (const r of rows) {
+    broadcast(r.workspaceId, {
+      type: 'task:cancelled',
+      taskId: r.taskId,
+      issueId: r.issueId,
+      payload: { taskId: r.taskId, issueId: r.issueId },
+    });
+  }
+}
+
+/**
+ * Cancel all pending tasks (queued|dispatched) for an (issue, agent) pair.
+ * Used by ISSUE-03 reassignment swap — must run in the caller's trx so the
+ * cancel + new-enqueue are atomic.
+ *
+ * Phase 18-04 return-shape change: returns `CancelResult` (count + ids + rows)
+ * so callers can broadcast `task:cancelled` per row after commit. The `count`
+ * field preserves the Phase-17 number-returning contract.
+ */
+export async function cancelPendingTasksForIssueAgent(
+  args: CancelPendingArgs,
+): Promise<CancelResult> {
+  const doWork = async (t: TxOrDb): Promise<CancelResult> => {
+    const rows = (await t('agent_task_queue')
+      .where({
+        workspace_id: args.workspaceId,
+        issue_id: args.issueId,
+        agent_id: args.agentId,
+      })
+      .whereIn('status', ['queued', 'dispatched'])
+      .select('id', 'status', 'issue_id', 'workspace_id')) as Array<{
+      id: string;
+      status: TaskStatus;
+      issue_id: string;
+      workspace_id: string;
+    }>;
+    if (rows.length === 0) return emptyCancelResult();
+
+    const ids = rows.map((r) => r.id);
+    // ST6 race guard: re-apply the status filter on the UPDATE so a concurrent
+    // writer transitioning the row first (e.g. reaper) cannot be clobbered.
+    await t('agent_task_queue')
+      .whereIn('id', ids)
+      .whereIn('status', ['queued', 'dispatched'])
+      .update({
+        status: 'cancelled',
+        cancelled_at: defaultDb.fn.now(),
+        updated_at: defaultDb.fn.now(),
+      });
+
+    return {
+      count: ids.length,
+      cancelledTaskIds: ids,
+      cancelledRows: rows.map((r) => ({
+        taskId: r.id,
+        issueId: r.issue_id,
+        workspaceId: r.workspace_id,
+        previousStatus: r.status,
+      })),
+    };
+  };
+
+  if (args.trx) {
+    // Caller owns the transaction — they also own broadcasts (to avoid ghost
+    // events on rollback). Do NOT broadcast here even if emitBroadcasts=true.
+    return doWork(args.trx);
+  }
+
+  const kx = resolveDb(args.db);
+  const result = await withImmediateTx(kx, (tx) => doWork(tx));
+
+  if (args.emitBroadcasts) {
+    broadcastCancelledRows(result.cancelledRows);
+  }
+
+  return result;
 }
 
 /**
  * Cancel every live task (queued|dispatched|running) for an issue. Used by
  * ISSUE-04 when the issue itself transitions to `status='cancelled'`. Includes
  * `running` because an in-flight task should stop when the issue is killed.
- * Phase 18 will attach runtime-side abort propagation around this — here we
- * only flip the DB state.
+ * Phase 19 + Phase 20 will attach runtime-side abort propagation (daemon
+ * SIGTERM, hosted AbortController) around this — here we only flip the DB
+ * state and (optionally) fire `task:cancelled` broadcasts.
+ *
+ * Phase 18-04 return-shape change: returns `CancelResult`. See
+ * `cancelPendingTasksForIssueAgent` above for the full contract.
  */
-export async function cancelAllTasksForIssue(args: CancelAllTasksArgs): Promise<number> {
-  const r = runner(args.trx);
-  const affected = await r('agent_task_queue')
-    .where({
-      workspace_id: args.workspaceId,
-      issue_id: args.issueId,
-    })
-    .whereIn('status', ['queued', 'dispatched', 'running'])
-    .update({
-      status: 'cancelled',
-      cancelled_at: defaultDb.fn.now(),
-      updated_at: defaultDb.fn.now(),
-    });
-  return Number(affected);
+export async function cancelAllTasksForIssue(
+  args: CancelAllTasksArgs,
+): Promise<CancelResult> {
+  const doWork = async (t: TxOrDb): Promise<CancelResult> => {
+    const rows = (await t('agent_task_queue')
+      .where({
+        workspace_id: args.workspaceId,
+        issue_id: args.issueId,
+      })
+      .whereIn('status', ['queued', 'dispatched', 'running'])
+      .select('id', 'status', 'issue_id', 'workspace_id')) as Array<{
+      id: string;
+      status: TaskStatus;
+      issue_id: string;
+      workspace_id: string;
+    }>;
+    if (rows.length === 0) return emptyCancelResult();
+
+    const ids = rows.map((r) => r.id);
+    await t('agent_task_queue')
+      .whereIn('id', ids)
+      .whereIn('status', ['queued', 'dispatched', 'running']) // ST6 race guard
+      .update({
+        status: 'cancelled',
+        cancelled_at: defaultDb.fn.now(),
+        updated_at: defaultDb.fn.now(),
+      });
+
+    return {
+      count: ids.length,
+      cancelledTaskIds: ids,
+      cancelledRows: rows.map((r) => ({
+        taskId: r.id,
+        issueId: r.issue_id,
+        workspaceId: r.workspace_id,
+        previousStatus: r.status,
+      })),
+    };
+  };
+
+  if (args.trx) {
+    return doWork(args.trx);
+  }
+
+  const kx = resolveDb(args.db);
+  const result = await withImmediateTx(kx, (tx) => doWork(tx));
+
+  if (args.emitBroadcasts) {
+    broadcastCancelledRows(result.cancelledRows);
+  }
+
+  return result;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

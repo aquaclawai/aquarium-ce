@@ -18,6 +18,7 @@ import { startGatewayEventRelay } from './services/gateway-event-relay.js';
 import { runDailySnapshots } from './services/snapshot-store.js';
 import { reconcileFromInstances as runtimeBridgeReconcile } from './task-dispatch/runtime-bridge.js';
 import { startRuntimeOfflineSweeper } from './task-dispatch/offline-sweeper.js';
+import { startTaskReaper } from './task-dispatch/task-reaper.js';
 import {
   dynamicCors,
   dynamicGeneralLimiter,
@@ -293,6 +294,14 @@ export async function startServer(server: HttpServer, options: StartServerOption
         console.warn('[runtime-bridge] reconcile failed:', err instanceof Error ? err.message : String(err));
       });
     }, 10_000);
+
+    // Step 9c: task reaper — fails tasks stuck in dispatched > 5 min or running > 2.5 h
+    // (cleans up after daemon crashes between claim and start, or mid-task deadlocks).
+    // Must start BEFORE server.listen so a stale task from a previous server crash
+    // is already being reaped when the first daemon registers.
+    // Phase 20 will later slot in Step 9b (fail-in-flight hosted tasks on boot) and
+    // Step 9d (hosted worker loop); the 9a/9c/9e ordering here is the Phase 18 cut.
+    startTaskReaper();
 
     // Step 9e: offline sweeper — flips daemon runtimes whose last_heartbeat_at
     // is > 90s old to status='offline'. Does NOT touch hosted_instance rows (ST1).
