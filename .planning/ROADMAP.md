@@ -257,15 +257,15 @@ Plans:
 3. Shared types exported from `@aquarium/shared` (Issue/Agent/Runtime/AgentTask/TaskMessage/Comment/DaemonRegisterRequest etc.) typecheck in both server and web workspaces
 4. Partial unique index on `agent_task_queue(issue_id, agent_id) WHERE status IN ('queued','dispatched')` rejects a second pending task for the same pair via a direct SQL test
 
-**Plans:** 6 plans
+**Plans:** 6/6 plans complete
 
 Plans:
-- [ ] 15-01-PLAN.md — Boot PRAGMAs (WAL/synchronous/busy_timeout/foreign_keys) + workspaces table + default AQ workspace seed (SCH-01, SCH-09)
-- [ ] 15-02-PLAN.md — runtimes table with kind discriminator CHECK + daemon_id XOR instance_id trigger + CASCADE FKs + partial index on instance_id (SCH-02)
-- [ ] 15-03-PLAN.md — agents table with max_concurrent_tasks 1..16 CHECK + custom_env/custom_args + archival + SET NULL on runtime_id (SCH-03)
-- [ ] 15-04-PLAN.md — issues (6-status, 5-priority, fractional REAL position, monotonic issue_number) + comments (4-type, threaded, XOR author) tables with triggers (SCH-04, SCH-07)
-- [ ] 15-05-PLAN.md — agent_task_queue (6-status, partial unique index for coalescing queued/dispatched) + task_messages ((task_id,seq) UNIQUE for replay) tables (SCH-05, SCH-06)
-- [ ] 15-06-PLAN.md — daemon_tokens table (SHA-256 hash storage) + @aquarium/shared v14-types.ts re-exported from index.ts (SCH-08, SCH-10)
+- [x] 15-01-PLAN.md — Boot PRAGMAs (WAL/synchronous/busy_timeout/foreign_keys) + workspaces table + default AQ workspace seed (SCH-01, SCH-09)
+- [x] 15-02-PLAN.md — runtimes table with kind discriminator CHECK + daemon_id XOR instance_id trigger + CASCADE FKs + partial index on instance_id (SCH-02)
+- [x] 15-03-PLAN.md — agents table with max_concurrent_tasks 1..16 CHECK + custom_env/custom_args + archival + SET NULL on runtime_id (SCH-03)
+- [x] 15-04-PLAN.md — issues (6-status, 5-priority, fractional REAL position, monotonic issue_number) + comments (4-type, threaded, XOR author) tables with triggers (SCH-04, SCH-07)
+- [x] 15-05-PLAN.md — agent_task_queue (6-status, partial unique index for coalescing queued/dispatched) + task_messages ((task_id,seq) UNIQUE for replay) tables (SCH-05, SCH-06)
+- [x] 15-06-PLAN.md — daemon_tokens table (SHA-256 hash storage) + @aquarium/shared v14-types.ts re-exported from index.ts (SCH-08, SCH-10)
 
 ### Phase 16: Runtime Registry + Runtime-Bridge
 **Goal:** Users can list all runtimes (hosted + daemon) in a single unified view, and the platform automatically mirrors existing Aquarium instances into the new `runtimes` table as `hosted_instance` rows without modifying `InstanceManager`.
@@ -423,7 +423,7 @@ Plans:
 | 12. Extension Operations | v1.3 | 3/3 | Complete | 2026-04-05 |
 | 13. Health Integration | v1.3 | 2/2 | Complete    | 2026-04-05 |
 | 14. Plugin Cleanup | v1.3 | 2/2 | Complete    | 2026-04-05 |
-| 15. Schema & Shared Types | v1.4 | 0/? | Not started | - |
+| 15. Schema & Shared Types | v1.4 | 6/6 | Complete    | 2026-04-16 |
 | 16. Runtime Registry + Bridge | v1.4 | 0/? | Not started | - |
 | 17. Agent/Issue/Comment Services | v1.4 | 0/? | Not started | - |
 | 18. Task Queue & Dispatch | v1.4 | 0/? | Not started | - |

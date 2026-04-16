@@ -63,16 +63,16 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 
 ### Schema & Shared Types
 
-- [ ] **SCH-01**: Workspace entity exists (CE single default `'AQ'` workspace); all new v1.4 tables FK to `workspace_id` for EE compatibility
-- [ ] **SCH-02**: `runtimes` table with three `kind` values (`local_daemon | external_cloud_daemon | hosted_instance`) and CHECK constraint ensuring `daemon_id XOR instance_id`
-- [ ] **SCH-03**: `agents` table with `instructions`, `custom_env`, `custom_args`, `max_concurrent_tasks DEFAULT 6 CHECK 1..16`, `visibility`, `status`, `archived_at/by`
-- [ ] **SCH-04**: `issues` table with 6-status machine (`backlog | todo | in_progress | done | blocked | cancelled`), priority, assignee, `position FLOAT` for kanban ordering, monotonic `issue_number` per workspace
-- [ ] **SCH-05**: `agent_task_queue` table with 6-status machine, `trigger_comment_id`, `session_id`, `work_dir` and partial unique index on `(issue_id, agent_id) WHERE status IN ('queued','dispatched')`
-- [ ] **SCH-06**: `task_messages` table with `(task_id, seq)` index for streamed agent execution events
-- [ ] **SCH-07**: `comments` table with `type IN ('comment','status_change','progress_update','system')` and `parent_id` for threading
-- [ ] **SCH-08**: `daemon_tokens` table with hashed token storage, expires_at, last_used_at, and revoked_at
-- [ ] **SCH-09**: Mandatory SQLite PRAGMAs applied at boot (`journal_mode=WAL`, `synchronous=NORMAL`, `busy_timeout=5000`) and verified
-- [ ] **SCH-10**: Shared TypeScript types exported from `@aquarium/shared` for Issue / Agent / Runtime / Task / TaskMessage / Comment / daemon REST request-response shapes
+- [x] **SCH-01**: Workspace entity exists (CE single default `'AQ'` workspace); all new v1.4 tables FK to `workspace_id` for EE compatibility
+- [x] **SCH-02**: `runtimes` table with three `kind` values (`local_daemon | external_cloud_daemon | hosted_instance`) and CHECK constraint ensuring `daemon_id XOR instance_id`
+- [x] **SCH-03**: `agents` table with `instructions`, `custom_env`, `custom_args`, `max_concurrent_tasks DEFAULT 6 CHECK 1..16`, `visibility`, `status`, `archived_at/by`
+- [x] **SCH-04**: `issues` table with 6-status machine (`backlog | todo | in_progress | done | blocked | cancelled`), priority, assignee, `position FLOAT` for kanban ordering, monotonic `issue_number` per workspace
+- [x] **SCH-05**: `agent_task_queue` table with 6-status machine, `trigger_comment_id`, `session_id`, `work_dir` and partial unique index on `(issue_id, agent_id) WHERE status IN ('queued','dispatched')`
+- [x] **SCH-06**: `task_messages` table with `(task_id, seq)` index for streamed agent execution events
+- [x] **SCH-07**: `comments` table with `type IN ('comment','status_change','progress_update','system')` and `parent_id` for threading
+- [x] **SCH-08**: `daemon_tokens` table with hashed token storage, expires_at, last_used_at, and revoked_at
+- [x] **SCH-09**: Mandatory SQLite PRAGMAs applied at boot (`journal_mode=WAL`, `synchronous=NORMAL`, `busy_timeout=5000`) and verified
+- [x] **SCH-10**: Shared TypeScript types exported from `@aquarium/shared` for Issue / Agent / Runtime / Task / TaskMessage / Comment / daemon REST request-response shapes
 
 ### Runtime Registry
 
