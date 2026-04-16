@@ -148,8 +148,25 @@ export interface UpsertHostedRuntimeArgs {
  */
 export async function upsertHostedRuntime(args: UpsertHostedRuntimeArgs): Promise<void> {
   const adapter = getAdapter();
-  await db('runtimes')
-    .insert({
+  // SQLite does not support `ON CONFLICT(instance_id)` against a *partial*
+  // UNIQUE index unless the conflict target's WHERE predicate is supplied —
+  // and knex does not expose that option. We achieve idempotency with a
+  // transactional UPDATE-then-INSERT instead: the UPDATE touches only
+  // `name` + `updated_at` (never `status`, preserving ST1 HARD), and the
+  // partial UNIQUE(instance_id) from migration 009 still guarantees at-most-one
+  // hosted mirror per instance under concurrent callers (second INSERT fails
+  // the UNIQUE and is handled inside the transaction).
+  await db.transaction(async (trx) => {
+    const existing = await trx('runtimes')
+      .where({ instance_id: args.instanceId })
+      .first('id');
+    if (existing) {
+      await trx('runtimes')
+        .where({ id: existing.id as string })
+        .update({ name: args.name, updated_at: db.fn.now() });
+      return;
+    }
+    await trx('runtimes').insert({
       id: randomUUID(),
       workspace_id: args.workspaceId,
       name: args.name,
@@ -164,9 +181,8 @@ export async function upsertHostedRuntime(args: UpsertHostedRuntimeArgs): Promis
       owner_user_id: args.ownerUserId,
       created_at: db.fn.now(),
       updated_at: db.fn.now(),
-    })
-    .onConflict('instance_id')
-    .merge({ name: args.name, updated_at: db.fn.now() });
+    });
+  });
 }
 
 export interface UpsertDaemonRuntimeArgs {
