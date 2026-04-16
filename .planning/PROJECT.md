@@ -8,18 +8,18 @@ A self-hosted AI agent management platform (Aquarium CE) that manages OpenClaw g
 
 Users can discover and activate extensions for their AI agent instances without leaving the dashboard, with credentials encrypted at rest and untrusted code blocked by default.
 
-## Current Milestone: v1.3 Gateway Communication Overhaul
+## Current Milestone: v1.4 Task Delegation Platform
 
-**Goal:** Redesign platform ↔ gateway communication so the gateway is the source of truth when containers are running, replacing the current DB-first pattern with gateway-first operations and event-driven state sync.
+**Goal:** Transform Aquarium CE into a multica-style task-delegation platform where users assign structured Issues to Agents, which execute as Tasks on Runtimes — unifying platform-hosted instances and external CLI agents (Claude Code, Codex, Hermes, etc.) installed on user machines via a local daemon.
 
 **Target features:**
-- Route all RPC calls through the persistent WebSocket connection (eliminate ephemeral connections)
-- Event-driven DB sync — listen to gateway events to update DB state
-- Gateway-first config updates — operate on gateway, sync DB on success
-- Hot-reload extensions via config.patch instead of full container restarts
-- Eliminate config file rewrites for running instances (only seed on creation)
-- Fix config integrity check to stop fighting gateway normalization
-- Add gateway-level health checks alongside Docker container status polling
+- Workspace / Agent / Runtime / Issue / Task data model (multica-aligned)
+- Daemon REST API: register / heartbeat / claim / task lifecycle endpoints with daemon-token auth
+- Node.js daemon CLI (`aquarium daemon start`) — auto-detects local CLIs on PATH and registers each as a Runtime
+- TS agent backends: spawn + stream-json parsing for Claude Code, Codex, OpenClaw, OpenCode, Hermes
+- Hosted runtime driver: existing Aquarium Docker instances exposed as a third Runtime mode, executing tasks via gateway RPC
+- Web UI: Issue kanban board, Issue detail with live task message streaming, Agents + Runtimes management, Daemon token issuance
+- Issue-centric chat with task event streaming (replaces ad-hoc extension sessions for task-oriented flows)
 
 ## Requirements
 
@@ -29,26 +29,23 @@ Users can discover and activate extensions for their AI agent instances without 
 
 ### Active
 
-- [ ] Extension lifecycle state machine (pending → installed → active → disabled/degraded/failed)
-- [ ] Per-instance fenced operation locks with cooperative cancellation
-- [ ] Skill install/configure/enable/disable/uninstall via dashboard
-- [ ] Plugin install/configure/activate/enable/disable/uninstall via dashboard
-- [ ] Bundled + ClawHub catalog browsing with trust signals
-- [ ] Deny-by-default trust policy (bundled/verified allow, community/unscanned block)
-- [ ] Admin trust override with credential-access consent and audit trail
-- [ ] Extension-scoped credential injection via SecretRef (all tiers)
-- [ ] Template export with workspace allowlist, config scrubbing, trust re-evaluation on import
-- [ ] Version pinning with integrity hash verification
-- [ ] 3-phase startup (seedConfig → boot+reconcile → pending replay)
-- [ ] OAuth proxy flow for plugins requiring browser-based auth
-- [ ] Offline artifact caching for air-gapped deployments
+- [ ] Schema: workspace / agent / agent_runtime / issue / agent_task_queue / comment / activity_log / daemon_token tables (SQLite)
+- [ ] Daemon REST API: register / heartbeat / deregister / claim / start / progress / messages / complete / fail / status endpoints with daemon-token middleware
+- [ ] Node daemon CLI: `aquarium daemon start` auto-detecting claude / codex / openclaw / opencode / hermes on PATH
+- [ ] TS agent backends with stream-json parsing for at least claude-code, codex, openclaw, opencode
+- [ ] Hosted runtime mode: existing Aquarium instances dispatched via gateway RPC as a built-in server-side task driver
+- [ ] Issue board + Issue detail page with live task message streaming (tool_use / tool_result / text)
+- [ ] Agent/Runtime management UI and daemon token issuance UI
+- [ ] Chat-on-issue experience with WebSocket streaming of task lifecycle events
 
 ### Out of Scope
 
-- Plugin development within Aquarium — out of scope for management platform
-- Chat-based extension management — disabled for managed instances (§5.7)
+- Plugin development within Aquarium — unchanged from prior milestones
+- Chat-based extension management — unchanged
 - Per-plugin process isolation — requires upstream OpenClaw architecture changes
-- Arbitrary user-selected file export — dropped from v1 due to unresolvable secret-leakage risk
+- Multi-workspace switching in CE (schema keeps workspace_id but CE uses a single default workspace; EE is free to enable)
+- Multica-style Skills / Projects / Labels / Autopilots / Inbox richness / Attachments / Session resume — deferred to v1.5+
+- pgvector-style semantic search over issues — SQLite CE keeps simple LIKE-based search
 
 ## Context
 
@@ -81,5 +78,22 @@ Users can discover and activate extensions for their AI agent instances without 
 | Plugin install defers config.patch to activation | Prevents accidental loading by other restarts | — Pending |
 | 3-phase startup with reconcile-before-replay | Crash-recovered extensions checked before blind reinstall | — Pending |
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-04-05 after v1.3 milestone initialization*
+*Last updated: 2026-04-16 after v1.4 milestone initialization*

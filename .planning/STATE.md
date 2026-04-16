@@ -1,36 +1,36 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: Gateway Communication Overhaul
-status: verifying
-stopped_at: Completed 14-01-PLAN.md
-last_updated: "2026-04-05T05:46:12.165Z"
-last_activity: 2026-04-05
+milestone: v1.4
+milestone_name: Task Delegation Platform
+status: defining_requirements
+stopped_at: Milestone v1.4 started
+last_updated: "2026-04-16T00:00:00.000Z"
+last_activity: 2026-04-16
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 13
-  completed_plans: 13
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-05)
+See: .planning/PROJECT.md (updated 2026-04-16)
 
-**Core value:** Gateway is the source of truth when containers are running; DB is the persistence layer for offline state and container initialization
-**Current focus:** Phase 12 -- Extension Operations
+**Core value:** Aquarium is the control plane where users delegate work to AI agents — whether platform-hosted Docker instances or user-managed CLIs (Claude Code, Codex, Hermes) reached through a local daemon.
+**Current focus:** Defining v1.4 requirements and roadmap
 
 ## Current Position
 
-Phase: 14 of 13 (plugin cleanup)
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-05
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-16 — Milestone v1.4 started
 
-Progress: [█████████░] 92%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
