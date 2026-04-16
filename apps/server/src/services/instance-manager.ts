@@ -23,6 +23,7 @@ import { scanContent } from './dlp-scanner.js';
 import { createNotification } from './notification-store.js';
 import { reconcileExtensions, replayPendingExtensions } from './extension-lifecycle.js';
 import { gatewayCall } from '../agent-types/openclaw/gateway-rpc.js';
+import * as runtimeBridge from '../task-dispatch/runtime-bridge.js';
 
 // ── helpers ──
 
@@ -163,6 +164,7 @@ export async function createInstance(userId: string, req: CreateInstanceRequest)
 
   const instance = toInstance(row);
   await addEvent(instance.id, 'created');
+  await runtimeBridge.onInstanceCreated(instance);
   return instance;
 }
 
@@ -472,6 +474,7 @@ export async function cloneInstance(sourceId: string, userId: string): Promise<I
 
   const cloned = toInstance(row);
   await addEvent(cloned.id, 'cloned', { sourceInstanceId: sourceId });
+  await runtimeBridge.onInstanceCreated(cloned);
   return cloned;
 }
 
@@ -820,6 +823,9 @@ export async function updateInstanceConfig(id: string, userId: string, config: R
   }
 
   await db('instances').where({ id }).update(patch);
+  if (typeof patch.name === 'string' && patch.name.trim()) {
+    await runtimeBridge.onInstanceRenamed(id, patch.name);
+  }
   return (await getInstance(id, userId))!;
 }
 
@@ -952,6 +958,9 @@ export async function patchGatewayConfig(
       }
 
       await db('instances').where({ id: instanceId }).update(patch);
+      if (typeof patch.name === 'string' && patch.name.trim()) {
+        await runtimeBridge.onInstanceRenamed(instanceId, patch.name);
+      }
       return;
     } catch (patchErr: unknown) {
       const errMsg = patchErr instanceof Error ? patchErr.message : String(patchErr);
