@@ -300,6 +300,15 @@ Plans:
 4. Moving an issue to `cancelled` transitions all its queued/dispatched/running tasks to `cancelled` in a single transaction
 5. Posting a comment with `trigger_comment_id` set enqueues a task with that comment as context; posting a status-change comment appears in the timeline as `type='status_change'`
 
+**Plans:** 5 plans
+
+Plans:
+- [ ] 17-01-PLAN.md — Agents service + REST routes (AGENT-01, AGENT-02)
+- [ ] 17-02-PLAN.md — Issues service + REST routes with fractional reorder (ISSUE-01, ISSUE-05)
+- [ ] 17-03-PLAN.md — Issue status transitions + task-queue-store enqueue/cancel hooks (ISSUE-02, ISSUE-03, ISSUE-04)
+- [ ] 17-04-PLAN.md — Comments service + routes + system comments + trigger-comment enqueue (COMMENT-01, COMMENT-02, COMMENT-03)
+- [ ] 17-05-PLAN.md — Playwright E2E covering AGENT/ISSUE/COMMENT + partial-unique invariant
+
 ### Phase 18: Task Queue & Dispatch
 **Goal:** Tasks are claimed atomically under SQLite and streamed through a consistent lifecycle with a reaper that handles stale dispatch and orphaned running states, providing the core queue abstraction that daemon and hosted workers share.
 **Depends on:** Phase 16, Phase 17
@@ -433,7 +442,7 @@ Plans:
 | 14. Plugin Cleanup | v1.3 | 2/2 | Complete    | 2026-04-05 |
 | 15. Schema & Shared Types | v1.4 | 6/6 | Complete    | 2026-04-16 |
 | 16. Runtime Registry + Bridge | v1.4 | 4/4 | Complete    | 2026-04-16 |
-| 17. Agent/Issue/Comment Services | v1.4 | 0/? | Not started | - |
+| 17. Agent/Issue/Comment Services | v1.4 | 0/5 | Planned     | - |
 | 18. Task Queue & Dispatch | v1.4 | 0/? | Not started | - |
 | 19. Daemon REST API & Auth | v1.4 | 0/? | Not started | - |
 | 20. Hosted-Instance Driver | v1.4 | 0/? | Not started | - |
