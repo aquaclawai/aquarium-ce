@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Task Delegation Platform
-status: defining_requirements
-stopped_at: Milestone v1.4 started
+status: roadmap_ready
+stopped_at: Roadmap created — Phase 15 ready to plan
 last_updated: "2026-04-16T00:00:00.000Z"
 last_activity: 2026-04-16
 progress:
-  total_phases: 0
+  total_phases: 12
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-16)
 
 **Core value:** Aquarium is the control plane where users delegate work to AI agents — whether platform-hosted Docker instances or user-managed CLIs (Claude Code, Codex, Hermes) reached through a local daemon.
-**Current focus:** Defining v1.4 requirements and roadmap
+**Current focus:** Phase 15 — Schema & Shared Types (foundation for all downstream v1.4 work)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 15 of 26 (Schema & Shared Types — ready to plan)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-16 — Milestone v1.4 started
+Status: Roadmap created, Phase 15 ready for `/gsd-discuss-phase 15` or `/gsd-plan-phase 15`
+Last activity: 2026-04-16 — v1.4 roadmap committed
 
 Progress: [░░░░░░░░░░] 0%
 
