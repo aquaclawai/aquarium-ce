@@ -12,6 +12,7 @@ import {
   type ListIssuesOpts,
   type ReorderIssueArgs,
 } from '../services/issue-store.js';
+import { broadcast } from '../ws/index.js';
 import type { ApiResponse, Issue, IssueStatus } from '@aquarium/shared';
 
 const router = Router();
@@ -94,6 +95,11 @@ router.post('/', async (req, res) => {
       dueDate: body.dueDate ?? null,
       metadata: body.metadata,
     });
+    broadcast(DEFAULT_WORKSPACE_ID, {
+      type: 'issue:created',
+      issueId: issue.id,
+      payload: issue,
+    });
     res.status(201).json({ ok: true, data: issue } satisfies ApiResponse<Issue>);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -118,6 +124,11 @@ router.patch('/:id', async (req, res) => {
       res.status(404).json({ ok: false, error: 'Issue not found' } satisfies ApiResponse);
       return;
     }
+    broadcast(DEFAULT_WORKSPACE_ID, {
+      type: 'issue:updated',
+      issueId: issue.id,
+      payload: issue,
+    });
     res.json({ ok: true, data: issue } satisfies ApiResponse<Issue>);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -141,6 +152,10 @@ router.delete('/:id', async (req, res) => {
       res.status(404).json({ ok: false, error: 'Issue not found' } satisfies ApiResponse);
       return;
     }
+    broadcast(DEFAULT_WORKSPACE_ID, {
+      type: 'issue:deleted',
+      issueId: req.params.id,
+    });
     res.json({ ok: true } satisfies ApiResponse);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -163,6 +178,11 @@ router.post('/:id/reorder', async (req, res) => {
       res.status(404).json({ ok: false, error: 'Issue not found' } satisfies ApiResponse);
       return;
     }
+    broadcast(DEFAULT_WORKSPACE_ID, {
+      type: 'issue:reordered',
+      issueId: issue.id,
+      payload: { position: issue.position },
+    });
     res.json({ ok: true, data: issue } satisfies ApiResponse<Issue>);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

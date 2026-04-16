@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { db } from '../db/index.js';
 import { getAdapter } from '../db/adapter.js';
+import {
+  enqueueTaskForIssue,
+  cancelPendingTasksForIssueAgent,
+  cancelAllTasksForIssue,
+} from './task-queue-store.js';
 import type { Issue, IssueStatus, IssuePriority } from '@aquarium/shared';
 import type { Knex } from 'knex';
 
@@ -156,10 +161,81 @@ export interface UpdateIssuePatch {
 }
 
 /**
- * Pure field update — no task enqueue / cancel side-effects. Those attach in
- * plan 17-03 which wraps this function. We DO maintain terminal-status
- * timestamp bookkeeping here (completed_at / cancelled_at) because it is a
- * pure field concern and keeps the FK-downstream readers honest.
+ * Status / assignee transition side-effects (ISSUE-02, ISSUE-03, ISSUE-04).
+ *
+ * Runs inside the same transaction as updateIssue's field UPDATE so that
+ * cancel-old + enqueue-new under reassignment, and cancel-all under
+ * issue-cancellation, are atomic. Branches are mutually exclusive:
+ *
+ *   next.status='cancelled' & prev.status!='cancelled'     → cancelAllTasksForIssue (ISSUE-04)
+ *   assigneeId changed (reassignment):                      ISSUE-03
+ *     · prev.assigneeId !== null                           → cancelPendingTasksForIssueAgent
+ *     · next.assigneeId !== null & next.status!='backlog'  → enqueueTaskForIssue   (ISSUE-02)
+ *   assigneeId unchanged & prev.status='backlog' & next!='backlog' & assignee set
+ *                                                          → enqueueTaskForIssue   (ISSUE-02)
+ *
+ * Notes:
+ *   • Clearing the assignee (next.assigneeId = null) counts as a reassignment — the
+ *     old pending task is cancelled and no new task is enqueued.
+ *   • Reassigning to the SAME agent (prev === next) is not a reassignment and
+ *     produces zero writes here (task-queue-store's idempotency guards a no-op
+ *     even if the ladder were traversed).
+ */
+async function applyIssueSideEffects(
+  trx: Knex.Transaction,
+  workspaceId: string,
+  prev: { status: string; assigneeId: string | null },
+  next: { status: string; assigneeId: string | null },
+  issueId: string,
+): Promise<void> {
+  // ISSUE-04: transition to 'cancelled' cancels every live task (pending + running)
+  if (next.status === 'cancelled' && prev.status !== 'cancelled') {
+    await cancelAllTasksForIssue({ workspaceId, issueId, trx });
+    return;
+  }
+
+  const reassignment = next.assigneeId !== prev.assigneeId;
+  const leavingBacklog = prev.status === 'backlog' && next.status !== 'backlog';
+
+  // ISSUE-03: reassignment swap (including assign→null and null→assign)
+  if (reassignment) {
+    if (prev.assigneeId) {
+      await cancelPendingTasksForIssueAgent({
+        workspaceId,
+        issueId,
+        agentId: prev.assigneeId,
+        trx,
+      });
+    }
+    if (next.assigneeId && next.status !== 'backlog') {
+      // ISSUE-02: new assignee on a non-backlog issue auto-enqueues
+      await enqueueTaskForIssue({
+        workspaceId,
+        issueId,
+        agentId: next.assigneeId,
+        trx,
+      });
+    }
+    return;
+  }
+
+  // ISSUE-02: same assignee, issue moved OUT of backlog — enqueue if assignee present
+  if (leavingBacklog && next.assigneeId) {
+    await enqueueTaskForIssue({
+      workspaceId,
+      issueId,
+      agentId: next.assigneeId,
+      trx,
+    });
+  }
+}
+
+/**
+ * Field update + status/assignee side-effects.
+ *
+ * Terminal-status timestamp bookkeeping (completed_at / cancelled_at) and the
+ * task-queue side-effect dispatch both run inside the same `db.transaction()`
+ * that wraps the field UPDATE. Any thrown error rolls back the whole unit.
  */
 export async function updateIssue(
   id: string,
@@ -195,6 +271,25 @@ export async function updateIssue(
     if (patch.metadata !== undefined) update.metadata = adapter.jsonValue(patch.metadata);
 
     await trx('issues').where({ id, workspace_id: workspaceId }).update(update);
+
+    // Compute effective next values — fields not in the patch stay at existing.
+    const nextStatus: string = (patch.status ?? existing.status) as string;
+    const nextAssigneeId: string | null =
+      patch.assigneeId !== undefined
+        ? patch.assigneeId
+        : ((existing.assignee_id as string) ?? null);
+
+    await applyIssueSideEffects(
+      trx,
+      workspaceId,
+      {
+        status: existing.status as string,
+        assigneeId: (existing.assignee_id as string) ?? null,
+      },
+      { status: nextStatus, assigneeId: nextAssigneeId },
+      id,
+    );
+
     const row = await trx('issues').where({ id, workspace_id: workspaceId }).first();
     return row ? toIssue(row as Record<string, unknown>) : null;
   });
