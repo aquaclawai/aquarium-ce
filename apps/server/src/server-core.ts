@@ -217,6 +217,17 @@ export async function startServer(server: HttpServer, options: StartServerOption
       loadExtensions: [runningFromDist ? '.js' : '.ts'],
     });
 
+    // CE: apply + assert SQLite concurrency PRAGMAs (SCH-09; pitfalls SQ1, SQ5).
+    // Must run after migrations (so DB file exists) and before downstream
+    // reconciliation / health monitor / instance work touches the DB.
+    if (config.isCE) {
+      const { getAdapter } = await import('./db/adapter.js');
+      const adapter = getAdapter();
+      if (adapter.applyBootPragmas) {
+        await adapter.applyBootPragmas(db);
+      }
+    }
+
     await options.onAfterMigrate?.();
 
     // CE mode: ensure a default admin user exists (single-user self-hosted)
