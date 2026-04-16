@@ -25,11 +25,11 @@ Users can discover and activate extensions for their AI agent instances without 
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] Schema: workspace / runtimes / agents / issues / comments / agent_task_queue / task_messages / daemon_tokens tables with SQLite WAL + busy_timeout PRAGMAs and v1.4 shared types (validated in Phase 15)
 
 ### Active
 
-- [ ] Schema: workspace / agent / agent_runtime / issue / agent_task_queue / comment / activity_log / daemon_token tables (SQLite)
+
 - [ ] Daemon REST API: register / heartbeat / deregister / claim / start / progress / messages / complete / fail / status endpoints with daemon-token middleware
 - [ ] Node daemon CLI: `aquarium daemon start` auto-detecting claude / codex / openclaw / opencode / hermes on PATH
 - [ ] TS agent backends with stream-json parsing for at least claude-code, codex, openclaw, opencode
@@ -96,4 +96,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-16 after v1.4 milestone initialization*
+*Last updated: 2026-04-16 after Phase 15 (Schema & Shared Types) completion*
