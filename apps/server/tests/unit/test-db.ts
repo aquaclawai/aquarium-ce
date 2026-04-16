@@ -210,3 +210,48 @@ export async function seedTask(db: Knex, args: SeedTaskArgs): Promise<string> {
   });
   return id;
 }
+
+// ── Daemon token seed helper (Phase 19) ─────────────────────────────────────
+
+export interface SeedDaemonTokenArgs {
+  workspaceId?: string;
+  name?: string;
+  revoked?: boolean;
+  expiresAt?: string | null;
+  createdByUserId?: string | null;
+  /** Override the computed token_hash — used by middleware tests to exercise
+   *  the `timingSafeEqual` length-mismatch guard. */
+  tokenHashOverride?: string;
+  /** Optional explicit daemon_id (defaults to null; populated after first register). */
+  daemonId?: string | null;
+}
+
+export async function seedDaemonToken(
+  db: Knex,
+  args: SeedDaemonTokenArgs = {},
+): Promise<{ id: string; plaintext: string; tokenHash: string }> {
+  // Deferred import avoids a circular-import at test-setup time; the service
+  // module itself imports the production db singleton which we do NOT want to
+  // touch from within the throwaway-SQLite fixture.
+  const { generateDaemonTokenPlaintext, hashDaemonToken } = await import(
+    '../../src/services/daemon-token-store.js'
+  );
+  const plaintext = generateDaemonTokenPlaintext();
+  const tokenHash = args.tokenHashOverride ?? hashDaemonToken(plaintext);
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  await db('daemon_tokens').insert({
+    id,
+    workspace_id: args.workspaceId ?? 'AQ',
+    token_hash: tokenHash,
+    name: args.name ?? `test-token-${id.slice(0, 8)}`,
+    daemon_id: args.daemonId ?? null,
+    created_by_user_id: args.createdByUserId ?? null,
+    expires_at: args.expiresAt ?? null,
+    last_used_at: null,
+    revoked_at: args.revoked ? now : null,
+    created_at: now,
+    updated_at: now,
+  });
+  return { id, plaintext, tokenHash };
+}
