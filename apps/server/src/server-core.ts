@@ -57,6 +57,7 @@ import agentRoutes from './routes/agents.js';
 import issueRoutes from './routes/issues.js';
 import commentRoutes, { issueCommentRouter } from './routes/comments.js';
 import daemonRoutes from './routes/daemon.js';
+import daemonTokenRoutes from './routes/daemon-tokens.js';
 import { attachWebSocketProxy } from './routes/instance-proxy.js';
 import { getInstance } from './services/instance-manager.js';
 import type { AuthPayload } from './middleware/auth.js';
@@ -176,6 +177,9 @@ export function createApp(options: CreateAppOptions = {}): { app: express.Applic
   // exempt from the two global `/api/` rate limiters above; its own
   // per-token bucket (DAEMON-08) is mounted inside routes/daemon.ts.
   app.use('/api/daemon', daemonRoutes);
+  // Phase 19-03: user-facing daemon-token management (cookie-JWT authed via
+  // `requireAuth` inside the router — AUTH1 rejects `adt_*` bearers here).
+  app.use('/api/daemon-tokens', daemonTokenRoutes);
   app.use('/api/instances', credentialRoutes);
   app.use('/api/instances', rpcProxyRoutes);
   app.use('/api/agent-types', agentTypeRoutes);
