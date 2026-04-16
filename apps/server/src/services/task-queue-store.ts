@@ -94,6 +94,46 @@ function resolveDb(dbOverride?: Knex): Knex {
 }
 
 /**
+ * Open an explicit `BEGIN IMMEDIATE` txn via Knex's `.transaction()` helper —
+ * Knex starts with a stock `BEGIN;` (deferred), which we immediately ROLLBACK
+ * and replace with `BEGIN IMMEDIATE`. Knex still owns the connection lease and
+ * the final COMMIT/ROLLBACK is driven by the promise return / throw from `fn`.
+ *
+ * Why the ROLLBACK dance is necessary:
+ *   • Knex's better-sqlite3 dialect hard-codes `BEGIN` at transaction start and
+ *     does not expose an IMMEDIATE flag.
+ *   • Calling `trx.raw('BEGIN IMMEDIATE')` inside an already-open Knex txn
+ *     errors with "cannot start a transaction within a transaction".
+ *   • Calling `kx.raw('BEGIN IMMEDIATE')` on the root Knex bypasses the pool's
+ *     connection pinning, so concurrent callers step on each other.
+ *   • `ROLLBACK` + `BEGIN IMMEDIATE` inside the Knex-managed trx keeps the
+ *     connection lease (pool=1 serialisation) and upgrades the transaction
+ *     mode to IMMEDIATE, giving us PITFALLS §SQ1's deferred-upgrade fix.
+ *
+ * Under CE's `pool: { min: 1, max: 1 }` (knexfile.ts), Knex.transaction() is
+ * already serialising through one better-sqlite3 connection; the IMMEDIATE
+ * upgrade is a safety belt for:
+ *   • future Worker-thread readers (would break pool=1 invariant)
+ *   • external writers (debug `sqlite3` shell running against the same file)
+ *   • documentation — the code reads as intentional serialisation, not as
+ *     "just works because pool=1".
+ *
+ * If Knex ever exposes a native IMMEDIATE option this helper collapses into
+ * `kx.transaction(fn, { immediate: true })`.
+ */
+async function withImmediateTx<T>(
+  kx: Knex,
+  fn: (trx: Knex.Transaction) => Promise<T>,
+): Promise<T> {
+  return kx.transaction(async (trx) => {
+    // Close Knex's default `BEGIN;` and start fresh with `BEGIN IMMEDIATE`.
+    await trx.raw('ROLLBACK');
+    await trx.raw('BEGIN IMMEDIATE');
+    return fn(trx);
+  });
+}
+
+/**
  * Look up an existing pending task (queued|dispatched) for an (issue, agent)
  * pair. Matches the predicate of partial-unique index
  * `idx_one_pending_task_per_issue_agent` (migration 007).
@@ -340,12 +380,10 @@ export async function claimTask(
   dbOverride?: Knex,
 ): Promise<ClaimedTask | null> {
   const kx = resolveDb(dbOverride);
-  const claimed = await kx.transaction(async (trx) => {
-    await trx.raw('BEGIN IMMEDIATE');
-
+  const claimed = await withImmediateTx(kx, async (tx) => {
     // Inner SELECT — highest priority, oldest first, respecting
     // agent.max_concurrent_tasks and agent.archived_at.
-    const candidate = await trx('agent_task_queue as q')
+    const candidate = await tx('agent_task_queue as q')
       .join('agents as a', 'a.id', 'q.agent_id')
       .where('q.runtime_id', runtimeId)
       .andWhere('q.status', 'queued')
@@ -359,7 +397,7 @@ export async function claimTask(
     if (!candidate) return null;
 
     const candidateId = candidate.id as string;
-    const affected = await trx('agent_task_queue')
+    const affected = await tx('agent_task_queue')
       .where({ id: candidateId })
       .andWhere('status', 'queued')
       .update({
@@ -373,11 +411,11 @@ export async function claimTask(
       return null;
     }
 
-    const row = (await trx('agent_task_queue').where({ id: candidateId }).first()) as
+    const row = (await tx('agent_task_queue').where({ id: candidateId }).first()) as
       | Record<string, unknown>
       | undefined;
     if (!row) return null;
-    return hydrateClaimedTask(trx, row);
+    return hydrateClaimedTask(tx, row);
   });
 
   if (claimed) {
@@ -403,9 +441,8 @@ export async function startTask(
   dbOverride?: Knex,
 ): Promise<{ started: boolean; status: TaskStatus }> {
   const kx = resolveDb(dbOverride);
-  return kx.transaction(async (trx) => {
-    await trx.raw('BEGIN IMMEDIATE');
-    const affected = await trx('agent_task_queue')
+  return withImmediateTx(kx, async (tx) => {
+    const affected = await tx('agent_task_queue')
       .where({ id: taskId })
       .andWhere('status', 'dispatched')
       .update({
@@ -414,7 +451,7 @@ export async function startTask(
         updated_at: defaultDb.fn.now(),
       });
     if (affected === 0) {
-      const row = (await trx('agent_task_queue').where({ id: taskId }).first('status')) as
+      const row = (await tx('agent_task_queue').where({ id: taskId }).first('status')) as
         | { status: TaskStatus }
         | undefined;
       return { started: false, status: row?.status ?? 'queued' };
@@ -451,9 +488,8 @@ export async function completeTask(
 ): Promise<TerminalResult> {
   const kx = resolveDb(dbOverride);
   const adapter = getAdapter();
-  return kx.transaction(async (trx) => {
-    await trx.raw('BEGIN IMMEDIATE');
-    const current = (await trx('agent_task_queue')
+  return withImmediateTx(kx, async (tx) => {
+    const current = (await tx('agent_task_queue')
       .where({ id: taskId })
       .first('status')) as { status: TaskStatus } | undefined;
     if (!current) {
@@ -462,7 +498,7 @@ export async function completeTask(
     if (current.status === 'cancelled') {
       return { discarded: true, status: 'cancelled' };
     }
-    const affected = await trx('agent_task_queue')
+    const affected = await tx('agent_task_queue')
       .where({ id: taskId })
       .andWhere('status', 'running')
       .update({
@@ -472,7 +508,7 @@ export async function completeTask(
         updated_at: defaultDb.fn.now(),
       });
     if (affected === 0) {
-      const latest = (await trx('agent_task_queue')
+      const latest = (await tx('agent_task_queue')
         .where({ id: taskId })
         .first('status')) as { status: TaskStatus } | undefined;
       return {
@@ -496,9 +532,8 @@ export async function failTask(
   dbOverride?: Knex,
 ): Promise<TerminalResult> {
   const kx = resolveDb(dbOverride);
-  return kx.transaction(async (trx) => {
-    await trx.raw('BEGIN IMMEDIATE');
-    const current = (await trx('agent_task_queue')
+  return withImmediateTx(kx, async (tx) => {
+    const current = (await tx('agent_task_queue')
       .where({ id: taskId })
       .first('status')) as { status: TaskStatus } | undefined;
     if (!current) {
@@ -507,7 +542,7 @@ export async function failTask(
     if (current.status === 'cancelled') {
       return { discarded: true, status: 'cancelled' };
     }
-    const affected = await trx('agent_task_queue')
+    const affected = await tx('agent_task_queue')
       .where({ id: taskId })
       .whereIn('status', ['dispatched', 'running'])
       .update({
@@ -517,7 +552,7 @@ export async function failTask(
         updated_at: defaultDb.fn.now(),
       });
     if (affected === 0) {
-      const latest = (await trx('agent_task_queue')
+      const latest = (await tx('agent_task_queue')
         .where({ id: taskId })
         .first('status')) as { status: TaskStatus } | undefined;
       return {
@@ -544,17 +579,17 @@ export async function cancelTask(
   dbOverride?: Knex,
 ): Promise<{ cancelled: boolean; previousStatus: TaskStatus | null }> {
   const kx = resolveDb(dbOverride);
-  const result = await kx.transaction(
+  const result = await withImmediateTx(
+    kx,
     async (
-      trx,
+      tx,
     ): Promise<{
       cancelled: boolean;
       previousStatus: TaskStatus | null;
       workspaceId: string | null;
       issueId: string | null;
     }> => {
-      await trx.raw('BEGIN IMMEDIATE');
-      const current = (await trx('agent_task_queue')
+      const current = (await tx('agent_task_queue')
         .where({ id: taskId })
         .first('status', 'workspace_id', 'issue_id')) as
         | { status: TaskStatus; workspace_id: string; issue_id: string }
@@ -562,7 +597,7 @@ export async function cancelTask(
       if (!current) {
         return { cancelled: false, previousStatus: null, workspaceId: null, issueId: null };
       }
-      const affected = await trx('agent_task_queue')
+      const affected = await tx('agent_task_queue')
         .where({ id: taskId })
         .whereIn('status', ['queued', 'dispatched', 'running'])
         .update({

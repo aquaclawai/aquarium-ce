@@ -1,15 +1,330 @@
 import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  setupTestDb,
+  teardownTestDb,
+  seedRuntime,
+  seedAgent,
+  seedIssue,
+  seedTask,
+} from './test-db.js';
+import {
+  claimTask,
+  startTask,
+  completeTask,
+  failTask,
+  cancelTask,
+  isTaskCancelled,
+} from '../../src/services/task-queue-store.js';
 
 /**
  * Phase 18-01 task-queue lifecycle tests.
  *
- * Wave 0 stub: one `test.todo(...)` per requirement so the file exists and
- * `node --test` discovers it. The real assertions land in Task 4 of 18-01.
+ * Covered:
+ *   • TASK-01 / SC-1: single claim + 20-concurrent claim coalescing
+ *   • TASK-02: dispatched → running → completed transitions (claimTask already
+ *     covered queued → dispatched in the claim tests).
+ *   • TASK-06: completeTask / failTask on `cancelled` return
+ *     { discarded: true, status: 'cancelled' } without throwing.
+ *   • TASK-05 surface: cancelTask flips DB + isTaskCancelled reads truth.
+ *
+ * Every test sets up its own isolated SQLite file (tmpdir) and tears it down
+ * in `finally`. No test depends on ordering or shared state.
  */
 
-test.todo('claim: single claim — BEGIN IMMEDIATE + NOT EXISTS subquery returns queued row exactly once (TASK-01)');
-test.todo('claim: 20-concurrent — Promise.all of claimTask yields 1 dispatched per (issue, agent) pair (TASK-01 / SC-1)');
-test.todo('lifecycle: dispatched → running → completed (TASK-02)');
-test.todo('discard: completeTask on cancelled returns { discarded: true } without error (TASK-06)');
-test.todo('discard: failTask on cancelled returns { discarded: true } without error (TASK-06)');
-test.todo('cancelTask: cancel flips status and isTaskCancelled returns true (TASK-05 service surface)');
+test('claim: single queued task → dispatched exactly once (TASK-01)', async () => {
+  const ctx = await setupTestDb();
+  try {
+    const runtimeId = await seedRuntime(ctx.db);
+    const agentId = await seedAgent(ctx.db, { runtimeId });
+    const issueId = await seedIssue(ctx.db, { issueNumber: 1, assigneeId: agentId });
+    const taskId = await seedTask(ctx.db, { issueId, agentId, runtimeId });
+
+    const claimed = await claimTask(runtimeId, ctx.db);
+    assert.ok(claimed, 'first claim returns a ClaimedTask');
+    assert.equal(claimed?.id, taskId);
+    assert.equal(claimed?.status, 'dispatched');
+    assert.ok(claimed?.dispatchedAt, 'dispatched_at is set');
+    // ClaimedTask hydration — agent + issue snapshot present
+    assert.equal(claimed?.agent.id, agentId);
+    assert.equal(claimed?.issue.id, issueId);
+
+    // Second claim on same runtime returns null (only one queued task existed).
+    const secondClaim = await claimTask(runtimeId, ctx.db);
+    assert.equal(secondClaim, null);
+
+    // DB reflects exactly one dispatched row for this runtime.
+    const dispatchedCount = await ctx.db('agent_task_queue')
+      .where({ runtime_id: runtimeId, status: 'dispatched' })
+      .count<{ n: number }[]>({ n: '*' });
+    assert.equal(Number(dispatchedCount[0]?.n ?? 0), 1);
+  } finally {
+    await teardownTestDb(ctx);
+  }
+});
+
+test('claim: 20 concurrent pollers over N queued tasks dispatch at most N rows (TASK-01 / SC-1)', async () => {
+  const ctx = await setupTestDb();
+  try {
+    const runtimeId = await seedRuntime(ctx.db);
+
+    // 5 distinct (issue, agent) pairs so the partial-unique index does not
+    // conflate them. max_concurrent_tasks=6 per agent so the cap never trips
+    // for this scenario (1 task per agent).
+    const NUM_TASKS = 5;
+    const seededTaskIds: string[] = [];
+    for (let i = 0; i < NUM_TASKS; i += 1) {
+      const agentId = await seedAgent(ctx.db, { runtimeId, name: `agent-${i}` });
+      const issueId = await seedIssue(ctx.db, {
+        issueNumber: i + 1,
+        assigneeId: agentId,
+      });
+      seededTaskIds.push(await seedTask(ctx.db, { issueId, agentId, runtimeId }));
+    }
+
+    // Fire 20 concurrent claims. Pool=1 serialises them through one connection
+    // but the property we assert is: each queued row is claimed exactly once.
+    const NUM_POLLERS = 20;
+    const results = await Promise.all(
+      Array.from({ length: NUM_POLLERS }, () => claimTask(runtimeId, ctx.db)),
+    );
+
+    // Non-null results = actually claimed tasks.
+    const claimed = results.filter((r) => r !== null);
+    assert.equal(
+      claimed.length,
+      NUM_TASKS,
+      `expected exactly ${NUM_TASKS} successful claims over ${NUM_POLLERS} pollers`,
+    );
+
+    // Every claimed task id is distinct (no duplicate dispatch).
+    const ids = claimed.map((c) => c!.id);
+    const uniqueIds = new Set(ids);
+    assert.equal(uniqueIds.size, NUM_TASKS, 'every claimed task id is unique');
+
+    // Every seeded task is now `dispatched`, with a timestamp.
+    const dispatchedRows = await ctx.db('agent_task_queue')
+      .where({ runtime_id: runtimeId, status: 'dispatched' })
+      .select('id', 'dispatched_at');
+    assert.equal(dispatchedRows.length, NUM_TASKS);
+    for (const row of dispatchedRows) {
+      assert.ok(row.dispatched_at, `task ${row.id} has dispatched_at`);
+    }
+  } finally {
+    await teardownTestDb(ctx);
+  }
+});
+
+test('claim: respects agent.max_concurrent_tasks (AGENT-02)', async () => {
+  const ctx = await setupTestDb();
+  try {
+    const runtimeId = await seedRuntime(ctx.db);
+    // Single agent with cap=1 and three issues → at most one can dispatch.
+    const agentId = await seedAgent(ctx.db, { runtimeId, maxConcurrentTasks: 1 });
+    for (let i = 0; i < 3; i += 1) {
+      const issueId = await seedIssue(ctx.db, {
+        issueNumber: i + 1,
+        assigneeId: agentId,
+        title: `Issue ${i}`,
+      });
+      await seedTask(ctx.db, { issueId, agentId, runtimeId });
+    }
+
+    const first = await claimTask(runtimeId, ctx.db);
+    assert.ok(first, 'first claim succeeds');
+    const second = await claimTask(runtimeId, ctx.db);
+    assert.equal(
+      second,
+      null,
+      'second claim is null — agent at cap, NOT EXISTS guard prevents dispatch',
+    );
+  } finally {
+    await teardownTestDb(ctx);
+  }
+});
+
+test('lifecycle: claim → start → complete transitions cleanly (TASK-02)', async () => {
+  const ctx = await setupTestDb();
+  try {
+    const runtimeId = await seedRuntime(ctx.db);
+    const agentId = await seedAgent(ctx.db, { runtimeId });
+    const issueId = await seedIssue(ctx.db, { issueNumber: 1, assigneeId: agentId });
+    const taskId = await seedTask(ctx.db, { issueId, agentId, runtimeId });
+
+    const claimed = await claimTask(runtimeId, ctx.db);
+    assert.equal(claimed?.id, taskId);
+    assert.equal(claimed?.status, 'dispatched');
+
+    const startRes = await startTask(taskId, ctx.db);
+    assert.deepEqual(startRes, { started: true, status: 'running' });
+
+    // Second start call is a no-op (status already running) — caller receives
+    // started:false, NOT an exception.
+    const secondStart = await startTask(taskId, ctx.db);
+    assert.equal(secondStart.started, false);
+    assert.equal(secondStart.status, 'running');
+
+    const completeRes = await completeTask(taskId, { ok: true }, ctx.db);
+    assert.deepEqual(completeRes, { discarded: false, status: 'completed' });
+
+    const row = await ctx.db('agent_task_queue').where({ id: taskId }).first();
+    assert.equal(row?.status, 'completed');
+    assert.ok(row?.completed_at);
+    // result JSON round-trip
+    assert.equal(row?.result, JSON.stringify({ ok: true }));
+  } finally {
+    await teardownTestDb(ctx);
+  }
+});
+
+test('lifecycle: startTask on queued (not dispatched) returns started:false (TASK-02)', async () => {
+  const ctx = await setupTestDb();
+  try {
+    const runtimeId = await seedRuntime(ctx.db);
+    const agentId = await seedAgent(ctx.db, { runtimeId });
+    const issueId = await seedIssue(ctx.db, { issueNumber: 1, assigneeId: agentId });
+    const taskId = await seedTask(ctx.db, { issueId, agentId, runtimeId, status: 'queued' });
+
+    const res = await startTask(taskId, ctx.db);
+    assert.equal(res.started, false);
+    assert.equal(res.status, 'queued');
+  } finally {
+    await teardownTestDb(ctx);
+  }
+});
+
+test('discard: completeTask on cancelled returns { discarded: true, status: cancelled } (TASK-06)', async () => {
+  const ctx = await setupTestDb();
+  try {
+    const runtimeId = await seedRuntime(ctx.db);
+    const agentId = await seedAgent(ctx.db, { runtimeId });
+    const issueId = await seedIssue(ctx.db, { issueNumber: 1, assigneeId: agentId });
+    const taskId = await seedTask(ctx.db, { issueId, agentId, runtimeId, status: 'cancelled' });
+    await ctx.db('agent_task_queue')
+      .where({ id: taskId })
+      .update({ cancelled_at: new Date().toISOString() });
+
+    const res = await completeTask(taskId, { ok: true }, ctx.db);
+    assert.deepEqual(res, { discarded: true, status: 'cancelled' });
+
+    // DB unchanged — status still cancelled, result NULL.
+    const row = await ctx.db('agent_task_queue').where({ id: taskId }).first();
+    assert.equal(row?.status, 'cancelled');
+    assert.equal(row?.result, null);
+    assert.equal(row?.completed_at, null);
+  } finally {
+    await teardownTestDb(ctx);
+  }
+});
+
+test('discard: failTask on cancelled returns { discarded: true, status: cancelled } (TASK-06)', async () => {
+  const ctx = await setupTestDb();
+  try {
+    const runtimeId = await seedRuntime(ctx.db);
+    const agentId = await seedAgent(ctx.db, { runtimeId });
+    const issueId = await seedIssue(ctx.db, { issueNumber: 1, assigneeId: agentId });
+    const taskId = await seedTask(ctx.db, { issueId, agentId, runtimeId, status: 'cancelled' });
+    await ctx.db('agent_task_queue')
+      .where({ id: taskId })
+      .update({ cancelled_at: new Date().toISOString() });
+
+    const res = await failTask(taskId, 'daemon crashed', ctx.db);
+    assert.deepEqual(res, { discarded: true, status: 'cancelled' });
+
+    const row = await ctx.db('agent_task_queue').where({ id: taskId }).first();
+    assert.equal(row?.status, 'cancelled');
+    assert.equal(row?.error, null);
+  } finally {
+    await teardownTestDb(ctx);
+  }
+});
+
+test('discard: completeTask on already-completed is idempotent (TASK-06 idempotency)', async () => {
+  const ctx = await setupTestDb();
+  try {
+    const runtimeId = await seedRuntime(ctx.db);
+    const agentId = await seedAgent(ctx.db, { runtimeId });
+    const issueId = await seedIssue(ctx.db, { issueNumber: 1, assigneeId: agentId });
+    const taskId = await seedTask(ctx.db, { issueId, agentId, runtimeId, status: 'completed' });
+
+    const res = await completeTask(taskId, { again: true }, ctx.db);
+    assert.equal(res.discarded, true);
+    assert.equal(res.status, 'completed');
+  } finally {
+    await teardownTestDb(ctx);
+  }
+});
+
+test('cancel: cancelTask flips queued → cancelled and isTaskCancelled reads truth (TASK-05 surface)', async () => {
+  const ctx = await setupTestDb();
+  try {
+    const runtimeId = await seedRuntime(ctx.db);
+    const agentId = await seedAgent(ctx.db, { runtimeId });
+    const issueId = await seedIssue(ctx.db, { issueNumber: 1, assigneeId: agentId });
+    const taskId = await seedTask(ctx.db, { issueId, agentId, runtimeId, status: 'queued' });
+
+    assert.equal(await isTaskCancelled(taskId, ctx.db), false);
+
+    const res = await cancelTask(taskId, ctx.db);
+    assert.equal(res.cancelled, true);
+    assert.equal(res.previousStatus, 'queued');
+
+    assert.equal(await isTaskCancelled(taskId, ctx.db), true);
+
+    const row = await ctx.db('agent_task_queue').where({ id: taskId }).first();
+    assert.equal(row?.status, 'cancelled');
+    assert.ok(row?.cancelled_at);
+  } finally {
+    await teardownTestDb(ctx);
+  }
+});
+
+test('cancel: cancelTask on running task also flips to cancelled (TASK-05)', async () => {
+  const ctx = await setupTestDb();
+  try {
+    const runtimeId = await seedRuntime(ctx.db);
+    const agentId = await seedAgent(ctx.db, { runtimeId });
+    const issueId = await seedIssue(ctx.db, { issueNumber: 1, assigneeId: agentId });
+    const taskId = await seedTask(ctx.db, {
+      issueId,
+      agentId,
+      runtimeId,
+      status: 'running',
+      dispatchedAtIso: new Date().toISOString(),
+      startedAtIso: new Date().toISOString(),
+    });
+
+    const res = await cancelTask(taskId, ctx.db);
+    assert.equal(res.cancelled, true);
+    assert.equal(res.previousStatus, 'running');
+    assert.equal(await isTaskCancelled(taskId, ctx.db), true);
+  } finally {
+    await teardownTestDb(ctx);
+  }
+});
+
+test('cancel: cancelTask on terminal task is a no-op (TASK-05 idempotency)', async () => {
+  const ctx = await setupTestDb();
+  try {
+    const runtimeId = await seedRuntime(ctx.db);
+    const agentId = await seedAgent(ctx.db, { runtimeId });
+    const issueId = await seedIssue(ctx.db, { issueNumber: 1, assigneeId: agentId });
+    const taskId = await seedTask(ctx.db, { issueId, agentId, runtimeId, status: 'completed' });
+
+    const res = await cancelTask(taskId, ctx.db);
+    assert.equal(res.cancelled, false);
+    assert.equal(res.previousStatus, 'completed');
+    assert.equal(await isTaskCancelled(taskId, ctx.db), false);
+  } finally {
+    await teardownTestDb(ctx);
+  }
+});
+
+test('isTaskCancelled: unknown task id returns false (no throw)', async () => {
+  const ctx = await setupTestDb();
+  try {
+    assert.equal(await isTaskCancelled('00000000-0000-0000-0000-000000000000', ctx.db), false);
+  } finally {
+    await teardownTestDb(ctx);
+  }
+});
