@@ -52,6 +52,7 @@ import snapshotRoutes from './routes/snapshots.js';
 import instanceFilesRoutes from './routes/instance-files.js';
 import uiProxyRoutes from './routes/ui-proxy.js';
 import runtimeRoutes from './routes/runtimes.js';
+import agentRoutes from './routes/agents.js';
 import { attachWebSocketProxy } from './routes/instance-proxy.js';
 import { getInstance } from './services/instance-manager.js';
 import type { AuthPayload } from './middleware/auth.js';
@@ -150,6 +151,7 @@ export function createApp(options: CreateAppOptions = {}): { app: express.Applic
   app.use('/api/auth', authRoutes);
   app.use('/api/instances', instanceRoutes);
   app.use('/api/runtimes', runtimeRoutes);
+  app.use('/api/agents', agentRoutes);
   app.use('/api/instances', credentialRoutes);
   app.use('/api/instances', rpcProxyRoutes);
   app.use('/api/agent-types', agentTypeRoutes);
