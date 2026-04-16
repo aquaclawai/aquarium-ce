@@ -106,16 +106,16 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 
 ### Daemon REST API
 
-- [ ] **DAEMON-01**: `POST /api/daemon/register` returns runtime IDs for each registered provider on the daemon
-- [ ] **DAEMON-02**: `POST /api/daemon/heartbeat` updates `last_heartbeat_at` and returns any pending ping/update requests
-- [ ] **DAEMON-03**: `POST /api/daemon/deregister` marks runtimes offline on graceful daemon shutdown
-- [ ] **DAEMON-04**: `POST /api/daemon/runtimes/:id/tasks/claim` atomically returns the next queued task or `null`
-- [ ] **DAEMON-05**: `POST /api/daemon/tasks/:id/{start,progress,messages,complete,fail}` implements the task lifecycle with idempotent completion
-- [ ] **DAEMON-06**: `GET /api/daemon/tasks/:id/status` returns current status so daemons can detect server-side cancellation
-- [ ] **DAEMON-07**: All `/api/daemon/*` routes authenticate via `requireDaemonAuth` middleware only — cookie JWT is rejected
-- [ ] **DAEMON-08**: `/api/daemon/*` is exempt from the global 300-req/15-min rate limit but has per-token (~1000/min) quotas
-- [ ] **DAEMON-09**: Daemon tokens are prefixed `adt_<32 chars>`, stored only as SHA-256, and verified via `crypto.timingSafeEqual`
-- [ ] **DAEMON-10**: User can issue / list / revoke daemon tokens through the web UI; plaintext is shown once on creation
+- [x] **DAEMON-01**: `POST /api/daemon/register` returns runtime IDs for each registered provider on the daemon
+- [x] **DAEMON-02**: `POST /api/daemon/heartbeat` updates `last_heartbeat_at` and returns any pending ping/update requests
+- [x] **DAEMON-03**: `POST /api/daemon/deregister` marks runtimes offline on graceful daemon shutdown
+- [x] **DAEMON-04**: `POST /api/daemon/runtimes/:id/tasks/claim` atomically returns the next queued task or `null`
+- [x] **DAEMON-05**: `POST /api/daemon/tasks/:id/{start,progress,messages,complete,fail}` implements the task lifecycle with idempotent completion
+- [x] **DAEMON-06**: `GET /api/daemon/tasks/:id/status` returns current status so daemons can detect server-side cancellation
+- [x] **DAEMON-07**: All `/api/daemon/*` routes authenticate via `requireDaemonAuth` middleware only — cookie JWT is rejected
+- [x] **DAEMON-08**: `/api/daemon/*` is exempt from the global 300-req/15-min rate limit but has per-token (~1000/min) quotas
+- [x] **DAEMON-09**: Daemon tokens are prefixed `adt_<32 chars>`, stored only as SHA-256, and verified via `crypto.timingSafeEqual`
+- [x] **DAEMON-10**: User can issue / list / revoke daemon tokens through the web UI; plaintext is shown once on creation
 
 ### Hosted-Instance Driver
 

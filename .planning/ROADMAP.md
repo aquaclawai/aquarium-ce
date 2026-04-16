@@ -343,13 +343,13 @@ Plans:
 3. Daemon polling at 1 req/sec for 5 minutes against `/api/daemon/runtimes/:id/tasks/claim` is never blocked by the global 300-req/15-min rate limiter
 4. Revoked daemon tokens return 401 on the next request within 1 second (no caching leak)
 5. Daemon token creation returns the plaintext token exactly once; subsequent list endpoints show only the last-used timestamp and hashed prefix
-**Plans:** 4 plans
+**Plans:** 3/4 plans complete
 
 Plans:
-- [ ] 19-01-PLAN.md — requireDaemonAuth middleware + daemon-token-store service + AUTH1 patch in requireAuth (DAEMON-07, DAEMON-09)
-- [ ] 19-02-PLAN.md — 9 daemon REST endpoints + rate-limit topology (skip + per-token bucket) (DAEMON-01..06, DAEMON-08)
+- [x] 19-01-PLAN.md — requireDaemonAuth middleware + daemon-token-store service + AUTH1 patch in requireAuth (DAEMON-07, DAEMON-09)
+- [x] 19-02-PLAN.md — 9 daemon REST endpoints + rate-limit topology (skip + per-token bucket) (DAEMON-01..06, DAEMON-08)
 - [ ] 19-03-PLAN.md — 3 user-facing token-management endpoints (plaintext-once contract) (DAEMON-10)
-- [ ] 19-04-PLAN.md — Playwright E2E spec covering SC-1..SC-5 + full-story happy path
+- [x] 19-04-PLAN.md — Playwright E2E spec covering SC-1..SC-5 + full-story happy path
 
 
 ### Phase 20: Hosted-Instance Driver
@@ -461,7 +461,7 @@ Plans:
 | 16. Runtime Registry + Bridge | v1.4 | 4/4 | Complete    | 2026-04-16 |
 | 17. Agent/Issue/Comment Services | v1.4 | 5/5 | Complete    | 2026-04-16 |
 | 18. Task Queue & Dispatch | v1.4 | 4/4 | Complete    | 2026-04-16 |
-| 19. Daemon REST API & Auth | v1.4 | 0/4 | Not started | - |
+| 19. Daemon REST API & Auth | v1.4 | 3/4 | Complete    | 2026-04-16 |
 | 20. Hosted-Instance Driver | v1.4 | 0/? | Not started | - |
 | 21. Daemon CLI + claude-code | v1.4 | 0/? | Not started | - |
 | 22. Remaining Agent Backends | v1.4 | 0/? | Not started | - |
