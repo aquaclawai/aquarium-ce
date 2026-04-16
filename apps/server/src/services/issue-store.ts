@@ -5,6 +5,7 @@ import {
   enqueueTaskForIssue,
   cancelPendingTasksForIssueAgent,
   cancelAllTasksForIssue,
+  type CancelResult,
 } from './task-queue-store.js';
 import { createSystemComment } from './comment-store.js';
 import type { Issue, IssueStatus, IssuePriority } from '@aquarium/shared';
@@ -188,7 +189,9 @@ async function applyIssueSideEffects(
   prev: { status: string; assigneeId: string | null },
   next: { status: string; assigneeId: string | null },
   issueId: string,
-): Promise<void> {
+): Promise<{ cancelledTasks: CancelResult['cancelledRows'] }> {
+  const cancelledTasks: CancelResult['cancelledRows'] = [];
+
   // COMMENT-02: emit a system comment for every real status change. Runs BEFORE
   // the task-queue side-effects so the timeline shows "moved to cancelled"
   // ahead of the derived "tasks cancelled" effect. Captures pre-transition
@@ -223,8 +226,9 @@ async function applyIssueSideEffects(
 
   // ISSUE-04: transition to 'cancelled' cancels every live task (pending + running)
   if (next.status === 'cancelled' && prev.status !== 'cancelled') {
-    await cancelAllTasksForIssue({ workspaceId, issueId, trx });
-    return;
+    const res = await cancelAllTasksForIssue({ workspaceId, issueId, trx });
+    cancelledTasks.push(...res.cancelledRows);
+    return { cancelledTasks };
   }
 
   const reassignment = next.assigneeId !== prev.assigneeId;
@@ -233,12 +237,13 @@ async function applyIssueSideEffects(
   // ISSUE-03: reassignment swap (including assign→null and null→assign)
   if (reassignment) {
     if (prev.assigneeId) {
-      await cancelPendingTasksForIssueAgent({
+      const res = await cancelPendingTasksForIssueAgent({
         workspaceId,
         issueId,
         agentId: prev.assigneeId,
         trx,
       });
+      cancelledTasks.push(...res.cancelledRows);
     }
     if (next.assigneeId && next.status !== 'backlog') {
       // ISSUE-02: new assignee on a non-backlog issue auto-enqueues
@@ -249,7 +254,7 @@ async function applyIssueSideEffects(
         trx,
       });
     }
-    return;
+    return { cancelledTasks };
   }
 
   // ISSUE-02: same assignee, issue moved OUT of backlog — enqueue if assignee present
@@ -261,6 +266,22 @@ async function applyIssueSideEffects(
       trx,
     });
   }
+
+  return { cancelledTasks };
+}
+
+/**
+ * Return shape for `updateIssue` (Phase 18-04).
+ *
+ * `cancelledTasks` carries rows flipped to `cancelled` by side-effects of the
+ * update (ISSUE-03 reassign swap or ISSUE-04 issue cancel). Routes use it to
+ * fan out `task:cancelled` WS broadcasts after the transaction commits —
+ * broadcasting from inside the trx risks ghost events on rollback
+ * (18-04-PLAN §threat_model T-18-19).
+ */
+export interface UpdateIssueResult {
+  issue: Issue;
+  cancelledTasks: CancelResult['cancelledRows'];
 }
 
 /**
@@ -269,12 +290,16 @@ async function applyIssueSideEffects(
  * Terminal-status timestamp bookkeeping (completed_at / cancelled_at) and the
  * task-queue side-effect dispatch both run inside the same `db.transaction()`
  * that wraps the field UPDATE. Any thrown error rolls back the whole unit.
+ *
+ * Returns `null` when the issue does not exist in the workspace. Otherwise
+ * returns `{ issue, cancelledTasks }`; `cancelledTasks` is empty unless this
+ * update fired ISSUE-03 (reassign) or ISSUE-04 (cancel-all) side-effects.
  */
 export async function updateIssue(
   id: string,
   workspaceId: string,
   patch: UpdateIssuePatch,
-): Promise<Issue | null> {
+): Promise<UpdateIssueResult | null> {
   const adapter = getAdapter();
   if (patch.status !== undefined) validateStatus(patch.status);
   if (patch.priority !== undefined) validatePriority(patch.priority);
@@ -312,7 +337,7 @@ export async function updateIssue(
         ? patch.assigneeId
         : ((existing.assignee_id as string) ?? null);
 
-    await applyIssueSideEffects(
+    const sideEffects = await applyIssueSideEffects(
       trx,
       workspaceId,
       {
@@ -324,7 +349,11 @@ export async function updateIssue(
     );
 
     const row = await trx('issues').where({ id, workspace_id: workspaceId }).first();
-    return row ? toIssue(row as Record<string, unknown>) : null;
+    if (!row) return null;
+    return {
+      issue: toIssue(row as Record<string, unknown>),
+      cancelledTasks: sideEffects.cancelledTasks,
+    };
   });
 }
 

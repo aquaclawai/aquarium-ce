@@ -119,16 +119,30 @@ router.post('/', async (req, res) => {
 router.patch('/:id', async (req, res) => {
   try {
     const patch = (req.body ?? {}) as UpdateIssuePatch;
-    const issue = await updateIssue(req.params.id, DEFAULT_WORKSPACE_ID, patch);
-    if (!issue) {
+    const result = await updateIssue(req.params.id, DEFAULT_WORKSPACE_ID, patch);
+    if (!result) {
       res.status(404).json({ ok: false, error: 'Issue not found' } satisfies ApiResponse);
       return;
     }
+    const { issue, cancelledTasks } = result;
     broadcast(DEFAULT_WORKSPACE_ID, {
       type: 'issue:updated',
       issueId: issue.id,
       payload: issue,
     });
+    // Phase 18-04 TASK-05: after the service transaction commits, fan out a
+    // `task:cancelled` WS event per row cancelled by side-effects (ISSUE-03
+    // reassign swap or ISSUE-04 issue-cancel). The helpers passed `trx` to
+    // the service so they did NOT broadcast themselves — the route owns the
+    // broadcast to avoid ghost events on rollback (§threat_model T-18-19).
+    for (const row of cancelledTasks) {
+      broadcast(row.workspaceId, {
+        type: 'task:cancelled',
+        taskId: row.taskId,
+        issueId: row.issueId,
+        payload: { taskId: row.taskId, issueId: row.issueId },
+      });
+    }
     res.json({ ok: true, data: issue } satisfies ApiResponse<Issue>);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
