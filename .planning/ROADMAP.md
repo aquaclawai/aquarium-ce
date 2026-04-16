@@ -279,6 +279,14 @@ Plans:
 3. `runtime.status` for `kind='hosted_instance'` rows always matches `instances.status` in any READ query (derived via JOIN, never stored)
 4. The offline sweeper transitions daemon runtimes missing heartbeats > 90s to `status='offline'` within one sweep tick
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 16-01-PLAN.md — Migration 009 partial-UNIQUE index + services/runtime-registry.ts (listAll derived-status JOIN + UPSERT + heartbeat + offline) (RT-01, RT-04)
+- [ ] 16-02-PLAN.md — task-dispatch/runtime-bridge.ts hooks + 4 wiring sites in instance-manager.ts (RT-02, RT-03)
+- [ ] 16-03-PLAN.md — routes/runtimes.ts + task-dispatch/offline-sweeper.ts + server-core.ts boot steps 9a + 9e (RT-01, RT-05)
+- [ ] 16-04-PLAN.md — tests/e2e/runtimes.spec.ts covering RT-01..RT-05 + ST1 invariant proof
+
 ### Phase 17: Agent, Issue & Comment Services
 **Goal:** Users can create agents, issues, and comments through REST APIs, with issue status transitions automatically enqueueing/cancelling tasks so assignment acts as the primary trigger for agent work.
 **Depends on:** Phase 15 (parallel with Phase 16)
