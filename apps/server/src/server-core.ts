@@ -54,6 +54,7 @@ import uiProxyRoutes from './routes/ui-proxy.js';
 import runtimeRoutes from './routes/runtimes.js';
 import agentRoutes from './routes/agents.js';
 import issueRoutes from './routes/issues.js';
+import commentRoutes, { issueCommentRouter } from './routes/comments.js';
 import { attachWebSocketProxy } from './routes/instance-proxy.js';
 import { getInstance } from './services/instance-manager.js';
 import type { AuthPayload } from './middleware/auth.js';
@@ -154,6 +155,8 @@ export function createApp(options: CreateAppOptions = {}): { app: express.Applic
   app.use('/api/runtimes', runtimeRoutes);
   app.use('/api/agents', agentRoutes);
   app.use('/api/issues', issueRoutes);
+  app.use('/api/issues/:issueId/comments', issueCommentRouter);
+  app.use('/api/comments', commentRoutes);
   app.use('/api/instances', credentialRoutes);
   app.use('/api/instances', rpcProxyRoutes);
   app.use('/api/agent-types', agentTypeRoutes);
