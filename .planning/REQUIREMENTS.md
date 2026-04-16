@@ -84,16 +84,16 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 
 ### Agent, Issue, Comment Services
 
-- [ ] **AGENT-01**: User can create, update, archive, and restore agents with instructions, custom env, custom args, and a chosen runtime
-- [ ] **AGENT-02**: User can set an agent's `max_concurrent_tasks` (1-16) which is enforced at claim time
-- [ ] **ISSUE-01**: User can create, update, delete issues with title, description, priority, status, assignee, labels-free body
-- [ ] **ISSUE-02**: Assigning an issue to an agent while status ≠ `backlog` automatically enqueues a task
-- [ ] **ISSUE-03**: Reassigning an issue cancels any pending/dispatched task for the previous assignee and re-enqueues for the new one
-- [ ] **ISSUE-04**: Moving an issue to `cancelled` cancels all associated pending/running tasks
-- [ ] **ISSUE-05**: User can reorder issues on the kanban board via fractional `position` — server recomputes between neighbors
-- [ ] **COMMENT-01**: User can post comments on an issue; a comment with `trigger_comment_id` linkage triggers agent response
-- [ ] **COMMENT-02**: Status transitions and task completions emit system comments into the issue timeline
-- [ ] **COMMENT-03**: User can reply to a specific comment (threaded via `parent_id`)
+- [x] **AGENT-01**: User can create, update, archive, and restore agents with instructions, custom env, custom args, and a chosen runtime
+- [x] **AGENT-02**: User can set an agent's `max_concurrent_tasks` (1-16) which is enforced at claim time
+- [x] **ISSUE-01**: User can create, update, delete issues with title, description, priority, status, assignee, labels-free body
+- [x] **ISSUE-02**: Assigning an issue to an agent while status ≠ `backlog` automatically enqueues a task
+- [x] **ISSUE-03**: Reassigning an issue cancels any pending/dispatched task for the previous assignee and re-enqueues for the new one
+- [x] **ISSUE-04**: Moving an issue to `cancelled` cancels all associated pending/running tasks
+- [x] **ISSUE-05**: User can reorder issues on the kanban board via fractional `position` — server recomputes between neighbors
+- [x] **COMMENT-01**: User can post comments on an issue; a comment with `trigger_comment_id` linkage triggers agent response
+- [x] **COMMENT-02**: Status transitions and task completions emit system comments into the issue timeline
+- [x] **COMMENT-03**: User can reply to a specific comment (threaded via `parent_id`)
 
 ### Task Queue & Dispatch
 
