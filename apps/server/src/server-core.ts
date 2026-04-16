@@ -56,6 +56,7 @@ import runtimeRoutes from './routes/runtimes.js';
 import agentRoutes from './routes/agents.js';
 import issueRoutes from './routes/issues.js';
 import commentRoutes, { issueCommentRouter } from './routes/comments.js';
+import daemonRoutes from './routes/daemon.js';
 import { attachWebSocketProxy } from './routes/instance-proxy.js';
 import { getInstance } from './services/instance-manager.js';
 import type { AuthPayload } from './middleware/auth.js';
@@ -123,6 +124,10 @@ export function createApp(options: CreateAppOptions = {}): { app: express.Applic
       standardHeaders: true,
       legacyHeaders: false,
       validate: { trustProxy: false, xForwardedForHeader: false },
+      // DAEMON-08: daemon polling must not be throttled by the global user-IP
+      // bucket. /api/daemon/* has its own per-token bucket mounted inside
+      // routes/daemon.ts (keyed on tokenHash, 1000/60s).
+      skip: (req) => req.originalUrl.startsWith('/api/daemon/'),
     }));
 
     app.use('/api/auth/login', rateLimit({
@@ -145,7 +150,15 @@ export function createApp(options: CreateAppOptions = {}): { app: express.Applic
 
   // Dynamic rate limiters (admin-configurable) — also disabled in development for E2E tests
   if (config.nodeEnv === 'production') {
-    app.use('/api/', dynamicGeneralLimiter);
+    // DAEMON-08: wrap the admin-configurable general limiter so `/api/daemon/*`
+    // skips it. Daemon traffic uses the per-token bucket inside routes/daemon.ts.
+    app.use('/api/', (req, res, next) => {
+      if (req.originalUrl.startsWith('/api/daemon/')) {
+        next();
+        return;
+      }
+      dynamicGeneralLimiter(req, res, next);
+    });
     app.use('/api/auth/login', dynamicLoginLimiter);
     app.use('/api/credentials', dynamicCredentialsLimiter);
   }
@@ -158,6 +171,11 @@ export function createApp(options: CreateAppOptions = {}): { app: express.Applic
   app.use('/api/issues', issueRoutes);
   app.use('/api/issues/:issueId/comments', issueCommentRouter);
   app.use('/api/comments', commentRoutes);
+  // Phase 19: daemon REST surface — authenticated with `adt_*` bearer only
+  // (requireDaemonAuth is mounted inside the router). `/api/daemon/*` is
+  // exempt from the two global `/api/` rate limiters above; its own
+  // per-token bucket (DAEMON-08) is mounted inside routes/daemon.ts.
+  app.use('/api/daemon', daemonRoutes);
   app.use('/api/instances', credentialRoutes);
   app.use('/api/instances', rpcProxyRoutes);
   app.use('/api/agent-types', agentTypeRoutes);
