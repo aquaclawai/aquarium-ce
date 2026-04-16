@@ -178,19 +178,46 @@ test('reapOnce: leaves terminal tasks alone (completed/failed/cancelled)', async
 });
 
 test('startTaskReaper: idempotent — two calls register one interval, stopTaskReaper clears it', async (t) => {
-  // Uses the app singleton DB (empty agent_task_queue in this test process), so
-  // the initial sweep is a no-op. The test asserts no throws and that a second
-  // start() is a no-op (return early without creating a second interval).
-  t.after(() => {
+  // Use a throwaway test DB so the initial sweep doesn't pin the production
+  // SQLite connection (which would delay process exit by ~30s per pool idle).
+  const ctx = await setupTestDb();
+  t.after(async () => {
     stopTaskReaper();
+    await teardownTestDb(ctx);
   });
 
-  startTaskReaper();
-  startTaskReaper(); // should be a no-op — guarded by the module-level interval handle
+  // Seed one stale row so we can observe that the initial sweep ran.
+  const runtimeId = await seedRuntime(ctx.db);
+  const agentId = await seedAgent(ctx.db, { runtimeId });
+  const issueId = await seedIssue(ctx.db, { issueNumber: 1, assigneeId: agentId });
+  const staleTaskId = await seedTask(ctx.db, {
+    issueId,
+    agentId,
+    runtimeId,
+    status: 'dispatched',
+    dispatchedAtIso: new Date(Date.now() - 6 * 60_000).toISOString(),
+  });
+
+  startTaskReaper(ctx.db);
+  // Second call must be a no-op — guarded by the module-level interval handle.
+  // If it were NOT idempotent, a second setInterval would be registered and
+  // stopTaskReaper() would only clear one of them, leaking a timer.
+  startTaskReaper(ctx.db);
+
+  // Let the initial sweep drain (it's scheduled synchronously as a
+  // microtask by reapOnce(), so one event-loop pass is enough).
+  await new Promise((resolve) => setImmediate(resolve));
+  // Allow the async reapOnce promise chain to resolve.
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  // Initial sweep should have reaped the stale row.
+  const staleRow = await ctx.db('agent_task_queue').where({ id: staleTaskId }).first();
+  assert.equal(staleRow?.status, 'failed', 'initial sweep ran and flipped the stale row');
+
   stopTaskReaper();
 
   // Cold-restart parity: stop+start again behaves like a fresh start.
-  startTaskReaper();
+  startTaskReaper(ctx.db);
   stopTaskReaper();
 
   // stopTaskReaper is itself idempotent — second call without an active interval is fine.
