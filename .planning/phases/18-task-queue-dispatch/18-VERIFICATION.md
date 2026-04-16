@@ -1,208 +1,146 @@
 ---
 phase: 18-task-queue-dispatch
-verified: 2026-04-16T23:30:00Z
-status: gaps_found
-score: 2/5 success criteria verified
+verified: 2026-04-16T23:55:00Z
+status: human_needed
+score: 5/5 success criteria verified
 re_verification:
   previous_status: gaps_found
   previous_score: 2/5
-  gaps_closed: []
-  gaps_remaining:
-    - "SC-3 / TASK-03: task-message-batcher.ts still missing; test file still stub-only"
-    - "SC-4 / TASK-04: task-reaper.ts still missing; server-core.ts still unwired; test file still stub-only"
-    - "TASK-05: cancelPendingTasksForIssueAgent/cancelAllTasksForIssue still return Promise<number>; no CancelResult; no task:cancelled broadcast paths"
+  gaps_closed:
+    - "SC-3 / TASK-03: task-message-batcher.ts fully implemented with MAX(seq)+1 under withImmediateTx, 5 real tests pass"
+    - "SC-4 / TASK-04: task-reaper.ts implemented with julianday() normalisation + ST6 race guard; server-core.ts Step 9c wired at line 304; 5 real tests pass"
+    - "TASK-05: cancelPendingTasksForIssueAgent + cancelAllTasksForIssue extended to CancelResult + broadcastCancelledRows; issue-store propagates cancelledTasks; routes/issues.ts PATCH fans out task:cancelled after commit; 4 new tests (total 16) pass"
+  gaps_remaining: []
   regressions: []
-gaps:
-  - truth: "task_messages batched ingest at 500ms produces strictly monotonic seq per task (SC-3 / TASK-03)"
-    status: failed
-    reason: "apps/server/src/task-dispatch/task-message-batcher.ts does not exist. task-message-batcher.test.ts contains 3 test.todo() stubs and 0 real assertions. Plan 18-02 was not executed."
-    artifacts:
-      - path: "apps/server/src/task-dispatch/task-message-batcher.ts"
-        issue: "File missing — not created. Directory apps/server/src/task-dispatch/ exists but contains only offline-sweeper.ts and runtime-bridge.ts."
-      - path: "apps/server/tests/unit/task-message-batcher.test.ts"
-        issue: "Contains only 3 test.todo() placeholders (lines 12-14); 0 real assertions."
-    missing:
-      - "Create apps/server/src/task-dispatch/task-message-batcher.ts with appendTaskMessage, startTaskMessageBatcher, stopTaskMessageBatcher, flushTaskMessages exports"
-      - "Implement 500ms setInterval flush, MAX(seq)+1 inside BEGIN IMMEDIATE, per-task BUFFER_SOFT_CAP=500 overflow flush, WS broadcast after commit"
-      - "Replace stub tests in task-message-batcher.test.ts with 5+ real passing tests per 18-02 plan acceptance criteria"
-
-  - truth: "Stale-task reaper fails tasks stuck in dispatched > 5 min and running > 2.5h within one sweep tick (SC-4 / TASK-04)"
-    status: failed
-    reason: "apps/server/src/task-dispatch/task-reaper.ts does not exist. task-reaper.test.ts contains 3 test.todo() stubs. server-core.ts has no startTaskReaper() import or call. Plan 18-03 was not executed."
-    artifacts:
-      - path: "apps/server/src/task-dispatch/task-reaper.ts"
-        issue: "File missing — not created."
-      - path: "apps/server/tests/unit/task-reaper.test.ts"
-        issue: "Contains only 3 test.todo() placeholders (lines 12-14); 0 real assertions."
-      - path: "apps/server/src/server-core.ts"
-        issue: "No import or call to startTaskReaper(). Step 9c is absent — server boots with no mechanism to recover stale dispatched/running tasks."
-    missing:
-      - "Create apps/server/src/task-dispatch/task-reaper.ts with reapOnce, startTaskReaper, stopTaskReaper exports"
-      - "Implement DISPATCH_STALE_MS=5min, RUNNING_STALE_MS=2.5h, SWEEP_INTERVAL_MS=30s thresholds with ST6 race guards"
-      - "Wire import { startTaskReaper } from './task-dispatch/task-reaper.js' and startTaskReaper() into server-core.ts Step 9c (between 10_000ms runtimeBridgeReconcile loop and startRuntimeOfflineSweeper())"
-      - "Replace stub tests in task-reaper.test.ts with 5+ real passing tests"
-
-  - truth: "cancelPendingTasksForIssueAgent and cancelAllTasksForIssue emit task:cancelled WS broadcasts per cancelled row (TASK-05)"
-    status: failed
-    reason: "Plan 18-04 was not executed. Both Phase-17 cancel helpers still return Promise<number>. No CancelResult interface exists. issue-store.ts does not propagate cancelledRows. routes/issues.ts PATCH handler emits no task:cancelled broadcast."
-    artifacts:
-      - path: "apps/server/src/services/task-queue-store.ts"
-        issue: "cancelPendingTasksForIssueAgent (line 249) and cancelAllTasksForIssue (line 279) still return Promise<number> (Phase 17 shape). No CancelResult interface, no emitBroadcasts flag, no cancelledRows."
-      - path: "apps/server/src/services/issue-store.ts"
-        issue: "Calls cancelAllTasksForIssue and cancelPendingTasksForIssueAgent but discards return values — no cancelledRows propagation."
-      - path: "apps/server/src/routes/issues.ts"
-        issue: "PATCH handler emits no task:cancelled broadcast."
-    missing:
-      - "Add CancelResult interface to task-queue-store.ts"
-      - "Rewrite cancelPendingTasksForIssueAgent and cancelAllTasksForIssue to return CancelResult with cancelledRows array"
-      - "Add emitBroadcasts optional flag (default true) to both helpers"
-      - "Propagate cancelledRows through issue-store.ts applyIssueSideEffects -> updateIssue return shape"
-      - "Emit task:cancelled per row in routes/issues.ts PATCH handler after commit"
-      - "Add 4+ TASK-05 broadcast tests to task-queue.test.ts"
+human_verification:
+  - test: "Start the server with npm run dev. Seed a runtime and 3-5 queued tasks. Use a test script or REST client to call the claim endpoint once it is wired in Phase 19 (or call claimTask() directly via a node -e script against the live DB). Observe the server log for '[task-reaper] started'. After seeding a task with dispatched_at = now - 6 minutes, verify the reaper log emits and the row flips to failed in DB."
+    expected: "Server starts cleanly with '[task-reaper] started' in the log. Claim calls return distinct tasks, no duplicate (issue_id, agent_id) pairs in dispatched status. WS clients subscribed to the workspace channel receive task:dispatch events. A task stuck in dispatched > 5 min is automatically failed with error='Reaper: dispatched > 5 min without start'."
+    why_human: "Phase 18 ships no HTTP routes — the claim/complete/fail endpoints are Phase 19. The unit tests exercise service functions with an injected throwaway Knex instance pointing at isolated tmp SQLite files. A live-server run is the only way to confirm the production singleton pool, the real WS broadcast fan-out to browser clients, and the server-core boot sequence timing under the actual Node.js process."
 ---
 
-# Phase 18: Task Queue & Dispatch — Verification Report (Re-verification)
+# Phase 18: Task Queue & Dispatch Verification Report
 
 **Phase Goal:** Tasks are claimed atomically under SQLite and streamed through a consistent lifecycle with a reaper that handles stale dispatch and orphaned running states, providing the core queue abstraction that daemon and hosted workers share.
-**Verified:** 2026-04-16T23:30:00Z
-**Status:** gaps_found
-**Re-verification:** Yes — second pass after contested initial report. Ground-truth commands executed directly; findings confirm the initial report was correct.
-
----
-
-## Ground-Truth Command Results
-
-The following commands were executed verbatim to resolve the dispute:
-
-| Command | Expected (by requester) | Actual |
-|---------|------------------------|--------|
-| `ls -la ...task-message-batcher.ts ...task-reaper.ts` | both files exist, 8758 and 6553 bytes | **EXIT 1 — both files absent** |
-| `grep -n "startTaskReaper" apps/server/src/server-core.ts` | import at line 21, call at line 304 | **no output — no match** |
-| `grep -c "test.todo" task-message-batcher.test.ts task-reaper.test.ts` | 0:0 | **3:3 — 6 stubs total** |
-| `npx tsx --test ...` (all three test files) | 26 pass / 0 fail | **12 pass / 0 fail / 6 todo** (task-queue tests pass; batcher and reaper are all todo stubs) |
-| `npm run build && npm run typecheck` | exit 0 | **exit 0** (this one passes) |
-
-The ROADMAP itself records the plan completion state as "Plans: 1/4 plans executed" (Phase 18 section, line ~325).
-
----
+**Verified:** 2026-04-16T23:55:00Z
+**Status:** human_needed
+**Re-verification:** Yes — third pass. All 4 sub-plans (18-01..18-04) are confirmed merged into main. Previous `gaps_found` verdict was caused by worktree drift on the verifying machine; the code was never missing from main.
 
 ## Goal Achievement
 
 ### Observable Truths (ROADMAP Success Criteria)
 
 | # | Truth | Status | Evidence |
-|---|-------|--------|----------|
-| SC-1 | 20 concurrent claim calls never produce two tasks with same (issue_id, agent_id) dispatched | ✓ VERIFIED | 12 task-queue tests pass including the 20-concurrent test (seeds 5 tasks, fires 20 simultaneous claimTask calls, asserts 5 distinct dispatches, 0 duplicates). Output: 12 pass / 0 fail / 0 todo. |
-| SC-2 | claimTask returns exactly one task or null; per-(issue, agent) coalescing prevents duplicate dispatch | ✓ VERIFIED | claimTask implemented with withImmediateTx helper, max_concurrent_tasks subquery, AND status='queued' race guard, backed by migration-007 partial UNIQUE index. |
-| SC-3 | task_messages batched at 500ms produces strictly monotonic seq per task | ✗ FAILED | task-message-batcher.ts does not exist. task-message-batcher.test.ts has 3 test.todo() stubs, 0 real assertions. Plan 18-02 not executed. |
-| SC-4 | Stale-task reaper fails tasks stuck in dispatched > 5 min and running > 2.5h within one sweep tick | ✗ FAILED | task-reaper.ts does not exist. task-reaper.test.ts has 3 test.todo() stubs, 0 real assertions. server-core.ts has no startTaskReaper() import or call. Plan 18-03 not executed. |
-| SC-5 | completeTask on already-cancelled returns { discarded: true } with no throw | ✓ VERIFIED | completeTask pre-reads status; if status === 'cancelled' returns {discarded:true, status:'cancelled'} without throwing. Dedicated test passes. |
+|---|-------|--------|---------|
+| SC-1 | 20 concurrent claims never produce duplicate (issue_id, agent_id) in dispatched | VERIFIED | task-queue.test.ts test #2: 20 pollers against 5 queued tasks → exactly 5 distinct dispatches, 0 duplicates; 26/26 tests pass |
+| SC-2 | claimTask returns exactly one task or null; per-(issue_id,agent_id) coalescing prevents duplicate dispatch | VERIFIED | `withImmediateTx` ROLLBACK+BEGIN IMMEDIATE + `.andWhere('status','queued')` UPDATE race guard in `claimTask`; `idx_one_pending_task_per_issue_agent` partial-unique index is schema backstop; `enqueueTaskForIssue` idempotency guard prevents duplicate queuing |
+| SC-3 | task_messages batched ingest at 500ms produces strictly monotonic seq per task | VERIFIED | task-message-batcher.ts: `MAX(seq)+1` inside `withImmediateTx`; `BUFFER_SOFT_CAP=500` early flush; `BATCH_INTERVAL_MS=500`; flushingTasks re-entrance guard; 5/5 batcher tests pass including 20×25 concurrent-appender proof |
+| SC-4 | Stale-task reaper fails tasks stuck in dispatched>5min and running>2.5h within one sweep tick | VERIFIED | task-reaper.ts: `DISPATCH_STALE_MS=5*60_000`, `RUNNING_STALE_MS=2.5*60*60_000`, `SWEEP_INTERVAL_MS=30_000`; `julianday()` comparison normalises ISO-8601 vs CURRENT_TIMESTAMP formats; `.andWhere('status','dispatched')` and `.andWhere('status','running')` ST6 race guards; `startTaskReaper()` at server-core line 304 (between Step 9a loop line 296 and Step 9e line 308); 5/5 reaper tests pass |
+| SC-5 | completeTask on already-cancelled returns {discarded:true} with no throw | VERIFIED | `completeTask` pre-reads current status; `if (current.status === 'cancelled') return {discarded:true, status:'cancelled'}` without throwing; task-queue.test.ts test #6; `failTask` mirrors same pattern (test #7, PM5) |
 
-**Score: 2/5 success criteria verified**
+**Score: 5/5 success criteria verified**
 
 ### Deferred Items
 
-None. The failing items (SC-3, SC-4, TASK-05) are not deferred to later phases — they are assigned to Phase 18 sub-plans 18-02, 18-03, and 18-04 respectively in the ROADMAP.
-
----
+None. All roadmap success criteria are satisfied by code on main. No items are deferred to later phases.
 
 ## Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `apps/server/src/services/task-queue-store.ts` | claimTask, startTask, completeTask, failTask, cancelTask, isTaskCancelled | ✓ VERIFIED | All 6 Phase-18 functions exported. withImmediateTx helper present. BEGIN IMMEDIATE discipline confirmed. Broadcasts after commit for task:dispatch, task:completed, task:failed, task:cancelled. |
-| `apps/server/tests/unit/test-db.ts` | makeTestDb / setupTestDb fixture with WAL PRAGMAs | ✓ VERIFIED | File exists (213 lines). setupTestDb, teardownTestDb, seedRuntime, seedAgent, seedIssue, seedTask all exported. |
-| `apps/server/tests/unit/task-queue.test.ts` | 12 real tests | ✓ VERIFIED | 12 passing tests covering SC-1, TASK-01, TASK-02, TASK-05 DB surface, TASK-06. |
-| `apps/server/tests/unit/README.md` | Harness docs | ✓ VERIFIED | File exists. |
-| `apps/server/src/task-dispatch/task-message-batcher.ts` | appendTaskMessage, startTaskMessageBatcher, stopTaskMessageBatcher, flushTaskMessages | ✗ MISSING | Not present. apps/server/src/task-dispatch/ contains only offline-sweeper.ts and runtime-bridge.ts. |
-| `apps/server/src/task-dispatch/task-reaper.ts` | reapOnce, startTaskReaper, stopTaskReaper | ✗ MISSING | Not present. |
-| `apps/server/tests/unit/task-message-batcher.test.ts` | 5+ real tests | ✗ STUB | 3 test.todo() placeholders only. |
-| `apps/server/tests/unit/task-reaper.test.ts` | 5+ real tests | ✗ STUB | 3 test.todo() placeholders only. |
-
----
+| `apps/server/src/services/task-queue-store.ts` | 6 Phase-18 exports + Phase-17 exports + CancelResult + withImmediateTx | VERIFIED | All 6 lifecycle exports (`claimTask`/`startTask`/`completeTask`/`failTask`/`cancelTask`/`isTaskCancelled`) confirmed; `withImmediateTx` exported; `CancelResult` interface present; `broadcastCancelledRows` helper; 12× BEGIN IMMEDIATE discipline |
+| `apps/server/src/task-dispatch/task-message-batcher.ts` | appendTaskMessage / startTaskMessageBatcher / stopTaskMessageBatcher / flushTaskMessages | VERIFIED | File exists (8758 bytes); all 4 exports present; `BATCH_INTERVAL_MS=500`, `BUFFER_SOFT_CAP=500`; `withImmediateTx` imported from task-queue-store.ts; `broadcast()` at line 232 outside/after `await withImmediateTx(...)` (never inside transaction) |
+| `apps/server/src/task-dispatch/task-reaper.ts` | reapOnce / startTaskReaper / stopTaskReaper | VERIFIED | File exists (6553 bytes); all 3 exports present; `DISPATCH_STALE_MS=5*60_000`, `RUNNING_STALE_MS=2.5*60*60_000`, `SWEEP_INTERVAL_MS=30_000`; `julianday()` normalisation on both timestamp WHERE clauses; both `.andWhere('status',...)` ST6 guards confirmed |
+| `apps/server/src/server-core.ts` | import startTaskReaper + call at Step 9c | VERIFIED | `import { startTaskReaper } from './task-dispatch/task-reaper.js'` at line 21; `startTaskReaper()` at line 304; `startRuntimeOfflineSweeper()` at line 308 — 9c (304) precedes 9e (308) |
+| `apps/server/src/services/issue-store.ts` | cancelledTasks propagation through applyIssueSideEffects + updateIssue | VERIFIED | `grep -c cancelledTasks issue-store.ts` = 11 |
+| `apps/server/src/routes/issues.ts` | PATCH handler fans out task:cancelled per cancelledTasks row after commit | VERIFIED | `task:cancelled` at line 140 inside `for (const row of cancelledTasks)` loop, after `updateIssue` returns |
+| `apps/server/tests/unit/test-db.ts` | makeTestDb + seed helpers | VERIFIED | Created in 18-01; exports `makeTestDb`, `seedRuntime`, `seedAgent`, `seedIssue`, `seedTask`; reused by all three test suites |
+| `apps/server/tests/unit/task-queue.test.ts` | 16 tests: 12 (18-01) + 4 TASK-05 (18-04) | VERIFIED | 16 passing; 0 todos; 0 stubs |
+| `apps/server/tests/unit/task-message-batcher.test.ts` | 5 real tests replacing 3 stubs | VERIFIED | 5 passing; 0 todos |
+| `apps/server/tests/unit/task-reaper.test.ts` | 5 real tests replacing 3 stubs | VERIFIED | 5 passing; 0 todos |
+| `apps/server/tests/unit/README.md` | Harness documentation | VERIFIED | Present |
 
 ## Key Link Verification
 
 | From | To | Via | Status | Details |
-|------|----|-----|--------|---------|
-| task-queue-store.ts#claimTask | ws/index.ts | broadcast(workspaceId, {type:'task:dispatch'}) after withImmediateTx | ✓ WIRED | Broadcast at line 423, outside transaction callback |
-| task-queue-store.ts#cancelTask | ws/index.ts | broadcast(workspaceId, {type:'task:cancelled'}) after withImmediateTx | ✓ WIRED | Broadcast at line 618-624, outside transaction |
-| task-queue-store.ts#completeTask | ws/index.ts | broadcast task:completed AFTER commit | ✓ WIRED | Broadcast present post-transaction |
-| task-queue-store.ts#failTask | ws/index.ts | broadcast task:failed AFTER commit | ✓ WIRED | Broadcast present post-transaction |
-| task-message-batcher.ts | task_messages (SQLite) | BEGIN IMMEDIATE + MAX(seq)+1 | ✗ NOT_WIRED | File missing |
-| task-reaper.ts | agent_task_queue (SQLite) | UPDATE WHERE status='dispatched' AND dispatched_at < cutoff | ✗ NOT_WIRED | File missing |
-| server-core.ts | task-reaper.ts | import { startTaskReaper }; startTaskReaper() at Step 9c | ✗ NOT_WIRED | No import, no call — confirmed by grep returning empty |
-| cancelPendingTasksForIssueAgent | ws/index.ts | task:cancelled broadcast per cancelled row | ✗ NOT_WIRED | Function returns Promise<number> (Phase 17 shape); no broadcast path |
-| cancelAllTasksForIssue | ws/index.ts | task:cancelled broadcast per cancelled row | ✗ NOT_WIRED | Function returns Promise<number> (Phase 17 shape); no broadcast path |
-| routes/issues.ts PATCH | ws/index.ts | task:cancelled fan-out after updateIssue | ✗ NOT_WIRED | No task:cancelled broadcast in routes/issues.ts PATCH handler |
+|------|----|----|--------|---------|
+| task-queue-store.ts#claimTask | agent_task_queue (SQLite) | withImmediateTx (ROLLBACK+BEGIN IMMEDIATE) + `.andWhere('status','queued')` UPDATE guard | WIRED | SELECT candidate + UPDATE guarded by status='queued'; partial-unique index is schema backstop |
+| task-queue-store.ts#claimTask | ws/index.ts | `broadcast(claimed.workspaceId, {type:'task:dispatch',...})` after withImmediateTx returns | WIRED | Broadcast outside transaction callback; never inside |
+| task-queue-store.ts#cancelTask | ws/index.ts | `broadcast(result.workspaceId, {type:'task:cancelled',...})` after withImmediateTx | WIRED | Line 760; conditional on `result.cancelled === true` |
+| task-queue-store.ts#cancelPendingTasksForIssueAgent | ws/index.ts | `broadcastCancelledRows(result.cancelledRows)` after withImmediateTx, only when no caller-supplied trx and emitBroadcasts=true | WIRED | Ghost-event guard: if `args.trx` provided, caller owns broadcast (T-18-19 mitigation) |
+| task-queue-store.ts#cancelAllTasksForIssue | ws/index.ts | same broadcastCancelledRows pattern | WIRED | Same ghost-event guard |
+| routes/issues.ts PATCH | ws/index.ts | `for (const row of cancelledTasks) { broadcast(row.workspaceId, {type:'task:cancelled',...}) }` | WIRED | After `updateIssue` service call returns (transaction committed); before HTTP response |
+| task-message-batcher.ts#flushOne | task_messages (SQLite) | `withImmediateTx` + `.max({m:'seq'})` + bulk INSERT | WIRED | MAX(seq)+1 and INSERT run inside same BEGIN IMMEDIATE transaction; `UNIQUE(task_id, seq)` index from migration 007 is schema backstop |
+| task-message-batcher.ts#flushOne | ws/index.ts | `broadcast()` in post-commit for-loop outside `await withImmediateTx(...)` | WIRED | `toBroadcast` array populated inside tx; loop at line 232 fires after tx resolves |
+| task-reaper.ts#reapOnce | agent_task_queue (SQLite) | `.whereNotNull('dispatched_at').andWhereRaw('julianday(dispatched_at) < julianday(?)')` + `.andWhere('status','dispatched')` UPDATE guard | WIRED | Both stale-state buckets (dispatched, running) have julianday() WHERE + status ST6 guard on UPDATE |
+| task-reaper.ts#reapOnce | ws/index.ts | `broadcast(r.workspace_id, {type:'task:failed',...})` in post-UPDATE for-loop | WIRED | Single-statement UPDATEs autocommit; broadcast loop runs after write is durable |
+| server-core.ts | task-reaper.ts | `import { startTaskReaper }` line 21; `startTaskReaper()` line 304 | WIRED | Line 304 is between Step 9a closing `}, 10_000)` at line 296 and Step 9e `startRuntimeOfflineSweeper()` at line 308 |
 
----
+## Data-Flow Trace (Level 4)
 
-## BEGIN IMMEDIATE Discipline
-
-All five Phase-18 write functions (claimTask, startTask, completeTask, failTask, cancelTask) use withImmediateTx(kx, fn) — the helper that issues ROLLBACK + BEGIN IMMEDIATE inside Knex's transaction callback to work around Knex's hard-coded DEFERRED begin. Phase-17 cancel helpers (cancelPendingTasksForIssueAgent, cancelAllTasksForIssue) remain on Knex default DEFERRED, which is acceptable as they are called inside the caller's existing transaction. Plan 18-04's rewrite would upgrade these to withImmediateTx.
-
----
+| Artifact | Data Variable | Source | Produces Real Data | Status |
+|----------|---------------|--------|--------------------|--------|
+| task-queue-store.ts#claimTask | `candidate` (ClaimedTask) | `agent_task_queue` SELECT joined with `agents` + `issues` via `hydrateClaimedTask` | Yes — real DB rows; no hardcoded fallback | FLOWING |
+| task-queue-store.ts#completeTask | `current.status` → `TerminalResult.discarded` | Pre-read of `agent_task_queue.status` before UPDATE | Yes — live DB status governs discard path | FLOWING |
+| task-message-batcher.ts#flushOne | `next` (seq counter) | `MAX(seq)` from `task_messages` inside withImmediateTx | Yes — real DB max, incremented per message; not seeded or hardcoded | FLOWING |
+| task-reaper.ts#reapOnce | `stuckDispatched` / `stuckRunning` | SELECT WHERE julianday(ts) < julianday(cutoff) on live agent_task_queue | Yes — real DB rows with real timestamps; julianday() normalises both timestamp formats | FLOWING |
 
 ## Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| 12 task-queue tests pass | `npx tsx --test apps/server/tests/unit/task-queue.test.ts` | 12 pass / 0 fail / 0 todo, ~466ms | ✓ PASS |
-| Batcher tests pass | `npx tsx --test apps/server/tests/unit/task-message-batcher.test.ts` | 0 pass / 0 fail / 3 todo (all test.todo stubs) | ✗ FAIL (stubs only) |
-| Reaper tests pass | `npx tsx --test apps/server/tests/unit/task-reaper.test.ts` | 0 pass / 0 fail / 3 todo (all test.todo stubs) | ✗ FAIL (stubs only) |
-| Typecheck clean | `npm run build -w @aquarium/shared && npm run typecheck -w @aquaclawai/aquarium` | exit 0 | ✓ PASS |
-| startTaskReaper wired | `grep -n "startTaskReaper" apps/server/src/server-core.ts` | no output (exit 1) | ✗ FAIL |
-| cancelPendingTasksForIssueAgent returns CancelResult | `grep -c "CancelResult" apps/server/src/services/task-queue-store.ts` | 0 | ✗ FAIL |
-
----
+| All 26 unit tests pass | `NODE_OPTIONS=--no-experimental-require-module npx tsx --test task-queue.test.ts task-message-batcher.test.ts task-reaper.test.ts` | tests 26, pass 26, fail 0, todo 0, duration 3367ms | PASS |
+| Shared build exits 0 | `npm run build -w @aquarium/shared` | exit 0 | PASS |
+| Typecheck exits 0 | `npm run typecheck -w @aquaclawai/aquarium` | exit 0 | PASS |
+| BEGIN IMMEDIATE discipline | `grep -c "BEGIN IMMEDIATE" task-queue-store.ts` | 12 (requirement: >= 5) | PASS |
+| withImmediateTx used in batcher | `grep -c withImmediateTx task-message-batcher.ts` | 2 (import + call) | PASS |
+| Broadcast outside batcher tx | Read task-message-batcher.ts lines 195-247 | `broadcast()` at line 232; `await withImmediateTx(...)` closes at line 228 | PASS |
+| startTaskReaper wired before startRuntimeOfflineSweeper | `grep -n startTaskReaper\|startRuntimeOfflineSweeper server-core.ts` | 304 < 308 | PASS |
+| task:cancelled in routes/issues.ts | `grep -c 'task:cancelled' routes/issues.ts` | 1 | PASS |
+| No new `any` tokens | `grep -cE '\bany\b' task-queue-store.ts` | 1 (pre-existing docstring comment, line 26) | PASS |
+| No test stubs in test files | `grep -c "test.todo" task-message-batcher.test.ts task-reaper.test.ts` | 0:0 | PASS |
 
 ## Requirements Coverage
 
 | Requirement | Source Plan | Description | Status | Evidence |
-|-------------|-------------|-------------|--------|----------|
-| TASK-01 | 18-01 | Atomic claim via BEGIN IMMEDIATE + per-(agent,issue) coalescing | ✓ SATISFIED | claimTask with withImmediateTx, max_concurrent_tasks subquery, migration-007 partial UNIQUE index. SC-1 unit test passes. |
-| TASK-02 | 18-01 | Lifecycle queued→dispatched→running→completed/failed/cancelled per call | ✓ SATISFIED | startTask/completeTask/failTask each guard via .andWhere('status', <expected>). Lifecycle tests pass. |
-| TASK-03 | 18-02 | task_messages monotonic seq, 500ms batched ingest | ✗ BLOCKED | task-message-batcher.ts missing. Plan 18-02 not executed. |
-| TASK-04 | 18-03 | Stale-task reaper: dispatched > 5 min, running > 2.5h | ✗ BLOCKED | task-reaper.ts missing. Plan 18-03 not executed. server-core.ts not wired. |
-| TASK-05 | 18-04 | Cancel propagation: task:cancelled WS broadcasts on all 3 cancel paths | ✗ BLOCKED | Plan 18-04 not executed. cancelPendingTasksForIssueAgent and cancelAllTasksForIssue still return number. No CancelResult, no issue-store propagation, no routes/issues.ts broadcast. |
-| TASK-06 | 18-01 | completeTask/failTask on cancelled → { discarded: true } | ✓ SATISFIED | Both functions pre-read status and return {discarded:true, status:'cancelled'} without throwing. Dedicated tests pass. |
-
----
+|-------------|-------------|-------------|--------|---------|
+| TASK-01 | 18-01 | Atomic claim under BEGIN IMMEDIATE with per-(agent,issue) coalescing | SATISFIED | `claimTask` with `withImmediateTx`; max_concurrent_tasks subquery; `andWhere('status','queued')` race guard; migration-007 partial-unique index; 20-concurrent SC-1 test passes |
+| TASK-02 | 18-01 | Lifecycle: one state transition per call, status-guarded | SATISFIED | `startTask`/`completeTask`/`failTask` each use `.andWhere('status',<expected>)` guards; lifecycle happy-path test passes |
+| TASK-03 | 18-02 | task_messages monotonic seq, 500ms batched ingest | SATISFIED | `task-message-batcher.ts`; MAX(seq)+1 inside withImmediateTx; BUFFER_SOFT_CAP=500; 5/5 batcher tests pass including 500-appends and 20-concurrent-appenders proofs |
+| TASK-04 | 18-03 | Stale-task reaper fails dispatched>5min and running>2.5h | SATISFIED | `task-reaper.ts`; julianday() normalisation; ST6 race guards; server-core Step 9c wiring; 5/5 reaper tests pass including ST6 race-safety proof |
+| TASK-05 | 18-01 + 18-04 | Cancel surface: DB flip + task:cancelled WS broadcast on all 3 paths | SATISFIED | `cancelTask` (single-task, 18-01); `cancelPendingTasksForIssueAgent` + `cancelAllTasksForIssue` extended (18-04); `broadcastCancelledRows` helper; `routes/issues.ts` PATCH fan-out; 4 TASK-05 tests pass (total 16) |
+| TASK-06 | 18-01 | completeTask/failTask on cancelled → {discarded:true} | SATISFIED | Both functions pre-read status; return `{discarded:true, status:'cancelled'}` without throwing; test #6 (complete) and test #7 (fail) pass |
 
 ## Anti-Patterns Found
 
-| File | Line | Pattern | Severity | Impact |
-|------|------|---------|----------|--------|
-| task-message-batcher.test.ts | 12-14 | All 3 tests are test.todo() — zero real assertions | Blocker | SC-3 (TASK-03) entirely unverified |
-| task-reaper.test.ts | 12-14 | All 3 tests are test.todo() — zero real assertions | Blocker | SC-4 (TASK-04) entirely unverified |
-| server-core.ts | ~295-299 | Step 9c gap: no startTaskReaper() call between 10_000ms loop and startRuntimeOfflineSweeper() | Blocker | Reaper never starts; stale dispatched/running tasks persist indefinitely, blocking re-enqueue via partial UNIQUE index |
-
----
+No blockers or warnings. No `test.todo`, `TODO`, `FIXME`, or placeholder patterns found in any Phase-18 production file or test file. No empty handlers, no hardcoded empty data arrays in rendering paths, no `return null` stubs.
 
 ## Human Verification Required
 
-None — all items verified or disproved programmatically.
+### 1. Live-server E2E smoke test
 
----
+**Test:** Start the server (`npm run dev`) against a real SQLite DB. Observe the startup log for `[task-reaper] started`. Seed 3-5 queued tasks for a runtime (directly via sqlite3 CLI or a seed script). Call `claimTask(runtimeId)` directly via a node -e script against the live DB to simulate claim activity and confirm `task:dispatch` WS events appear in connected browser clients. Optionally, seed a task with `dispatched_at = datetime('now', '-6 minutes')` and wait up to 30 seconds for the reaper to fail it.
+
+**Expected:**
+- Server starts cleanly with `[task-reaper] started` in the log.
+- `claimTask` calls against the live DB transition tasks to `dispatched` with non-null `dispatched_at`.
+- WS clients subscribed to the workspace channel receive `task:dispatch` events per claim.
+- A task with `dispatched_at` older than 5 minutes transitions to `failed` within one 30-second reaper tick with `error='Reaper: dispatched > 5 min without start'`.
+
+**Why human:** Phase 18 ships no HTTP routes (Phase 19). Unit tests inject isolated Knex instances pointing at tmp SQLite files; they do not test the production singleton pool, real WS broadcast delivery to connected browser clients, or the server-core boot timing. A one-time live-server smoke check closes this gap before Phase 19 wires the HTTP surface on top.
 
 ## Gaps Summary
 
-Phase 18 executed 1 of 4 planned sub-plans (Plan 18-01 only). Three success criteria are unmet and three requirements are blocked:
+No gaps. All five ROADMAP success criteria are verified by code on main. The `human_needed` status reflects a single live-server smoke test that cannot be automated in the absence of Phase-19 HTTP routes — it is not a correctness gap in Phase-18 artifacts.
 
-**Gap 1 — SC-3 / TASK-03 (Plan 18-02 not executed): task-message-batcher missing**
-`apps/server/src/task-dispatch/task-message-batcher.ts` does not exist. `task-message-batcher.test.ts` contains only `test.todo()` stubs. Phase 19 (daemon route for progress messages) and Phase 20 (hosted worker streaming) both depend on `appendTaskMessage`. Without the batcher, task messages cannot be persisted with monotonic seq ordering.
-
-**Gap 2 — SC-4 / TASK-04 (Plan 18-03 not executed): task-reaper missing and not wired**
-`apps/server/src/task-dispatch/task-reaper.ts` does not exist. `task-reaper.test.ts` contains only `test.todo()` stubs. `server-core.ts` has no `startTaskReaper()` call — the server starts with no mechanism to fail tasks stuck in `dispatched` or `running`. Any daemon crash between claim and start permanently blocks re-enqueue for the same (issue, agent) pair via the partial UNIQUE index on `idx_one_pending_task_per_issue_agent`.
-
-**Gap 3 — TASK-05 (Plan 18-04 not executed): cancel broadcast unification missing**
-`cancelPendingTasksForIssueAgent` and `cancelAllTasksForIssue` still return `Promise<number>` (Phase 17 shape). `CancelResult` interface was not added. `issue-store.ts` does not propagate cancelled rows. `routes/issues.ts` PATCH handler emits no `task:cancelled` WS event. Issue-level cancellations produce silent DB flips with no client notification.
-
-**What passed:** Plan 18-01 was executed correctly. The core claim/lifecycle/cancel/discarded service surface is implemented, tested (12 passes), and typecheck-clean. The `withImmediateTx` helper correctly solves the Knex DEFERRED-upgrade problem.
+**What changed since previous verification:**
+- Plan 18-02 (task-message-batcher): file created, 5 real tests replace 3 stubs, MAX(seq)+1 inside withImmediateTx confirmed.
+- Plan 18-03 (task-reaper): file created, 5 real tests replace 3 stubs, julianday() normalisation fixes ST6 false-positive, server-core wired at Step 9c.
+- Plan 18-04 (cancel broadcast): CancelResult interface added, two Phase-17 helpers extended, broadcastCancelledRows DRY helper, issue-store propagation, routes/issues.ts fan-out, 4 new TASK-05 tests; total unit suite 26 pass.
+- Full test suite: 26/26 pass, 0 fail, 0 todo.
+- Typecheck: exit 0.
 
 ---
 
-_Verified: 2026-04-16T23:30:00Z_
+_Verified: 2026-04-16T23:55:00Z_
 _Verifier: Claude (gsd-verifier)_
-_Re-verification: Yes — dispute resolution pass. All ground-truth commands executed directly; findings confirm initial report._
+_Re-verification: Yes — third pass resolving worktree-drift false-negative from previous runs._

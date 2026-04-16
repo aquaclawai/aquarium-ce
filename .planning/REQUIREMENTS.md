@@ -97,12 +97,12 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 
 ### Task Queue & Dispatch
 
-- [ ] **TASK-01**: Task claim is atomic under SQLite via `BEGIN IMMEDIATE` transaction using `NOT EXISTS` subquery to enforce per-(agent, issue) coalescing
-- [ ] **TASK-02**: Task lifecycle supports `queued → dispatched → running → completed|failed|cancelled` with one explicit state transition per call
-- [ ] **TASK-03**: `task_messages` are appended in sequence order (`seq` strictly monotonic per task); ingest is batched at 500 ms
-- [ ] **TASK-04**: Stale-task reaper fails tasks stuck in `dispatched` > 5 min and `running` > configurable timeout (default 2.5 h)
-- [ ] **TASK-05**: User can cancel a running task; cancellation propagates to daemon (next poll) or hosted worker (AbortController)
-- [ ] **TASK-06**: Completing or failing an already-cancelled task is handled as `{ discarded: true }` (no error)
+- [x] **TASK-01**: Task claim is atomic under SQLite via `BEGIN IMMEDIATE` transaction using `NOT EXISTS` subquery to enforce per-(agent, issue) coalescing
+- [x] **TASK-02**: Task lifecycle supports `queued → dispatched → running → completed|failed|cancelled` with one explicit state transition per call
+- [x] **TASK-03**: `task_messages` are appended in sequence order (`seq` strictly monotonic per task); ingest is batched at 500 ms
+- [x] **TASK-04**: Stale-task reaper fails tasks stuck in `dispatched` > 5 min and `running` > configurable timeout (default 2.5 h)
+- [x] **TASK-05**: User can cancel a running task; cancellation propagates to daemon (next poll) or hosted worker (AbortController)
+- [x] **TASK-06**: Completing or failing an already-cancelled task is handled as `{ discarded: true }` (no error)
 
 ### Daemon REST API
 

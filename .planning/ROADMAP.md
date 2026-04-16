@@ -322,6 +322,15 @@ Plans:
 4. Stale-task reaper fails tasks stuck in `dispatched` > 5 min and `running` > 2.5h within one sweep tick
 5. `completeTask` on a task already cancelled returns `{ discarded: true }` with HTTP 200 (not 400) — verified by race-condition test
 
+**Plans:** 4/4 plans complete
+
+Plans:
+- [x] 18-01-PLAN.md — Wave 0 test harness + claim + lifecycle + discarded-complete (TASK-01, TASK-02, TASK-06)
+- [x] 18-02-PLAN.md — Task-message batcher (500ms flush, MAX(seq)+1 under BEGIN IMMEDIATE) (TASK-03)
+- [x] 18-03-PLAN.md — Stale-task reaper + server-core.ts Step 9c boot wiring (TASK-04)
+- [x] 18-04-PLAN.md — Cancel surface: task:cancelled broadcasts + CancelResult + issue-store propagation (TASK-05)
+
+
 ### Phase 19: Daemon REST API & Auth
 **Goal:** External daemons can register, heartbeat, claim tasks, and report lifecycle events through 9 authenticated REST endpoints; users can issue/revoke daemon tokens through a UI-facing API.
 **Depends on:** Phase 18 (parallel with Phase 20)
@@ -443,7 +452,7 @@ Plans:
 | 15. Schema & Shared Types | v1.4 | 6/6 | Complete    | 2026-04-16 |
 | 16. Runtime Registry + Bridge | v1.4 | 4/4 | Complete    | 2026-04-16 |
 | 17. Agent/Issue/Comment Services | v1.4 | 5/5 | Complete    | 2026-04-16 |
-| 18. Task Queue & Dispatch | v1.4 | 0/? | Not started | - |
+| 18. Task Queue & Dispatch | v1.4 | 4/4 | Complete    | 2026-04-16 |
 | 19. Daemon REST API & Auth | v1.4 | 0/? | Not started | - |
 | 20. Hosted-Instance Driver | v1.4 | 0/? | Not started | - |
 | 21. Daemon CLI + claude-code | v1.4 | 0/? | Not started | - |
