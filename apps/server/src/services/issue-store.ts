@@ -6,6 +6,7 @@ import {
   cancelPendingTasksForIssueAgent,
   cancelAllTasksForIssue,
 } from './task-queue-store.js';
+import { createSystemComment } from './comment-store.js';
 import type { Issue, IssueStatus, IssuePriority } from '@aquarium/shared';
 import type { Knex } from 'knex';
 
@@ -188,6 +189,38 @@ async function applyIssueSideEffects(
   next: { status: string; assigneeId: string | null },
   issueId: string,
 ): Promise<void> {
+  // COMMENT-02: emit a system comment for every real status change. Runs BEFORE
+  // the task-queue side-effects so the timeline shows "moved to cancelled"
+  // ahead of the derived "tasks cancelled" effect. Captures pre-transition
+  // state via the `prev` snapshot taken before the UPDATE in updateIssue.
+  if (next.status !== prev.status) {
+    await createSystemComment({
+      workspaceId,
+      issueId,
+      content: `Status changed from ${prev.status} to ${next.status}`,
+      type: 'status_change',
+      metadata: { from: prev.status, to: next.status },
+      trx,
+    });
+  }
+
+  // COMMENT-02: emit a system comment for assignee change (reassignment / clear / first-assign).
+  if (next.assigneeId !== prev.assigneeId) {
+    const fromLabel = prev.assigneeId ?? 'unassigned';
+    const toLabel = next.assigneeId ?? 'unassigned';
+    await createSystemComment({
+      workspaceId,
+      issueId,
+      content: `Assignee changed from ${fromLabel} to ${toLabel}`,
+      type: 'status_change',
+      metadata: {
+        fromAssigneeId: prev.assigneeId,
+        toAssigneeId: next.assigneeId,
+      },
+      trx,
+    });
+  }
+
   // ISSUE-04: transition to 'cancelled' cancels every live task (pending + running)
   if (next.status === 'cancelled' && prev.status !== 'cancelled') {
     await cancelAllTasksForIssue({ workspaceId, issueId, trx });
