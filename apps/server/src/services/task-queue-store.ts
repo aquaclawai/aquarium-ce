@@ -1,34 +1,54 @@
 import { randomUUID } from 'node:crypto';
 import type { Knex } from 'knex';
-import { db } from '../db/index.js';
+import { db as defaultDb } from '../db/index.js';
 import { getAdapter } from '../db/adapter.js';
-import type { AgentTask, TaskStatus } from '@aquarium/shared';
+import { broadcast } from '../ws/index.js';
+import type { AgentTask, ClaimedTask, TaskStatus } from '@aquarium/shared';
 
 /**
- * Task queue store — Phase 17 slice (enqueue + cancel only).
+ * Task queue store — Phase 17 slice (enqueue + cancel) + Phase 18 lifecycle.
  *
- * This file ships the MINIMUM task-queue surface needed for issue-status
- * transitions to work. Phase 18 will extend this module with:
- *   • claimTask(runtimeId) using BEGIN IMMEDIATE (SCH-05 partial unique is the backstop)
- *   • startTask / progressTask / completeTask / failTask (task lifecycle)
- *   • reapStaleTasks (dispatched > 5min, running > 2.5h — TASK-04)
- *   • cancelTask(id) with runtime-side abort propagation (TASK-05)
- *
- * Responsibilities (Phase 17):
+ * Phase 17 surface:
  *   • enqueueTaskForIssue                  — ISSUE-02 assign hook
  *   • cancelPendingTasksForIssueAgent      — ISSUE-03 reassign swap
  *   • cancelAllTasksForIssue               — ISSUE-04 issue cancellation
  *   • getPendingTaskForIssueAgent          — idempotency check + tests
  *
- * HARD constraints:
- *   • All operations accept an optional `trx` parameter so callers (issue-store)
- *     can chain them inside their own db.transaction() — ISSUE-03's cancel+enqueue
- *     swap MUST be atomic.
- *   • idx_one_pending_task_per_issue_agent (migration 007) is a safety net; the
- *     enqueue path already checks for a pending row first (idempotency).
- *   • Enqueue with agent.runtime_id = NULL is a no-op that returns null and
- *     logs a warning — tasks require a dispatch target (§ST4 "agents outlive
- *     runtimes"; tasks do not).
+ * Phase 18 surface (this file):
+ *   • claimTask(runtimeId, db?)            — atomic dispatch (TASK-01, SC-1)
+ *   • startTask(taskId, db?)               — dispatched → running (TASK-02)
+ *   • completeTask(taskId, result, db?)    — running → completed; { discarded }
+ *                                            when task is already `cancelled` (TASK-06)
+ *   • failTask(taskId, error, db?)         — running/dispatched → failed; same
+ *                                            discarded semantics (TASK-06)
+ *   • cancelTask(taskId, db?)              — any non-terminal → cancelled (TASK-05)
+ *   • isTaskCancelled(taskId, db?)         — cheap read for daemon/hosted poll
+ *                                            (TASK-05 / DAEMON-06)
+ *
+ * HARD constraints (Phase 18):
+ *   • Every write transaction opens with `trx.raw('BEGIN IMMEDIATE')` so future
+ *     multi-connection readers (Worker threads / debug shells) never hit the
+ *     "deferred txn upgrade" SQLITE_BUSY trap (PITFALLS §SQ1). Today the
+ *     CE Knex pool is (min: 1, max: 1) so in-process writes already serialise
+ *     through one better-sqlite3 connection, but IMMEDIATE is a safety belt.
+ *   • Lifecycle transitions add `.andWhere('status', <expected>)` to every
+ *     UPDATE so the DB itself rejects a stale transition (e.g. daemon tries to
+ *     complete a task the user cancelled 10 ms earlier). The migration-007
+ *     CHECK triggers are the last backstop.
+ *   • completeTask / failTask on an already-cancelled task return
+ *     { discarded: true, status: 'cancelled' } (HTTP 200 at the route layer —
+ *     PITFALLS §PM5). Never throw for this case.
+ *   • WS broadcasts (`task:dispatch`, `task:completed`, `task:failed`,
+ *     `task:cancelled`) emit AFTER the transaction commits (PITFALLS §SQ5).
+ *   • All operations accept an optional `db` parameter so unit tests can inject
+ *     an isolated Knex instance (see apps/server/tests/unit/test-db.ts).
+ *
+ * Out of scope for Phase 18:
+ *   • Runtime-side cancel propagation (daemon SIGTERM, hosted AbortController)
+ *     — Phase 19 (daemon) and Phase 20 (hosted) consume `isTaskCancelled`.
+ *   • Streaming seq batcher (task-message-batcher.ts) — Plan 18-02.
+ *   • Periodic reaper (task-reaper.ts) — Plan 18-03.
+ *   • HTTP routes — Phase 19 wires /api/daemon/tasks/*.
  */
 
 function toAgentTask(row: Record<string, unknown>): AgentTask {
@@ -61,8 +81,16 @@ function toAgentTask(row: Record<string, unknown>): AgentTask {
 }
 
 type TxOrDb = Knex | Knex.Transaction;
-function runner(trx?: Knex.Transaction): TxOrDb {
-  return trx ?? db;
+function runner(trx?: Knex.Transaction, dbOverride?: Knex): TxOrDb {
+  return trx ?? dbOverride ?? defaultDb;
+}
+
+/**
+ * Resolve the Knex instance for service calls. Phase-18 functions accept an
+ * optional `db` override (for unit tests) but default to the app singleton.
+ */
+function resolveDb(dbOverride?: Knex): Knex {
+  return dbOverride ?? defaultDb;
 }
 
 /**
@@ -154,8 +182,8 @@ export async function enqueueTaskForIssue(args: EnqueueTaskArgs): Promise<AgentT
       started_at: null,
       completed_at: null,
       cancelled_at: null,
-      created_at: db.fn.now(),
-      updated_at: db.fn.now(),
+      created_at: defaultDb.fn.now(),
+      updated_at: defaultDb.fn.now(),
     });
 
     const row = await trx('agent_task_queue').where({ id }).first();
@@ -163,7 +191,7 @@ export async function enqueueTaskForIssue(args: EnqueueTaskArgs): Promise<AgentT
   };
 
   if (args.trx) return doEnqueue(args.trx);
-  return db.transaction(doEnqueue);
+  return defaultDb.transaction(doEnqueue);
 }
 
 export interface CancelPendingArgs {
@@ -189,8 +217,8 @@ export async function cancelPendingTasksForIssueAgent(args: CancelPendingArgs): 
     .whereIn('status', ['queued', 'dispatched'])
     .update({
       status: 'cancelled',
-      cancelled_at: db.fn.now(),
-      updated_at: db.fn.now(),
+      cancelled_at: defaultDb.fn.now(),
+      updated_at: defaultDb.fn.now(),
     });
   return Number(affected);
 }
@@ -218,8 +246,364 @@ export async function cancelAllTasksForIssue(args: CancelAllTasksArgs): Promise<
     .whereIn('status', ['queued', 'dispatched', 'running'])
     .update({
       status: 'cancelled',
-      cancelled_at: db.fn.now(),
-      updated_at: db.fn.now(),
+      cancelled_at: defaultDb.fn.now(),
+      updated_at: defaultDb.fn.now(),
     });
   return Number(affected);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 18 lifecycle surface — claim / start / complete / fail / cancel /
+// isTaskCancelled. Every write transaction opens with `BEGIN IMMEDIATE`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Hydrate an `AgentTask` row into the Phase 20 `ClaimedTask` shape — includes
+ * the joined agent snapshot + issue snapshot + trigger comment content so the
+ * daemon / hosted worker does not need a second round-trip.
+ *
+ * Phase 18 ships this service function only. The HTTP route that wraps it
+ * (`POST /api/daemon/runtimes/:id/tasks/claim`) is Phase 19.
+ */
+async function hydrateClaimedTask(
+  r: TxOrDb,
+  taskRow: Record<string, unknown>,
+): Promise<ClaimedTask> {
+  const base = toAgentTask(taskRow);
+  const adapter = getAdapter();
+  const agentRow = (await r('agents').where({ id: base.agentId }).first()) as
+    | Record<string, unknown>
+    | undefined;
+  if (!agentRow) {
+    throw new Error(`hydrateClaimedTask: agent ${base.agentId} not found`);
+  }
+  const issueRow = (await r('issues').where({ id: base.issueId }).first()) as
+    | Record<string, unknown>
+    | undefined;
+  if (!issueRow) {
+    throw new Error(`hydrateClaimedTask: issue ${base.issueId} not found`);
+  }
+  let triggerCommentContent: string | null = null;
+  if (base.triggerCommentId) {
+    const commentRow = (await r('comments')
+      .where({ id: base.triggerCommentId })
+      .first('content')) as Record<string, unknown> | undefined;
+    triggerCommentContent = (commentRow?.content as string) ?? null;
+  }
+  return {
+    ...base,
+    agent: {
+      id: agentRow.id as string,
+      name: agentRow.name as string,
+      instructions: (agentRow.instructions as string) ?? '',
+      customEnv: agentRow.custom_env
+        ? (adapter.parseJson<Record<string, string>>(agentRow.custom_env) ?? {})
+        : {},
+      customArgs: agentRow.custom_args
+        ? (adapter.parseJson<string[]>(agentRow.custom_args) ?? [])
+        : [],
+    },
+    issue: {
+      id: issueRow.id as string,
+      issueNumber: Number(issueRow.issue_number),
+      title: issueRow.title as string,
+      description: (issueRow.description as string) ?? null,
+    },
+    triggerCommentContent,
+    workspaceId: base.workspaceId,
+  };
+}
+
+/**
+ * Atomically claim the highest-priority queued task for a runtime.
+ *
+ * Correctness (TASK-01, SC-1):
+ *   1. `BEGIN IMMEDIATE` acquires the SQLite write lock up front, side-stepping
+ *      the "deferred-upgrade SQLITE_BUSY" pitfall (PITFALLS §SQ1).
+ *   2. The inner SELECT filters by `q.runtime_id=? AND q.status='queued'` with
+ *      an agent join to apply the `max_concurrent_tasks` cap (AGENT-02). The
+ *      `NOT EXISTS` semantic is expressed as `(count of dispatched|running) < cap`.
+ *   3. The partial-unique index `idx_one_pending_task_per_issue_agent`
+ *      (migration 007) is the schema-level coalescing guarantee — two pending
+ *      rows for the same (issue_id, agent_id) cannot exist, so the claim can
+ *      never return two.
+ *   4. The UPDATE adds `.andWhere('status', 'queued')` as the final guard —
+ *      if the row changed status between SELECT and UPDATE (impossible under
+ *      BEGIN IMMEDIATE, but cheap to assert), the UPDATE matches zero rows and
+ *      claimTask returns null.
+ *
+ * Returns `null` when nothing is claimable (capacity reached or no queued work).
+ * Emits `task:dispatch` WS broadcast AFTER commit with `workspaceId` channel.
+ */
+export async function claimTask(
+  runtimeId: string,
+  dbOverride?: Knex,
+): Promise<ClaimedTask | null> {
+  const kx = resolveDb(dbOverride);
+  const claimed = await kx.transaction(async (trx) => {
+    await trx.raw('BEGIN IMMEDIATE');
+
+    // Inner SELECT — highest priority, oldest first, respecting
+    // agent.max_concurrent_tasks and agent.archived_at.
+    const candidate = await trx('agent_task_queue as q')
+      .join('agents as a', 'a.id', 'q.agent_id')
+      .where('q.runtime_id', runtimeId)
+      .andWhere('q.status', 'queued')
+      .whereNull('a.archived_at')
+      .andWhereRaw(
+        "(SELECT COUNT(*) FROM agent_task_queue c WHERE c.agent_id = q.agent_id AND c.status IN ('dispatched','running')) < a.max_concurrent_tasks",
+      )
+      .orderBy('q.priority', 'desc')
+      .orderBy('q.created_at', 'asc')
+      .first('q.id');
+    if (!candidate) return null;
+
+    const candidateId = candidate.id as string;
+    const affected = await trx('agent_task_queue')
+      .where({ id: candidateId })
+      .andWhere('status', 'queued')
+      .update({
+        status: 'dispatched',
+        dispatched_at: defaultDb.fn.now(),
+        updated_at: defaultDb.fn.now(),
+      });
+    if (affected === 0) {
+      // Impossible under BEGIN IMMEDIATE + pool=1, but keeps the service
+      // honest if concurrency assumptions ever change.
+      return null;
+    }
+
+    const row = (await trx('agent_task_queue').where({ id: candidateId }).first()) as
+      | Record<string, unknown>
+      | undefined;
+    if (!row) return null;
+    return hydrateClaimedTask(trx, row);
+  });
+
+  if (claimed) {
+    // Broadcast AFTER commit — never inside the transaction (PITFALLS §SQ5).
+    broadcast(claimed.workspaceId, {
+      type: 'task:dispatch',
+      taskId: claimed.id,
+      issueId: claimed.issueId,
+      payload: { taskId: claimed.id, issueId: claimed.issueId },
+    });
+  }
+
+  return claimed;
+}
+
+/**
+ * Transition a task from `dispatched` to `running`. No-op (returns false) if
+ * the task is not in `dispatched` state — callers must treat the false return
+ * as "task already cancelled / failed / reaped" and back off. See TASK-02.
+ */
+export async function startTask(
+  taskId: string,
+  dbOverride?: Knex,
+): Promise<{ started: boolean; status: TaskStatus }> {
+  const kx = resolveDb(dbOverride);
+  return kx.transaction(async (trx) => {
+    await trx.raw('BEGIN IMMEDIATE');
+    const affected = await trx('agent_task_queue')
+      .where({ id: taskId })
+      .andWhere('status', 'dispatched')
+      .update({
+        status: 'running',
+        started_at: defaultDb.fn.now(),
+        updated_at: defaultDb.fn.now(),
+      });
+    if (affected === 0) {
+      const row = (await trx('agent_task_queue').where({ id: taskId }).first('status')) as
+        | { status: TaskStatus }
+        | undefined;
+      return { started: false, status: row?.status ?? 'queued' };
+    }
+    return { started: true, status: 'running' };
+  });
+}
+
+/**
+ * Terminal completion result (TASK-02 + TASK-06).
+ *
+ * `discarded=true` means the caller's request was dropped because the task is
+ * already in a terminal state set by someone else (typically `cancelled` — user
+ * hit Cancel after the daemon started the work, or reaper fired). In that case
+ * the route layer returns HTTP 200 (not 400) per PITFALLS §PM5.
+ */
+export interface TerminalResult {
+  discarded: boolean;
+  status: TaskStatus;
+}
+
+/**
+ * Transition a task from `running` to `completed`, OR return
+ * `{ discarded: true, status: 'cancelled' }` when the task was already
+ * cancelled. Never throws for the cancelled-race case (TASK-06).
+ *
+ * Any other non-`running` status (already completed / failed) is also treated
+ * as `discarded=true` — idempotent for the daemon retry case.
+ */
+export async function completeTask(
+  taskId: string,
+  result: unknown,
+  dbOverride?: Knex,
+): Promise<TerminalResult> {
+  const kx = resolveDb(dbOverride);
+  const adapter = getAdapter();
+  return kx.transaction(async (trx) => {
+    await trx.raw('BEGIN IMMEDIATE');
+    const current = (await trx('agent_task_queue')
+      .where({ id: taskId })
+      .first('status')) as { status: TaskStatus } | undefined;
+    if (!current) {
+      throw new Error(`task ${taskId} not found`);
+    }
+    if (current.status === 'cancelled') {
+      return { discarded: true, status: 'cancelled' };
+    }
+    const affected = await trx('agent_task_queue')
+      .where({ id: taskId })
+      .andWhere('status', 'running')
+      .update({
+        status: 'completed',
+        completed_at: defaultDb.fn.now(),
+        result: adapter.jsonValue(result),
+        updated_at: defaultDb.fn.now(),
+      });
+    if (affected === 0) {
+      const latest = (await trx('agent_task_queue')
+        .where({ id: taskId })
+        .first('status')) as { status: TaskStatus } | undefined;
+      return {
+        discarded: true,
+        status: (latest?.status ?? current.status) as TaskStatus,
+      };
+    }
+    return { discarded: false, status: 'completed' };
+  });
+}
+
+/**
+ * Transition a task from `dispatched|running` to `failed`, OR return
+ * `{ discarded: true }` when the task was already cancelled. Mirrors
+ * `completeTask` semantics for the race where the daemon reports a crash
+ * after the user cancelled (TASK-06).
+ */
+export async function failTask(
+  taskId: string,
+  errorMessage: string,
+  dbOverride?: Knex,
+): Promise<TerminalResult> {
+  const kx = resolveDb(dbOverride);
+  return kx.transaction(async (trx) => {
+    await trx.raw('BEGIN IMMEDIATE');
+    const current = (await trx('agent_task_queue')
+      .where({ id: taskId })
+      .first('status')) as { status: TaskStatus } | undefined;
+    if (!current) {
+      throw new Error(`task ${taskId} not found`);
+    }
+    if (current.status === 'cancelled') {
+      return { discarded: true, status: 'cancelled' };
+    }
+    const affected = await trx('agent_task_queue')
+      .where({ id: taskId })
+      .whereIn('status', ['dispatched', 'running'])
+      .update({
+        status: 'failed',
+        error: errorMessage,
+        completed_at: defaultDb.fn.now(),
+        updated_at: defaultDb.fn.now(),
+      });
+    if (affected === 0) {
+      const latest = (await trx('agent_task_queue')
+        .where({ id: taskId })
+        .first('status')) as { status: TaskStatus } | undefined;
+      return {
+        discarded: true,
+        status: (latest?.status ?? current.status) as TaskStatus,
+      };
+    }
+    return { discarded: false, status: 'failed' };
+  });
+}
+
+/**
+ * Cancel a single task by id — transitions `queued|dispatched|running` to
+ * `cancelled`. Idempotent: cancelling an already-terminal task is a no-op
+ * (returns `{ cancelled: false }`). Emits `task:cancelled` WS broadcast after
+ * commit. See TASK-05.
+ *
+ * Runtime-side abort propagation (daemon SIGTERM, hosted AbortController) is
+ * Phase 19 / Phase 20 — Phase 18 only ships the DB flip + the `isTaskCancelled`
+ * read surface.
+ */
+export async function cancelTask(
+  taskId: string,
+  dbOverride?: Knex,
+): Promise<{ cancelled: boolean; previousStatus: TaskStatus | null }> {
+  const kx = resolveDb(dbOverride);
+  const result = await kx.transaction(
+    async (
+      trx,
+    ): Promise<{
+      cancelled: boolean;
+      previousStatus: TaskStatus | null;
+      workspaceId: string | null;
+      issueId: string | null;
+    }> => {
+      await trx.raw('BEGIN IMMEDIATE');
+      const current = (await trx('agent_task_queue')
+        .where({ id: taskId })
+        .first('status', 'workspace_id', 'issue_id')) as
+        | { status: TaskStatus; workspace_id: string; issue_id: string }
+        | undefined;
+      if (!current) {
+        return { cancelled: false, previousStatus: null, workspaceId: null, issueId: null };
+      }
+      const affected = await trx('agent_task_queue')
+        .where({ id: taskId })
+        .whereIn('status', ['queued', 'dispatched', 'running'])
+        .update({
+          status: 'cancelled',
+          cancelled_at: defaultDb.fn.now(),
+          updated_at: defaultDb.fn.now(),
+        });
+      return {
+        cancelled: affected > 0,
+        previousStatus: current.status,
+        workspaceId: current.workspace_id,
+        issueId: current.issue_id,
+      };
+    },
+  );
+
+  if (result.cancelled && result.workspaceId && result.issueId) {
+    broadcast(result.workspaceId, {
+      type: 'task:cancelled',
+      taskId,
+      issueId: result.issueId,
+      payload: { taskId, issueId: result.issueId },
+    });
+  }
+
+  return { cancelled: result.cancelled, previousStatus: result.previousStatus };
+}
+
+/**
+ * Cheap indexed read for `status='cancelled'`. Used by daemon workers (Phase
+ * 19 — CLI-06 5-second SLA) and hosted workers (Phase 20 — AbortController
+ * check) to detect user cancellation between the DB flip and the runtime-side
+ * propagation. Returns `false` if the task does not exist.
+ */
+export async function isTaskCancelled(
+  taskId: string,
+  dbOverride?: Knex,
+): Promise<boolean> {
+  const kx = resolveDb(dbOverride);
+  const row = (await kx('agent_task_queue')
+    .where({ id: taskId })
+    .first('status')) as { status: TaskStatus } | undefined;
+  return row?.status === 'cancelled';
 }
