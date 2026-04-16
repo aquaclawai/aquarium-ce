@@ -29,11 +29,11 @@ Users can discover and activate extensions for their AI agent instances without 
 - [x] Runtime registry + bridge: unified `GET /api/runtimes` listing hosted + daemon runtimes, automatic mirroring of existing Aquarium instances into `runtimes` table via InstanceManager hooks, derived-via-JOIN status for hosted rows, and 30s offline sweeper for daemon heartbeats — all without modifying InstanceManager's write path (validated in Phase 16)
 - [x] Agents / Issues / Comments REST services: `/api/agents` with soft-archive preserving FKs + MCT validation, `/api/issues` with atomic `issue_number` allocation + fractional kanban reorder, `/api/comments` with threaded replies, and the Phase-17 slice of `task-queue-store` (enqueue + cancel only) wired into `applyIssueSideEffects` so assignment/reassignment/cancellation drive the task lifecycle atomically, plus auto-emitted `status_change` system comments (validated in Phase 17)
 - [x] Task Queue & Dispatch service surface: atomic `claimTask` under `BEGIN IMMEDIATE` + partial-unique coalescing, lifecycle transitions (`startTask` / `completeTask` / `failTask` / `cancelTask` / `isTaskCancelled`) with `.andWhere('status', <expected>)` race guards, `{ discarded: true }` semantics on complete/fail of already-cancelled tasks, 500ms `task-message-batcher` with `MAX(seq)+1` + `UNIQUE(task_id, seq)` backstop, and 30s `task-reaper` (5min `dispatched` / 2.5h `running` thresholds, `julianday()` timestamp compare) wired at `server-core.ts` Step 9c; every cancel path now fans out `task:cancelled` WS broadcasts (validated in Phase 18)
+- [x] Daemon REST API + Auth: `requireDaemonAuth` middleware (SHA-256 + `crypto.timingSafeEqual` + no-cache DB lookup), AUTH1 guard on user `requireAuth` that rejects `adt_*` bearer tokens, `/api/daemon/*` router with 10 endpoints (register/heartbeat/deregister + claim + start/progress/messages/complete/fail/status) wrapping Phase 16/17/18 services, rate-limit topology (skip predicates exempting `/api/daemon/*` from global limiters + per-token `daemonBucket` at 1000/60s), and user-facing `/api/daemon-tokens` CRUD (plaintext shown exactly once on POST; GETs return hashed projection only); Playwright E2E spec covers SC-1..SC-5 (validated in Phase 19)
 
 ### Active
 
 
-- [ ] Daemon REST API: register / heartbeat / deregister / claim / start / progress / messages / complete / fail / status endpoints with daemon-token middleware
 - [ ] Node daemon CLI: `aquarium daemon start` auto-detecting claude / codex / openclaw / opencode / hermes on PATH
 - [ ] TS agent backends with stream-json parsing for at least claude-code, codex, openclaw, opencode
 - [ ] Hosted runtime mode: existing Aquarium instances dispatched via gateway RPC as a built-in server-side task driver
@@ -99,4 +99,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-16 after Phase 18 (Task Queue & Dispatch) completion*
+*Last updated: 2026-04-16 after Phase 19 (Daemon REST API & Auth) completion*
