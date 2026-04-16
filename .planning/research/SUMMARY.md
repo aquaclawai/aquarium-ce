@@ -1,265 +1,287 @@
-# Research Summary: Gateway Communication Overhaul
+# v1.4 Task Delegation — Research Synthesis
+
+**Project:** Aquarium CE v1.4 — Task Delegation Platform
+**Synthesized:** 2026-04-16
+**Confidence:** HIGH (3 MEDIUM flags tracked in Open Questions)
+
+## TL;DR
+
+- **Copy multica's schema + lifecycle verbatim** (with six deletions — see *Feature Scope*); the only genuinely novel piece is the `hosted_instance` runtime driver that reuses Aquarium's existing `gatewayCall()` / `waitForChatCompletion()` facade. All three runtime kinds unify at a single `agent_task_queue` table; they differ only in *who claims the task* (external daemon via REST vs in-process `HostedTaskWorker` via SQLite transaction).
+- **Six small npm additions, zero replacements:** `execa@9.6.1`, `commander@14.0.3`, `nanoid@5.1.9`, `@dnd-kit/core@6.3.1` + `sortable@10.0.0` + `utilities@3.2.2`. Explicitly rejected: `@anthropic-ai/claude-agent-sdk`, `@openai/codex-sdk`, `split2`/`ndjson`, `react-beautiful-dnd`, `zod`, `mitt`, `uuid`, any structured logger.
+- **SQLite concurrency ceiling is fine** (~2–3k claim txns/sec headroom, ~400× what CE needs). Atomicity via `BEGIN IMMEDIATE` + `SELECT ... NOT EXISTS ... LIMIT 1` + conditional `UPDATE WHERE status='queued'`. WAL mode + `busy_timeout=5000` are mandatory PRAGMAs.
+- **Long-polling over HTTP for daemon↔server, WebSocket only for browser↔server.** Matches multica; avoids corporate-proxy hostility and a third protocol surface. Daemon auth is a DB-backed opaque-token scheme (`adt_` prefix), completely disjoint from cookie-JWT user auth.
+- **Single riskiest phase is Agent Backend** (10 pitfalls, 4 HARD: unbounded async leaks, unhandled rejections, SIGTERM→zombie escalation, stdout backpressure). Merits a carve-out unit-test harness using `node --test` — the only exception to "Playwright only" in CLAUDE.md. **Recommend splitting into G1 (claude-code happy path + concurrency primitives + unit tests) and G2 (codex/openclaw/opencode/hermes + full error/cancel).**
+
+## Stack Additions (version-pinned)
+
+| Pkg | Version | Surface | Rationale |
+|---|---|---|---|
+| `execa` | `9.6.1` | server (daemon-side) | Subprocess orchestration; ESM-native, Node 22+, handles timeout/kill/signal cross-platform. 5× less boilerplate than raw `child_process` across 5 agent backends. |
+| `commander` | `14.0.3` | server | Subcommand routing for `aquarium daemon start|stop|status|token`; replaces hand-rolled `getFlag()`/`hasFlag()` in `apps/server/src/cli.ts`. Preserve Phase-1/Phase-2 parse-then-import order. |
+| `nanoid` | `5.1.9` | server | 32 chars × 64-char alphabet = 192 bits entropy for daemon tokens. 130 B gzipped. `crypto.randomBytes().toString('hex')` is acceptable zero-dep fallback. |
+| `@dnd-kit/core` | `6.3.1` | web | Kanban DnD; exact multica version match. React 19 compatible. ~10 KB gzipped. |
+| `@dnd-kit/sortable` | `10.0.0` | web | Sortable preset. ~6 KB gzipped. |
+| `@dnd-kit/utilities` | `3.2.2` | web | `CSS.Transform.toString()`. ~2 KB gzipped. |
+
+**Total web bundle impact:** ~18 KB gzipped for @dnd-kit trio. **Server:** zero.
+
+**Zero-dep built-ins used instead of libraries:** `node:readline` (`crlfDelay: Infinity` + `for await`), `node:events` (typed in-process pub/sub), `node:crypto` (`timingSafeEqual`, `createHash('sha256')`, `randomUUID()`), `AbortController`, `ajv@8.18.0` (already installed — stream-message schema validation).
+
+**Rejections with rationale:** `@anthropic-ai/claude-agent-sdk` (bypasses user's installed `claude` CLI), `@openai/codex-sdk` (no streaming event API, only `.run()`), `split2`/`ndjson` (redundant with `node:readline`), `react-beautiful-dnd` (archived 2022), `zod` (duplicates ajv), `mitt`/`tiny-emitter` (stdlib sufficient), `uuid` (for uniqueness not secrecy), `winston`/`pino` (existing `console.log` sufficient).
+
+## Feature Scope
+
+### Table Stakes (12 must-haves)
+
+1. **Workspace** (single `default`, `issue_prefix='AQ'`, monotonic `issue_counter`). All new tables FK to `workspace_id` for EE.
+2. **Agent** with `instructions`, `custom_env`, `custom_args`, `max_concurrent_tasks DEFAULT 6 CHECK 1..16`, `visibility`, `status`, `archived_at/by`. Drop multica's `runtime_mode` — kind lives on the runtime.
+3. **Runtime** with three kinds: `local_daemon | external_cloud_daemon | hosted_instance`. Single table with discriminator + CHECK.
+4. **Issue** with **six** statuses (drop `in_review`): `backlog | todo | in_progress | done | blocked | cancelled`. Priority + `position FLOAT` for kanban.
+5. **Task** (`agent_task_queue`) with `queued | dispatched | running | completed | failed | cancelled`. **Partial unique index** `(issue_id, agent_id) WHERE status IN ('queued','dispatched')` for coalescing (multica mig 037). **No auto-retry.**
+6. **`trigger_comment_id`** on tasks — thread-aware replies + duplicate-suppression. One nullable UUID, huge UX payoff.
+7. **Comment** with `type IN ('comment','status_change','progress_update','system')` and `parent_id`. Drives timeline; replaces `activity_log` (deferred).
+8. **Task message** stream (`task_message(task_id, seq, type, tool, content, input, output)` with `(task_id, seq)` index). Two ingestion paths: daemon POST + hosted-instance gateway-event translator.
+9. **Daemon REST API** (9 endpoints: register/heartbeat/deregister/claim/start/progress/messages/complete/fail) + daemon-token middleware. Tokens `adt_<32 nanoid chars>` stored as SHA-256.
+10. **`max_concurrent_tasks`** enforcement in `ClaimTask`.
+11. **Heartbeat sweeper** with multica defaults: 15s heartbeat, 45s offline (3 missed), 30s sweep tick, 5m dispatch timeout, 2.5h running timeout, 7d offline GC.
+12. **Hosted-instance driver** — the Aquarium-specific piece.
+
+### Differentiators (ship in v1.4 if schedule holds)
+
+- **D3 — Custom env/args per agent** (ship): users need `ANTHROPIC_BASE_URL` / `OPENAI_API_KEY` per agent immediately.
+- **D4 — Agent archival** (ship): soft delete; FK cascades on hard delete painful.
+- **D6 — `issue.position` FLOAT** (ship): fractional indexing; retrofitting later needs data migration.
+- **D1 — Chat-on-issue** (nice-to-have): reuses task-message stream. Defer if tight.
+- **D2 — Skills schema** (ship tables only, UI v1.5): avoids schema bump when templates need skill fields.
+
+### Deferred (v1.5+)
+
+activity_log (dropped — comment drives timeline), inbox (single-user), issue dependencies / parent_issue_id, **session-resume daemon logic** (persist `session_id`, don't resume yet), Autopilots, Projects, Attachments, reactions, workspace invitations/members, @-mention-triggered tasks on non-assignees, pgvector search (SQLite uses LIKE), PATs, skill UI, daemon self-update.
+
+### Anti-features (won't reconsider)
+
+`runtime_usage` billing (multica dropped at mig 046), daemon OAuth/QR pairing (dropped at 029), workspace email verification, issue-scoped git repos (dropped at 007), pinned items, workspace context, `in_review` status, agent `custom_env` encryption at rest (redaction at API boundary sufficient for v1.4).
+
+## Architecture Decisions
+
+### Runtime unification — single `runtimes` table + `kind` discriminator + CHECK
+
+```sql
+CREATE TABLE runtimes (
+    id               TEXT PRIMARY KEY,
+    workspace_id     TEXT NOT NULL,
+    name             TEXT NOT NULL,
+    kind             TEXT NOT NULL CHECK (kind IN ('local_daemon','external_cloud_daemon','hosted_instance')),
+    provider         TEXT NOT NULL,
+    status           TEXT NOT NULL DEFAULT 'offline' CHECK (status IN ('online','offline','error')),
+    daemon_id        TEXT,
+    device_info      TEXT,
+    last_heartbeat_at DATETIME,
+    instance_id      TEXT REFERENCES instances(id) ON DELETE CASCADE,
+    metadata         TEXT NOT NULL DEFAULT '{}',
+    owner_user_id    TEXT,
+    created_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (workspace_id, daemon_id, provider),
+    CHECK (
+      (kind IN ('local_daemon','external_cloud_daemon') AND daemon_id IS NOT NULL AND instance_id IS NULL)
+      OR
+      (kind = 'hosted_instance' AND instance_id IS NOT NULL AND daemon_id IS NULL)
+    )
+);
+```
+
+`agent_task_queue.runtime_id` is a single FK to `runtimes.id`. Dispatcher reads `runtimes.kind` to route.
+
+### SQLite claim pattern (BEGIN IMMEDIATE + NOT EXISTS)
+
+```sql
+SELECT id, agent_id, issue_id, priority
+  FROM agent_task_queue
+ WHERE runtime_id = :rid
+   AND status = 'queued'
+   AND NOT EXISTS (
+     SELECT 1 FROM agent_task_queue active
+      WHERE active.agent_id = agent_task_queue.agent_id
+        AND active.issue_id = agent_task_queue.issue_id
+        AND active.status IN ('dispatched','running'))
+ ORDER BY priority DESC, created_at ASC
+ LIMIT 1;
 
-**Project:** Aquarium CE v1.3 — Gateway-First Communication
-**Domain:** Platform-to-agent WebSocket communication architecture
-**Researched:** 2026-04-05
-**Confidence:** HIGH (all gateway API behavior verified from OpenClaw source code; no assumptions)
+UPDATE agent_task_queue
+   SET status='dispatched', dispatched_at=CURRENT_TIMESTAMP
+ WHERE id = :picked_id AND status='queued';
+```
 
-## Executive Summary
+Retry once if UPDATE affects 0 rows. **Mandatory boot PRAGMAs:** `journal_mode=WAL; synchronous=NORMAL; busy_timeout=5000;`.
 
-The gateway communication overhaul is fundamentally an architectural refactoring, not a technology adoption project. Every library and runtime capability needed is already present in the codebase: `ws@8.20.0` supports multiplexed RPC over persistent connections, `node:events` provides typed `EventEmitter<T>`, and `node:http` handles the gateway health endpoint. Zero new npm dependencies are required. The work is entirely structural: route all RPC through the `PersistentGatewayClient` instead of creating ephemeral connections, invert config update direction from DB-first to gateway-first, and implement a shutdown/reconnect/query pattern for state synchronization.
+### Hosted-instance worker (Aquarium-specific glue)
 
-The most consequential research finding — confirmed from direct OpenClaw gateway source code — is that the gateway emits zero events for config changes, plugin load/fail, or skill load/fail. The original "event-driven DB sync" design described in `docs/gateway-communication-analysis.md` Section 5 cannot be implemented as written. Instead, the sync layer must use a **shutdown-event -> reconnect -> query** pattern: `config.patch` triggers a SIGUSR1 restart; the persistent WebSocket drops; on reconnect, the platform calls `config.get`, `tools.catalog`, and `skills.status` to read actual state and update the DB. The DB becomes a persistent cache of gateway reality, not an authority that pushes to the gateway.
+`apps/server/src/task-dispatch/hosted-worker.ts` — in-process singleton, `setInterval` per online hosted runtime at 2s cadence. Per tick:
 
-The critical operational constraint is the rate limit of 3 config writes per 60 seconds (shared across `config.patch`, `config.apply`, and `update.run`), combined with the fact that every `plugins.*` change triggers a full gateway process restart. These two facts together make batching of plugin operations mandatory, not optional. Installing 4 plugins sequentially would exhaust the rate limit and cause 4 separate gateway restarts; the correct pattern is to accumulate all plugin config changes and send a single merged `config.patch`, consuming one rate-limit slot and causing one restart.
+1. Skip silently if `isGatewayConnected(instanceId) === false`.
+2. Claim one task via BEGIN IMMEDIATE path.
+3. Verify `instance.status === 'running'`; else fail `"instance offline"`.
+4. Compose prompt from agent instructions + issue + trigger comment.
+5. `gatewayCall(instanceId, 'chat.send', {...}, 120_000)` + `waitForChatCompletion`.
+6. Translate gateway parts → `task_message` rows:
 
----
+| Gateway part | `task_message.type` | Fields |
+|---|---|---|
+| `text` | `text` | `content = part.text` |
+| `toolCall` | `tool_use` | `tool = part.name`, `input = part.arguments` |
+| `toolResult` | `tool_result` | `output = part.output`, `tool = part.toolName` |
+| `thinking` | `thinking` | `content = part.text` |
 
-## Key Findings
+**Hosted does NOT support**: session resume, custom `work_dir`, custom `custom_args` (log warning), custom `custom_env` (log warning).
 
-### Recommended Stack
+### Auth — cookie-JWT (users) disjoint from daemon token (daemons)
 
-The stack requires no additions. All required capabilities are already installed and functional:
+Two middleware, no shared code:
+- `requireAuth` — cookie JWT only, rejects `Authorization: Bearer …`.
+- `requireDaemonAuth` — `Authorization: Bearer adt_…` only, rejects cookies.
 
-**Core technologies (keep as-is):**
-- `ws@8.20.0` — WebSocket transport — already supports multiplexed concurrent RPC via UUID-correlated `pendingRequests` Map; `PersistentGatewayClient` already implements this pattern correctly
-- `node:events` (`EventEmitter<T>`) — typed internal event bus — `@types/node@22.x` provides generic `EventEmitter<T>` natively; no external typed-emitter package needed
-- `node:http` — HTTP health checks — gateway exposes `/ready` endpoint; a simple HTTP GET is sufficient; no `got` or `axios` needed
-- `knex@3.1.0` + `better-sqlite3@11.x` — DB persistence — already installed; used for all DB sync writes after gateway state reads
-- `node:crypto` (`randomUUID`, `createHash`) — RPC correlation IDs and config hash verification — already installed as built-in
+`daemon_tokens(id, token_hash UNIQUE, workspace_id FK, daemon_id, expires_at, created_at, last_used_at, revoked_at)`. Verify with `crypto.timingSafeEqual`. Revocation = DELETE. Rate limit per-token (~1000/min). Issuance returns plaintext ONCE.
 
-**Explicitly NOT adding:** `rpc-websockets`, `websocket-multiplex`, `eventemitter3`, `typed-emitter`, `rxjs`, `bottleneck`, `p-throttle`, `got`, `axios`. All are either wrong protocol, unnecessary abstraction, or trivially replaced by built-ins.
+### Boot sequence
 
-See `STACK.md` for detailed analysis of each decision.
+```
+1.  db.migrate.latest()
+... (unchanged 2-9)
+9.  startGatewayEventRelay()
+9a. runtimeBridge.reconcileFromInstances()    -- mirror running instances → hosted runtimes
+9b. failInFlightHostedTasksOnBoot()           -- fail in-process hosted tasks post-restart
+9c. taskQueueSweeper.start()                  -- 60s: stale dispatched >5m + orphan running
+9d. hostedTaskWorker.start()                  -- 2s per hosted runtime
+9e. runtimeRegistryOfflineSweeper.start()     -- 30s: daemon runtimes offline after 90s
+10. onBeforeListen()
+11. server.listen()
+```
+
+Daemon tasks **survive** server restart. Hosted tasks **don't** — 9b fails them fast.
+
+### File layout
+
+```
+apps/server/src/
+├── cli.ts                              (rewrite with commander)
+├── cli/{server.ts, daemon.ts, help.ts}
+├── daemon/                             (NEW: local daemon module)
+├── agent-backends/                     (NEW: CLI executors, daemon-only)
+├── routes/{daemon,issues,comments,agents,runtimes,tasks}.ts (NEW)
+├── services/{runtime-registry,task-queue,task-messages,agent-store,issue-service,comment-service,daemon-tokens}.ts (NEW)
+├── task-dispatch/{hosted-worker,runtime-bridge,sweepers}.ts (NEW)
+├── middleware/daemon-auth.ts (NEW)
+└── db/migrations/003_* through 007_* (NEW — sequential from 003)
 
-### Expected Features
+apps/web/src/
+├── pages/{issues,agents,runtimes,daemon-tokens}/ (NEW)
+├── components/issues/{IssueCard,IssueStatusBadge,TaskMessageStream,ToolCallBubble}.tsx (NEW)
+└── i18n/locales/{en,zh,fr,de,es,it}.json (extend all 6 — HARD CONSTRAINT)
 
-**Must have (table stakes) — Phase 1 foundation:**
-- Route all RPC through persistent WS client — eliminates ephemeral connection overhead (~100-300ms per call); `PersistentGatewayClient.call()` already implements multiplexed RPC correctly
-- `baseHash` lifecycle management — `config.get` returns the SHA-256 hash required as `baseHash` for all `config.patch`/`config.apply` calls; stale hash causes rejection; must implement read-then-patch with retry
-- Shutdown event handling — gateway emits `{ event: "shutdown", payload: { reason, restartExpectedMs } }` before clean restarts; this is the only signal to distinguish restart from crash
-- HTTP `/ready` health checks — gateway exposes `{ ready: boolean, failing: string[], uptimeMs: number }` at `http://host:port/ready`; independent of WebSocket connection; correct supplement to Docker container polling
+apps/server/tests/unit/ (NEW — node --test carve-out)
+```
 
-**Should have (needed for reliable extension management) — Phases 2-4:**
-- Batched `config.patch` for plugin changes — mandatory given 3/min rate limit and restart-per-change; send one patch for multiple plugin installs
-- Post-restart verification via `tools.catalog` — only way to confirm plugins loaded after SIGUSR1 restart; `plugins.list` RPC does NOT exist; use `tools.catalog({ includePlugins: true })` instead
-- Reconnect-driven state sync — after any reconnect, call `config.get` + `tools.catalog` + `skills.status` to reconcile DB with gateway reality
-- Gateway-first `patchGatewayConfig` — invert current DB-first flow; only write DB after gateway confirms the change
+**Lint requirement:** daemon/agent-backends code must NOT import from `db/`, `services/`, `middleware/`, `routes/`, `runtime/`. Use `services/agent-store.ts` not `services/agents.ts` to avoid collision with `agent-types/`.
 
-**Defer (v2+):**
-- `config.schema` introspection for dynamic config UIs — high complexity, not needed until advanced config editing in dashboard
-- Full `agents.*` RPC management — out of scope for extension management milestone
-- Protocol version range negotiation — `minProtocol: 3, maxProtocol: N` — low urgency, address before next gateway protocol bump
+### Shared types
 
-See `FEATURES.md` for full RPC method signatures, payload shapes, and source file citations.
+`packages/shared/src/types.ts` — `Issue`, `IssueStatus`, `IssuePriority`, `Agent`, `AgentStatus`, `Runtime`, `RuntimeKind`, `AgentTask`, `TaskStatus`, `TaskMessage`, `TaskMessageType`, `Comment`, `TaskEventType`, `TaskMessagePayload`, `DaemonRegisterRequest/Response`, `ClaimedTask`.
 
-### Architecture Approach
+`packages/shared/src/agent-stream.ts` — hand-written stream-json discriminated unions for claude-code and codex.
 
-The target architecture establishes the gateway as authoritative for all running-instance state, with the DB functioning as a persistent cache. Communication flows in one direction: the platform operates on the gateway via persistent WebSocket RPC, then reads back actual state after mutations. For config changes that trigger restarts (all `plugins.*` changes), the state read-back happens asynchronously after reconnect. For non-restart config changes (models, hooks, cron), the read-back happens immediately after the `config.patch` response.
+## Highest-Risk Pitfalls with Prevention (top 10, **H** = HARD CONSTRAINT)
 
-**Major components:**
+1. **SQ1 — No `FOR UPDATE SKIP LOCKED` on SQLite** *(H, Schema + Task-service)* — `db.transaction(fn)` defaults to BEGIN IMMEDIATE. WAL + `busy_timeout=5000` mandatory. No in-process JS mutex.
 
-1. **`PersistentGatewayClient` (refactored)** — WS lifecycle, reconnect with exponential backoff, RPC send/receive, event relay, shutdown event detection, post-reconnect state sync trigger; one per running instance
-2. **`gatewayCall()` facade (new)** — unified RPC routing: persistent-first, ephemeral-only during startup race window; eliminates direct `new GatewayRPCClient()` calls from 6+ services
-3. **`GatewayStateSyncer` / `gateway-sync.ts` (new)** — reconnect-then-query sync handler; calls `config.get`, `tools.catalog`, `skills.status` after reconnect; diffs against DB and applies updates; also replaces boot-time `reconcileExtensions` ephemeral RPC pattern
-4. **`instance-manager.ts` (modified)** — `patchGatewayConfig` inverted to gateway-first; no `reseedConfigFiles` for running instances; DB written only after gateway confirms
-5. **`health-monitor.ts` (modified)** — adds HTTP `/ready` polling alongside Docker container status; replaces file-hash `checkConfigIntegrity` with gateway-authoritative hash comparison
-6. **`extension-lifecycle.ts`, `plugin-store.ts`, `skill-store.ts` (modified)** — all RPC calls routed through `gatewayCall()` facade; `plugins.list` replaced with `tools.catalog`; plugin activation uses `config.patch` instead of `restartInstance`
+2. **PG1 — Go goroutines → unbounded Node async leak** *(H, Daemon CLI)* — Bounded-concurrency helper (`const release = await sem.acquire(); try{…}finally{release();}`). Poll loop awaits next iteration.
 
-See `ARCHITECTURE.md` for full component diagrams, code patterns, and migration tables.
+3. **PG2 — Unhandled promise rejection kills the daemon** *(H, Daemon CLI)* — Every top-level async `.catch(logAndReport)`. `process.on('unhandledRejection'|'uncaughtException')` marks in-flight tasks failed.
 
-### Critical Pitfalls
+4. **PM1 — SIGTERM→zombie on child processes** *(H, Agent-backend)* — Helper `killWithEscalation(child, { graceMs: 10_000 })`. Never `{ shell: true }`. Linux/macOS process group kill via `{ detached: true }` + `process.kill(-pid, sig)`. Windows: `taskkill /F /T /PID`.
 
-23 pitfalls identified. Top 5:
+5. **AUTH1 — Daemon-token privilege confusion** *(H, Daemon REST API)* — Two completely separate middleware, no shared code. `adt_` prefix checked before JWT parsing. Test matrix: every user endpoint with daemon token → 401/403; every daemon endpoint with cookie → 401.
 
-1. **P1 — Transitional dual-write window** — During incremental migration, a gateway-first `config.patch` can be overwritten by a still-DB-first `reseedConfigFiles` call, silently reverting the change. Prevention: gate migration per-instance; once an instance uses gateway-first config, ALL config operations for that instance must be gateway-first. Add `config_source` tracking. Four `reseedConfigFiles` call sites must be audited: `updateSecurityProfile`, health monitor auto-recovery, config integrity violation handler, and `patchGatewayConfig` retry loop.
+6. **PG7/PG8 — Readline iteration + stdout backpressure** *(H, Agent-backend)* — `for await (const line of rl)`, not event handler. `crlfDelay: Infinity`. `child.stdout.setEncoding('utf8')`. Kill if no line in 60s.
 
-2. **P4 — Config integrity check creates infinite reseed loop** — `checkConfigIntegrity` hashes the on-disk `openclaw.json` and compares to DB hash. In gateway-first, the gateway legitimately modifies its own config (plugin path injection, normalization). Hash always drifts, triggering reseed every 30 seconds, creating a CPU/IO loop and overwriting gateway state. Prevention: replace file-hash check with gateway-level readiness (`config.get` hash comparison: "does DB match gateway?" rather than "does disk match DB?").
+7. **PG5 — AbortSignal ≠ Go context.WithCancel** *(H, Cross-cutting)* — Pass `{ signal }` to every async boundary. Central `createTaskContext(taskId)` helper threads signal through.
 
-3. **P5 — Fallback-to-DB-first creates silent state divergence** — Current `patchGatewayConfig` explicitly says gateway push failure is non-critical (DB already updated). This philosophy is incompatible with gateway-first. If the gateway is unreachable and code falls back to DB-first, the user sees success but the gateway runs with old config indefinitely. Prevention: for running instances, return error on gateway failure; do not fall back silently; do not write DB before gateway confirms.
+8. **ST1 — Instance status vs runtime status drift** *(H, Hosted driver)* — For `kind='hosted_instance'`, `runtime.status` is derived from `instance.status` via JOIN, not stored. `InstanceManager` remains only writer.
 
-4. **P6 — Full container restart for plugin activation destroys gateway state** — Current `_activatePluginWithLock` calls `restartInstance()`, which stops and deletes the container. This destroys active chat sessions, in-memory pending approvals, and causes ~2 minutes downtime on failure path (activate restart + rollback restart). Prevention: use `config.patch` to add plugin to `plugins.load.modules`; this triggers SIGUSR1 (process-level restart, much faster) rather than container destruction.
+9. **UX1 — Kanban DnD + WebSocket reorder conflict** *(H, Issue-board UI)* — Optimistic local reorder → fractional server position. On WS reorder from others, apply if not dragging, else queue.
 
-5. **P3 — Reconnection state gap loses events during disconnect** — Events emitted during the 5-25 second reconnection window are permanently lost. After reconnect, DB state may be stale with no catch-up. Prevention: reconcile-on-reconnect (call `config.get`, `tools.catalog`, `skills.status` immediately after handshake); extract `reconcileExtensions` into a reusable function called on both boot and reconnect; use exponential backoff starting at 1s instead of fixed 5s delay.
+10. **CE1 — workspace_id enforcement** *(H, Schema + Task-service)* — Every query on workspace-scoped tables MUST filter by `workspace_id`, even in CE. Services read `req.workspaceId`, never hardcoded `'default'`.
 
-**Additional critical findings covered in PITFALLS.md:** P7 (config.patch is not instant activation — show "restarting" state, not "active"), P8 (rate limit exhaustion from sequential plugin installs), P9 (stale baseHash causing rejections), P22 (no mock gateway for CI — all gateway-first code untested in current setup).
+**Non-HARD but expensive if missed:** PG3 (timer leaks — `PeriodicTask` helper), SQ4 (stale task reaper), ST2 (WS reconnect replay via `lastSeq`), ST3 (background-tab pile-up — `useTransition` + virtualize), UX6 (task-message XSS — never `dangerouslySetInnerHTML`; truncate 16 KB), PM5 (cancel-race — `completeTask` returns `{ discarded: true }` not 400), PM3 (PATH inheritance).
 
----
+## Recommended Phase Decomposition (A–K, refined)
 
-## Implications for Roadmap
+- **A — Schema + Shared Types** (no deps): 5 migrations, WAL PRAGMAs, shared types.
+- **B — Runtime Registry + Runtime-Bridge** (A): InstanceManager event hooks.
+- **C — Agent + Issue + Comment Services** (A, parallel with B): 6-status machine, auto-enqueue.
+- **D — Task Queue + Reaper** (B, C): BEGIN IMMEDIATE claim, 500ms-batched ingest, stale-task reaper. **NEEDS RESEARCH**: knex+better-sqlite3 transaction pool semantics.
+- **E — Daemon REST API + daemon-auth middleware** (D, parallel with F): 9 `/api/daemon/*` routes, per-token rate limiter. **LIGHT RESEARCH**: rate-limiter exemption.
+- **F — Hosted-Instance Driver** (D, parallel with E): `hosted-worker.ts`, gateway→task_message translator. **NEEDS RESEARCH**: OpenClaw gateway WS v3 cancel frame.
+- **G1 — Daemon CLI + claude-code happy path + unit harness** (E): commander, `daemon/` module, claude-code backend, `node --test` harness, concurrency primitives. **NEEDS RESEARCH**: Windows daemon strategy, Claude Code `control_request` protocol.
+- **G2 — Remaining agent backends** (G1): codex / openclaw / opencode / hermes with full stream-json + error/cancel. **LIGHT RESEARCH**: per-CLI stream-json dialect.
+- **H — Issue Board UI** (D): @dnd-kit kanban with fractional `position`, WS-reorder, virtualize >100. **LIGHT RESEARCH**: virtualized-dnd reference.
+- **I — Issue Detail UI + Task Message Streaming** (D, H): WS `subscribe_issue`/`subscribe_task` with `lastSeq` replay.
+- **J — Management UIs** (B, C, E): Agents / Runtimes (unified list) / Daemon Tokens. i18n 6 locales.
+- **K — Integration, Boot, E2E, Release** (all): boot wiring, `failInFlightHostedTasksOnBoot`, Playwright E2E + one `@integration` daemon-spawn smoke, i18n CI check, docs, version bump.
 
-### Phase Ordering Rationale
+### Phase graph
 
-The dependency chain is linear: Phase 1 enables Phase 2 (config lifecycle uses the persistent RPC client); Phase 2 enables Phase 3 (restart cycle triggers from config.patch); Phase 3 enables Phase 4 (extension ops need restart verification to confirm success). Phase 5 (health integration) is independent and can run concurrently with Phases 3-4.
+```
+A ──┬──► B ──┐
+    │        ├──► D ──┬──► E ──► G1 ──► G2
+    └──► C ──┘        └──► F ────────────┐
+                                          │
+                      D ──► H ──► I       │
+                      │         │         │
+                      └─► J ◄───┘         │
+                                          │
+                    all ──► K ◄───────────┘
+```
 
-The most important ordering constraint: **the dual-write window (P1) only exists during the transition period between Phase 2 and Phase 4 completion.** Phases 2-4 must be executed as a coherent unit, not piecemeal across releases, to minimize the duration of mixed DB-first/gateway-first operation.
+## Resolved Decisions (authoritative for downstream)
 
----
+1. **Daemon token prefix `adt_`** — avoids multica `mdt_` collision; enables secret-scanner recognition. (*STACK over ARCHITECTURE.*)
+2. **Runtime kinds `local_daemon | external_cloud_daemon | hosted_instance`** (snake_case).
+3. **Issue statuses: 6 not 7** — drop `in_review`.
+4. **Daemon↔server: HTTP long-poll, not WebSocket.**
+5. **Two disjoint auth middleware** — no shared code.
+6. **SQLite claim: BEGIN IMMEDIATE + NOT EXISTS + conditional UPDATE.** WAL + busy_timeout=5000 mandatory.
+7. **`runtime.status` for `hosted_instance`: derived, not stored.**
+8. **Skills: tables in v1.4, UI v1.5.**
+9. **Session-resume: persist `session_id`/`work_dir` in v1.4; daemon `--resume` logic is v1.5.**
+10. **`position FLOAT` ships in v1.4.**
+11. **`custom_env` / `custom_args` ship in v1.4.**
+12. **Agent archival ships in v1.4.**
+13. **Migrations sequential from 003, all v1.4 in one PR.**
+14. **Hand-write stream-json types in shared** — don't import SDKs.
+15. **Unit-test carve-out at `apps/server/tests/unit/` (node --test)**.
+16. **Daemon bundles in `@aquaclawai/aquarium`** — single npm package, subcommand router.
+17. **`RuntimeDriver { dispatch, cancel, getStatus }` interface** with factory by `kind`.
+18. **`custom_env` redacted at API boundary**; encryption-at-rest deferred to v1.5.
 
-### Phase 1: Consolidate RPC Routing
+## Open Questions for Planning
 
-**Rationale:** All subsequent phases depend on reliable persistent-first RPC. This phase is low-risk and purely additive. It does not change data flow direction.
+**Phase A:** (1) Lowercase-UUID normalization helper; (2) knex SQLite DSL for partial unique index.
 
-**Delivers:**
-- `gatewayCall(instanceId, method, params)` unified facade in `gateway-rpc.ts`
-- All 6+ direct `new GatewayRPCClient()` call sites migrated to `gatewayCall()`
-- `plugins.list` calls replaced with `tools.catalog({ includePlugins: true })` (verified: `plugins.list` does not exist in the gateway)
-- Client ID changed from `'openclaw-control-ui'` to `'aquarium-platform'` (prevents conflict with browser Control UI — P21)
-- Exponential backoff on reconnect (1s, 2s, 4s, 8s, 16s, 30s cap — replaces fixed 5s delay)
+**Phase D:** (3) knex + better-sqlite3 transaction pool — does `db.transaction(async trx => …)` serialize through one connection? (4) Stale-task threshold tuning (5min dispatch / 2.5h running may kill long Codex sessions). (5) Enqueue→archive race for in-flight tasks.
 
-**Addresses:** P10 (ephemeral connections from 6+ call sites), P21 (wrong client ID)
+**Phase E:** (6) `created_by_user_id` on daemon_tokens for audit. (7) Rate-limit bucket sizing (~1000/min/token).
 
-**Avoids:** P2 (race conditions from parallel persistent + ephemeral connections)
+**Phase F:** (8) **Does OpenClaw gateway WS protocol v3 have a cancel frame?** If no, cancel closes subscription and gateway runs silently. (9) Back-pressure semaphore on hosted dispatch. (10) Hosted-instance deletion mid-task — hook instance events.
 
-**Research flag:** Standard patterns; no additional research needed.
+**Phase G1/G2:** (11) Windows daemon background-process story — best-effort or foreground-only? (12) Claude Code `control_request` auto-approval posture. (13) PATH resolution for npm-shim CLIs.
 
----
+**Phase H:** (14) Finalize z-index token values in `index.css` before components land.
 
-### Phase 2: Config Lifecycle Management
+**Phase I:** (15) `task_messages` GC cadence and retention window (default 30 days).
 
-**Rationale:** The `baseHash` requirement from the gateway is a hard constraint on all config write operations. This phase must be solid before any extension operation can use `config.patch`. It also establishes the correct direction of authority (gateway-first for running instances).
+**Phase K:** (16) Daemon self-update deferred to v1.5. (17) Post-H bundle-size analysis to verify @dnd-kit ~18 KB after tree-shaking.
 
-**Delivers:**
-- `patchGatewayConfig` inverted to gateway-first: `config.get` -> build `{ raw: JSON.stringify(delta) }` patch -> `config.patch` with `baseHash` -> read back on success
-- `baseHash` tracked per-instance in DB (`config_hash` column); refreshed on every successful config operation
-- Read-patch-retry loop for stale hash conflicts (max 3 retries)
-- Rate limit enforcement: timestamp array tracking 3 config writes per 60s per instance; batching of multi-plugin operations into single `config.patch`
-- `reseedConfigFiles` eliminated for running instances; renamed `seedInitialConfig` for cold-start-only use
+## Confidence
 
-**Key protocol facts this phase must respect:**
-- `config.patch` uses `{ raw: "<JSON5 string>", baseHash: "<hash>" }` — NOT `{ patch: {...} }`; the `raw` string is parsed as JSON5 then applied as RFC 7396 merge-patch
-- Array entries must include `id` field for merge-by-id behavior; without `id`, arrays are replaced
-- `config.patch` ALWAYS triggers SIGUSR1 restart for any `plugins.*` change (no hot-reload path exists)
-- The `{ patch: configPatch }` fallback in current `instance-manager.ts:820` is broken — gateway schema only accepts `raw`
-
-**Addresses:** P5 (silent divergence from DB-first fallback), P9 (stale baseHash rejections), P17 (config validation skipped), P18 (duplicate deepMerge implementations)
-
-**Avoids:** P1 onset — establishes clear authority boundary before Phase 4
-
-**Research flag:** Live testing needed for config.patch conflict resolution when Aquarium and Control UI edit concurrently; default `restartDelayMs` timing needs measurement.
-
----
-
-### Phase 3: Restart Cycle and State Sync
-
-**Rationale:** Plugin operations trigger SIGUSR1 restarts; this phase handles the full restart lifecycle. Must be in place before Phase 4 so extension operations have verified confirmation of success/failure.
-
-**Delivers:**
-- Shutdown event handling in `PersistentGatewayClient`: detect `{ event: "shutdown" }` payload, set `expectedRestart` flag, suppress error alerts during reconnect window
-- `syncGatewayStateAfterRestart(instanceId)` function (`gateway-sync.ts`): calls `config.get` + `tools.catalog` + `skills.status` after every reconnect; diffs against DB; marks plugins/skills as `active` or `failed` based on gateway reality
-- Boot-time `reconcileExtensions` refactored to use same `gateway-sync.ts` logic (replaces current `plugins.list` call that fails silently)
-- `pendingQueue` in `PersistentGatewayClient` for RPCs received during reconnect window (drain after reconnect completes)
-- WS ping/pong heartbeat (30s interval) for transport-level liveness detection
-
-**Key protocol facts this phase must respect:**
-- Gateway emits ZERO events for config change, plugin load/fail, or skill load/fail — there is no `config.changed`, `plugin.loaded`, or `skill.loaded` event in `GATEWAY_EVENTS`
-- The only state visibility after a restart is: `shutdown` event (before restart), then `hello-ok` snapshot (on reconnect handshake), then explicit RPC queries (`config.get`, `tools.catalog`, `skills.status`)
-- HTTP `/ready` endpoint returns `{ ready: boolean, failing: string[], uptimeMs: number }` and is available independently of the WebSocket connection
-
-**Addresses:** P3 (reconnection state gap), P4 (integrity check reseed loop — replace with gateway-authoritative sync), P7 (premature "active" state before tools confirmed), P14 (event handler crash drops events)
-
-**Research flag:** Exact timing between config.patch response and SIGUSR1 execution needs live measurement to set appropriate reconnect wait behavior.
-
----
-
-### Phase 4: Extension Operations via Gateway-First
-
-**Rationale:** Depends on Phases 2 (config.patch is reliable) and 3 (restart cycle is handled). Converting plugin activation from full container restart to config.patch eliminates session disruption and dramatically reduces operation time.
-
-**Delivers:**
-- Plugin activate/deactivate via `config.patch` with `plugins.entries` array (using id-keyed merge): one gateway restart per batch, not per plugin
-- Full batch pattern: accumulate all plugin changes, merge into single `config.patch`, one rate-limit slot consumed, one restart, `syncGatewayStateAfterRestart` confirms outcome
-- Rollback via config.patch (remove plugin entry) instead of double container restart
-- "Gateway restarting" UI state during plugin apply window (not "activating", not "active" — only "active" after `tools.catalog` confirms)
-- `reseedConfigFiles`/container restart path for plugin ops formally deprecated
-
-**Key protocol facts this phase must respect:**
-- `plugins.list` RPC does NOT exist — verification of loaded plugins must use `tools.catalog({ includePlugins: true })`; plugin tool groups have `source: "plugin"` and `pluginId` field
-- Each `config.patch` touching `plugins.*` triggers a SIGUSR1 restart — there is no hot-reload path
-- Rate limit: 3 config writes per 60 seconds — if user installs 4+ plugins, all must be batched into one patch
-- `config.patch` response includes `restart.coalesced: true` when a restart was merged into a pending one — do not wait for a second restart event
-
-**Addresses:** P6 (container restart destroys gateway state), P7 (premature "active" state), P8 (rate limit from sequential plugin patches), P15 (array merge semantics for plugin entries)
-
-**Research flag:** UX for "pending restart" state in the plugin management UI needs design review; the coalesced restart response handling needs testing with rapid sequential patches.
-
----
-
-### Phase 5: Health Integration
-
-**Rationale:** Independent of Phases 1-4. Additive alongside existing Docker health checks. Can proceed in parallel once Phase 1 (persistent client improvements) is complete.
-
-**Delivers:**
-- HTTP `/ready` polling added to health monitor (30s interval): derives HTTP URL from `control_endpoint`, fetches `{ ready, failing, uptimeMs }`, broadcasts degraded status to browser clients when `ready: false`
-- `/health` liveness check as lightweight probe (gateway process alive) vs. `/ready` readiness (channels healthy)
-- WS ping/pong latency tracking: `latencyMs`, `isHealthy` metrics from `PersistentGatewayClient`
-- `checkConfigIntegrity` replaced: instead of comparing disk hash to DB hash (causes reseed loop), compare gateway's `config.get` hash to DB `config_hash` — on mismatch, update DB (not disk)
-- Docker container status checks remain as fallback for pre-WebSocket startup window
-
-**Addresses:** P4 (config integrity reseed loop), P16 (Docker-only checks miss gateway crashes)
-
-**Research flag:** Standard patterns; HTTP health probing is well-documented. No additional research needed.
-
----
-
-### Research Flags Summary
-
-| Phase | Needs Research | Reason |
-|-------|---------------|--------|
-| Phase 1 | No | Standard persistent-client refactoring; patterns already in codebase |
-| Phase 2 | Yes (limited) | Live testing needed for concurrent edit conflict resolution; `restartDelayMs` timing |
-| Phase 3 | Yes (limited) | SIGUSR1 timing relative to config.patch response needs measurement |
-| Phase 4 | Yes (limited) | Coalesced restart response behavior; UX for "pending restart" state |
-| Phase 5 | No | HTTP health probing is well-documented standard pattern |
-
----
-
-## Confidence Assessment
-
-| Area | Confidence | Notes |
-|------|------------|-------|
-| Stack | HIGH | Zero new deps; all capabilities verified against installed library versions |
-| Features | HIGH | Every RPC method, event type, and payload shape verified from OpenClaw source with line-number citations |
-| Architecture | HIGH | Protocol behavior (merge-patch format, restart triggers, rate limits) confirmed from gateway source; component boundaries well-defined |
-| Pitfalls | HIGH | 23 pitfalls with source-verified root causes; rate limits, array merge semantics, baseHash requirement all confirmed from source code |
-| Gateway event coverage | HIGH | VERIFIED NEGATIVE: `GATEWAY_EVENTS` array exhaustively checked; no config/plugin/skill events exist |
-| config.patch format | HIGH | VERIFIED: `{ raw: "<JSON5 string>" }` only; `{ patch: {...} }` parameter does not exist in schema |
-
-**Overall confidence:** HIGH
-
-### Gaps to Address
-
-- **SIGUSR1 timing:** The exact delay between `config.patch` response and gateway SIGUSR1 execution is configurable via `restartDelayMs`. Default behavior needs live testing to set appropriate reconnect wait logic and avoid premature reconnect attempts.
-- **Plugin load diagnostics:** Plugin load errors during SIGUSR1 restart are written to the subsystem logger but not queryable via any RPC. `tools.catalog` is the only verification method. If a plugin fails to load, no error message is surfaced — the plugin simply won't appear in `tools.catalog` groups. UX must handle this blind spot (e.g., show "verification failed — plugin not found in tools catalog" rather than a specific error).
-- **Concurrent edit conflict UX:** When Aquarium's `config.patch` races with a user editing config in OpenClaw Control UI, both will receive `baseHash` conflict errors. The retry-with-reread loop handles the technical case, but the UX for "your change was applied after a conflict" needs design.
-- **skills.update timing:** `skills.update` (enable/disable, set env vars) writes the config file directly WITHOUT triggering a SIGUSR1 restart. Skills are read dynamically. The exact timing of when changes take effect in the agent process needs verification.
-
----
-
-## Sources
-
-### Primary (HIGH confidence — direct source code)
-- OpenClaw gateway source: `openclaw/src/gateway/server-methods-list.ts:124-149` — `GATEWAY_EVENTS` array (24 event types; no config/plugin/skill events)
-- OpenClaw gateway source: `openclaw/src/gateway/server-methods/config.ts:317-437` — `config.patch` handler; merge-patch semantics; SIGUSR1 scheduling
-- OpenClaw gateway source: `openclaw/src/config/merge-patch.ts:62-97` — RFC 7396 merge-patch with `mergeObjectArraysById`
-- OpenClaw gateway source: `openclaw/src/gateway/config-reload-plan.ts:34-215` — `plugins=restart`, `skills=none` reload plan
-- OpenClaw gateway source: `openclaw/src/gateway/control-plane-rate-limit.ts:4-5` — 3/60s rate limit
-- OpenClaw gateway source: `openclaw/src/gateway/server-http.ts:128-133,224-276` — HTTP `/ready` and `/health` endpoints
-- OpenClaw gateway source: `openclaw/src/gateway/server-close.ts:87` — `shutdown` event emission
-- OpenClaw gateway source: `openclaw/src/gateway/server-methods/tools-catalog.ts:155-182` — `tools.catalog` response shape
-- OpenClaw gateway source: `openclaw/src/gateway/server-methods/skills.ts:59-91` — `skills.status` response shape
-- Aquarium source: `apps/server/src/services/gateway-event-relay.ts` — `PersistentGatewayClient` implementation
-- Aquarium source: `apps/server/src/agent-types/openclaw/gateway-rpc.ts` — `GatewayRPCClient`, `GroupChatRPCClient`
-- Aquarium source: `apps/server/src/services/instance-manager.ts:736-845` — `patchGatewayConfig` (current DB-first flow)
-- Aquarium source: `apps/server/src/services/health-monitor.ts` — `checkConfigIntegrity`, Docker polling loops
-- Aquarium source: `apps/server/src/services/extension-lifecycle.ts` — `reconcileExtensions`, `plugins.list` call (broken)
-
-### Secondary (MEDIUM confidence — referenced in PITFALLS.md)
-- Distributed systems patterns: split-brain prevention, dual-authority systems
-- WebSocket reconnection patterns: exponential backoff, state reconciliation on reconnect
-- Event-driven architecture: race conditions, idempotency, correlation IDs
-
----
-
-*Research completed: 2026-04-05*
-*Ready for roadmap: yes*
+**Overall: HIGH.** Three MEDIUM areas (transport choice, SQLite QPS extrapolation, Windows daemon story) are bounded and tracked in Open Questions — all resolvable during their phases without structural redesign.

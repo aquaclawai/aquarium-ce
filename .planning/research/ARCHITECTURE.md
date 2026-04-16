@@ -1,867 +1,670 @@
-# Architecture Patterns: Gateway Communication Overhaul
+# Architecture — Aquarium v1.4 Task Delegation Platform
 
-**Domain:** Platform-gateway communication redesign for Aquarium CE
-**Researched:** 2026-04-05
-**Confidence:** HIGH (based on Aquarium source code + verified OpenClaw gateway source findings from FEATURES.md)
+**Scope:** Integration architecture for task delegation on top of existing Aquarium CE (Express/SQLite/Docker).
+**Mode:** Project Research — Architecture only.
+**Confidence:** HIGH for existing code shape, MEDIUM for SQLite concurrency ceiling, MEDIUM for daemon ↔ server transport choice.
+**Researched:** 2026-04-16
 
----
-
-## 1. Current Architecture (As-Is)
-
-### Communication Topology
-
-```
-                      +--------------------------+
-                      |   Browser Clients (WS)   |
-                      +------------+-------------+
-                                   ^
-                                   | WebSocket broadcast
-                      +------------+-------------+
-                      |   Express Server          |
-                      |                           |
-                      |  Routes --> Services ----> |---+
-                      |                           |   |
-                      |  +---------------------+  |   |
-                      |  | PersistentGateway   |<-----+  (event relay)
-                      |  | Client (1 per inst) |  |   |
-                      |  | gateway-event-      |  |   |
-                      |  | relay.ts            |  |   |
-                      |  +----------+----------+  |   |
-                      |             |              |   |
-                      |  +----------+----------+  |   |
-                      |  | GatewayRPCClient    |<-----+  (ephemeral fallback)
-                      |  | gateway-rpc.ts      |  |
-                      |  | (one-shot WS)       |  |
-                      |  +----------+----------+  |
-                      +-------------|-------------+
-                                    |  WebSocket (proto v3)
-                      +-------------v-------------+
-                      | OpenClaw Gateway Container |
-                      | (per instance, :18789)     |
-                      +----------------------------+
-```
-
-### Two Communication Paths (Current)
-
-| Path | Client | Lifecycle | Used By |
-|------|--------|-----------|---------|
-| Persistent | `PersistentGatewayClient` in `gateway-event-relay.ts` | Per-instance, auto-reconnect, 5s delay, max 5 retries | Event relay, `translateRPC` (primary), `GroupChatRPCClient` (primary) |
-| Ephemeral | `GatewayRPCClient` in `gateway-rpc.ts` | One-shot: open WS -> handshake -> 1 RPC -> close | `translateRPC` (fallback), `extension-lifecycle.ts` (direct), `plugin-store.ts` (direct), `skill-store.ts` (direct) |
-
-### Current Data Flow Patterns
-
-**Pattern A: Config Update (DB-First)** -- `patchGatewayConfig()` in `instance-manager.ts:736-845`
-1. Fetch instance from DB
-2. Deep-merge configPatch into DB config
-3. Persist merged config to DB (line 774)
-4. If running: fetch gateway hash, `reseedConfigFiles()`, read back full JSON, `config.patch { raw }` with retry
-5. On gateway failure: log and continue (DB already updated -- split-brain)
-
-**Pattern B: Extension Activate (Restart-Heavy)** -- `_activatePluginWithLock()` in `plugin-store.ts:103-250`
-1. DB: status -> 'active'
-2. `restartInstance()` (stop container + start fresh + reseedConfig)
-3. Health check via `platform.ping` (ephemeral RPC)
-4. On failure: DB: status -> 'failed', restart again (rollback = double restart)
-
-**Pattern C: Extension Reconcile (Boot-Only)** -- `reconcileExtensions()` in `extension-lifecycle.ts:133-316`
-1. Create ephemeral `GatewayRPCClient`
-2. Call `skills.list` and `plugins.list` (NOTE: `plugins.list` does not exist in gateway -- see Section 2)
-3. Compare gateway state with DB state; promote/demote
-4. Close ephemeral client
-5. Only runs once per instance boot
-
-**Pattern D: Health Monitor (Docker-Level Polling)** -- `health-monitor.ts`
-- Fast loop (5s): `engine.getStatus()` for `starting` instances
-- Slow loop (30s): `engine.getStatus()` for `running`/`error` + config integrity + disk + security
-- No gateway-level health check (only Docker container status)
-- `checkConfigIntegrity()`: SHA-256 hash comparison, triggers `reseedConfigFiles()` on mismatch
+Reference sources:
+- Aquarium CE: repo at `/Users/shuai/workspace/citronetic/aquarium-ce2`
+- Multica: repo at `/tmp/multica` (Postgres + Go + chi + Electron)
 
 ---
 
-## 2. Verified Gateway Constraints (from OpenClaw Source)
+## System Diagrams
 
-These findings are from direct OpenClaw gateway source code analysis (see FEATURES.md for full line-number citations). They fundamentally shape the architecture.
+### Daemon flow (external runtime — claude-code / codex / opencode CLI on user's machine)
 
-### Constraint 1: No Events for Config/Plugin/Skill Changes
+```
+┌─────────┐        1. assign issue to Agent        ┌───────────────────────────────┐
+│ Browser │───────────────────────────────────────►│  Express / issues.ts         │
+└─────────┘                                        │  IssueService.assignAgent()  │
+    ▲                                              └────────────────┬──────────────┘
+    │ 11. task:message WS                                           │
+    │                                                               ▼
+    │                                          ┌────────────────────────────────────┐
+    │                                          │ TaskService.enqueueForIssue()       │
+    │                                          │  INSERT agent_task_queue            │
+    │                                          │  status='queued', runtime_id=X      │
+    │                                          └────────────────┬───────────────────┘
+    │                                                           │
+    │              (no push — daemon polls)                     │
+    │                                                           ▼
+    │                                   ┌─────────────────────────────────────────┐
+    │                                   │ aquarium daemon start (separate proc)   │
+    │                                   │ — in Node via `aquarium daemon start`   │
+    │                                   │                                          │
+    │                                   │ 2. POST /api/daemon/register             │
+    │                                   │ 3. POST /api/daemon/heartbeat (30s)      │
+    │                                   │ 4. POST /api/daemon/runtimes/:id/claim  │◄┐
+    │                                   │ 5. spawns CLI: claude code ...           │ │
+    │                                   │    stdout JSON-stream parser             │ │
+    │                                   │ 6. POST /tasks/:id/start                 │ │
+    │                                   │ 7. POST /tasks/:id/messages (batch)──────┤ │
+    │                                   │ 8. POST /tasks/:id/progress              │ │
+    │                                   │ 9. POST /tasks/:id/complete              │ │
+    │                                   └─────────────────────────────────────────┘ │
+    │                                                                                │
+    │   10. TaskService persists messages + broadcasts task:message ──── WS ─────────┘
+    └────────────────────────────────────────────────────────────────────────────────┘
+```
 
-The gateway's `GATEWAY_EVENTS` array contains 24 event types. NONE relate to config changes, plugin load/fail, or skill load/fail. The gateway does NOT broadcast:
-- `config.changed` -- does not exist
-- `plugin.loaded` / `plugin.failed` -- do not exist
-- `skill.loaded` / `skill.failed` -- do not exist
+### Hosted flow (existing Aquarium Docker instance as runtime)
 
-**Architectural consequence:** Event-driven DB sync for these state changes is impossible with the current gateway. The sync pattern must be: **shutdown event -> reconnect -> query state after restart**.
+```
+┌─────────┐      1. assign issue → Agent(runtime.kind='hosted')
+│ Browser │──────────┐
+└─────────┘          ▼
+                ┌───────────────────────────────┐
+                │ Express / issues.ts           │
+                │ IssueService.assignAgent()    │
+                └───────────────┬───────────────┘
+                                ▼
+                ┌──────────────────────────────────┐
+                │ TaskService.enqueueForIssue()    │
+                │ INSERT agent_task_queue          │
+                │ status='queued'                  │
+                │ runtime_id → hosted_runtime row  │
+                │ which has instance_id=I          │
+                └───────────────┬──────────────────┘
+                                ▼
+                ┌───────────────────────────────────────────────────────┐
+                │  HostedTaskWorker (in-process, singleton, setInterval)│
+                │  Tick every 2s per runtime:                           │
+                │  • SELECT ... claim-one (BEGIN IMMEDIATE)             │
+                │  • Look up runtime.instance_id                         │
+                │  • Resolve manifest-backed adapter (openclaw /         │
+                │    claude-code / opencode)                             │
+                │  • gatewayCall(instance_id, 'chat.send', {...})       │
+                │    with retryable 30s timeout                          │
+                │  • Subscribe via waitForChatCompletion() for          │
+                │    streaming events                                    │
+                │  • As gateway emits 'toolCall'/'toolResult'/'text' →  │
+                │    insert task_message rows, broadcast WS to browser  │
+                │  • On 'final' → TaskService.completeTask()            │
+                │  • On exception/timeout → TaskService.failTask()      │
+                └───────────────────────────────────────────────────────┘
+                                ▲                                 │
+                                │ (persistent WS)                 │
+                                ▼                                 │
+                ┌────────────────────────────────────┐            │
+                │  OpenClaw gateway container        │            │
+                │  (already running via DockerEngine)│            │
+                └────────────────────────────────────┘            │
+                                                                  ▼
+                                        browser receives task:message via WS
+```
 
-### Constraint 2: config.patch Uses Merge-Patch via `raw` String
-
-`config.patch` accepts `{ raw: "<JSON5 string>", baseHash: "<hash>" }`. The `raw` parameter is parsed as JSON5, then applied as an RFC 7396 merge-patch (not full replacement):
-- `null` values delete keys
-- Object values merge recursively
-- Array values merge entries by `id` field
-- Non-object values replace directly
-
-**Architectural consequence:** To update config, send a JSON5 string containing only the delta. The gateway merges it into its current config. There is no `{ patch: {...} }` parameter -- the raw string IS the patch.
-
-### Constraint 3: Plugin Changes Trigger Full Gateway Restart
-
-The config-reload-plan classifies `plugins.*` as `kind: "restart"`. When `config.patch` touches any `plugins.*` key, the gateway:
-1. Writes the merged config to disk
-2. Schedules `SIGUSR1` restart
-3. The gateway process restarts
-
-**Architectural consequence:** There is NO hot-reload for plugins. Every plugin activation/deactivation causes a gateway process restart. The platform must handle the reconnect cycle.
-
-### Constraint 4: shutdown Event Signals Clean Restart
-
-The gateway emits `{ type: "event", event: "shutdown", payload: { reason, restartExpectedMs? } }` before clean restarts. This is the signal to expect a reconnect cycle.
-
-### Constraint 5: No `plugins.list` RPC
-
-There is no `plugins.list` method in the gateway. Plugin state is observable through:
-- `tools.catalog` with `includePlugins: true` -- lists plugin-contributed tools grouped by pluginId
-- `config.get` -- returns full config including `plugins.entries`
-
-**Architectural consequence:** The current `reconcileExtensions()` call to `plugins.list` will fail silently (the code catches the error). Must be replaced with `tools.catalog` + `config.get`.
-
-### Constraint 6: HTTP `/ready` for Health Checks
-
-The gateway exposes:
-- `/health` / `/healthz` -- liveness (always 200 if HTTP server up)
-- `/ready` / `/readyz` -- readiness (`{ ready: boolean, failing: string[], uptimeMs: number }`)
-
-These are HTTP endpoints, independent of the WebSocket connection.
-
-### Constraint 7: Rate Limit of 3 Writes per 60 Seconds
-
-`config.patch`, `config.apply`, and `update.run` share a rate limit of 3 calls per 60 seconds per device/IP. Enforced at the gateway method handler level.
+The two flows are **unified at the `agent_task_queue` table**. The only difference is *who* claims the task: the external daemon via REST, or the in-process `HostedTaskWorker` via a direct SQLite transaction.
 
 ---
 
-## 3. Recommended Architecture (To-Be)
+## Data Model Decisions
 
-### Design Principle
+### 1. Runtime unification — Option A: single `runtimes` table with `kind` discriminator (recommended)
 
-```
-OPERATE on gateway (via persistent WS RPC) -->
-  ON SUCCESS: read back actual state -->
-    SYNC DB as cache of gateway state -->
-      ON RESTART: detect via shutdown event -> reconnect -> query -> sync
-        ON COLD START: seed config from DB -> boot -> reconcile
-```
+```sql
+CREATE TABLE runtimes (
+    id               TEXT PRIMARY KEY,          -- UUID (SqliteAdapter.generateId)
+    workspace_id     TEXT NOT NULL,             -- default 'default' in CE
+    name             TEXT NOT NULL,
+    kind             TEXT NOT NULL CHECK (kind IN ('daemon-local','daemon-remote','hosted')),
+    provider         TEXT NOT NULL,             -- 'claude-code'|'codex'|'openclaw'|'opencode'|'hermes'
+    status           TEXT NOT NULL DEFAULT 'offline'
+                     CHECK (status IN ('online','offline','error')),
 
-The gateway is authoritative when running. The DB is a persistent cache. Because the gateway emits no events for config/plugin/skill changes, we cannot do push-based sync. Instead: **command-then-readback** for mutations and **reconnect-then-query** for restart detection.
+    -- daemon-* kinds only
+    daemon_id        TEXT,
+    device_info      TEXT,
+    last_heartbeat_at DATETIME,
 
-### Target Topology
+    -- hosted kind only
+    instance_id      TEXT REFERENCES instances(id) ON DELETE CASCADE,
 
-```
-                       +--------------------------+
-                       |   Browser Clients (WS)   |
-                       +------------+-------------+
-                                    ^
-                                    | WebSocket broadcast
-                       +------------|-------------+
-                       |   Express Server          |
-                       |                           |
-                       |  Routes --> Services       |
-                       |               |            |
-                       |  +-----------v----------+  |
-                       |  | gatewayCall()        |  |  <-- unified RPC routing
-                       |  | (gateway-rpc.ts)     |  |
-                       |  +----------+-----------+  |
-                       |             |               |
-                       |  +----------v-----------+  |
-                       |  | PersistentGateway    |  |  <-- refactored: sole RPC transport
-                       |  | Client (1 per inst)  |  |      + shutdown event handling
-                       |  +----------+-----------+  |      + reconnect state query
-                       |             |               |
-                       |  +----------v-----------+  |
-                       |  | GatewayStateSyncer   |  |  <-- NEW: reconnect-then-query sync
-                       |  | (gateway-sync.ts)    |  |
-                       |  +----------------------+  |
-                       |             |               |
-                       |  +----------v-----------+  |
-                       |  | Health (HTTP /ready)  |  |  <-- NEW: gateway-level health
-                       |  +----------------------+  |
-                       +-------------|-------------+
-                                     |
-                       +-------------v-----------+
-                       | OpenClaw Gateway         |
-                       +-------------------------+
+    metadata         TEXT NOT NULL DEFAULT '{}', -- JSON
+    owner_user_id    TEXT,
+    created_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (workspace_id, daemon_id, provider),
+    CHECK (
+      (kind IN ('daemon-local','daemon-remote') AND daemon_id IS NOT NULL AND instance_id IS NULL)
+      OR
+      (kind = 'hosted' AND instance_id IS NOT NULL AND daemon_id IS NULL)
+    )
+);
+CREATE INDEX idx_runtimes_workspace_status ON runtimes(workspace_id, status);
+CREATE INDEX idx_runtimes_instance ON runtimes(instance_id) WHERE instance_id IS NOT NULL;
 ```
 
-### Component Boundaries
+**Justification vs Options B and C:**
 
-| Component | Responsibility | Communicates With | Status |
-|-----------|---------------|-------------------|--------|
-| `PersistentGatewayClient` | WS lifecycle, reconnect, RPC send/receive, event relay | Gateway WS | **Refactor** -- add shutdown event handler, reconnect-with-query |
-| `gatewayCall()` | Unified RPC routing: persistent-first, ephemeral-only for startup race | PersistentGatewayClient, (GatewayRPCClient fallback) | **New function** in refactored `gateway-rpc.ts` |
-| `GatewayStateSyncer` | Query gateway state after reconnect, sync to DB | gatewayCall, DB | **New service** `gateway-sync.ts` |
-| `instance-manager.ts` | Instance lifecycle, gateway-first config updates | gatewayCall, DB | **Modify** -- rewrite `patchGatewayConfig` |
-| `health-monitor.ts` | Docker health + gateway HTTP `/ready` checks | Runtime engine, HTTP fetch, DB | **Modify** -- add `/ready` polling |
-| `extension-lifecycle.ts` | Boot-time + post-restart reconciliation | gatewayCall (for `tools.catalog`, `skills.status`, `config.get`) | **Modify** -- fix RPC methods, route through facade |
-| `plugin-store.ts` | Plugin CRUD | gatewayCall, DB | **Modify** -- config.patch instead of restartInstance, handle restart cycle |
-| `skill-store.ts` | Skill CRUD | gatewayCall, DB | **Modify** -- route through facade (already uses RPC for enable/disable) |
+| Option | Pro | Con | Verdict |
+|---|---|---|---|
+| A — Single table + discriminator | Matches multica schema → future DB-level compat with EE/Postgres migration; claim query is identical for all kinds (`WHERE runtime_id = ?`); one FK target simplifies `agent_task_queue` | Two nullable FKs (`instance_id`, `daemon_id`) require a CHECK constraint | **Chosen.** |
+| B — Separate tables (`daemon_runtimes`, `hosted_runtimes`) | Strong typing at schema level | Every query that reads runtimes needs UNION or polymorphic join; `agents.runtime_id` cannot be a single FK; breaks multica schema compat | Rejected — adds complexity for marginal typing benefit. |
+| C — Polymorphic JSON `metadata` column only | Fewest columns | Can't index on `instance_id` for reconcile-with-instances queries; CHECK constraints impossible; breaks SQL joins to `instances` | Rejected — SQLite JSON indexing is weak (needs expression indices). |
+
+The CHECK constraint makes the schema self-enforcing: you cannot accidentally create a `hosted` runtime without an `instance_id` or a `daemon-local` runtime with one.
+
+**`agent_task_queue.runtime_id` is a single FK to `runtimes.id`.** The task dispatcher reads `runtimes.kind` to route the task — it does not need a separate column.
+
+### 2. Task queue atomicity on SQLite — BEGIN IMMEDIATE + SELECT + UPDATE (recommended)
+
+Multica uses Postgres `FOR UPDATE SKIP LOCKED`. SQLite has neither row-level locks nor SKIP LOCKED — `better-sqlite3` uses a single-writer model (WAL mode).
+
+**Recommendation:** Use a knex transaction wrapping `BEGIN IMMEDIATE` (not `BEGIN DEFERRED` — immediate acquires the write lock up front, preventing `SQLITE_BUSY` upgrades mid-transaction). Inside:
+```sql
+-- Pick the next claimable task for a runtime
+SELECT id, agent_id, issue_id, priority
+  FROM agent_task_queue
+ WHERE runtime_id = :rid
+   AND status = 'queued'
+   AND NOT EXISTS (
+         SELECT 1 FROM agent_task_queue active
+          WHERE active.agent_id = agent_task_queue.agent_id
+            AND active.issue_id = agent_task_queue.issue_id
+            AND active.status IN ('dispatched','running'))
+ ORDER BY priority DESC, created_at ASC
+ LIMIT 1;
+
+-- Immediately transition
+UPDATE agent_task_queue SET status='dispatched', dispatched_at=CURRENT_TIMESTAMP
+ WHERE id = :picked_id AND status='queued';   -- second predicate is a safety net
+```
+Commit, return the row. If UPDATE affected 0 rows (race between two racing claims on sibling runtimes pointing to overlapping work), retry once.
+
+**Why this is sufficient:**
+- SQLite serializes writers via a single mutex; two concurrent `BEGIN IMMEDIATE` transactions queue, they do not race.
+- The `NOT EXISTS` subquery enforces the multica invariant (one active task per agent+issue).
+- Identical to what multica does, minus SKIP LOCKED — we don't need SKIP LOCKED because we never have concurrent writers; we have serialized writers.
+
+**Why NOT an in-process JS mutex:** It breaks if `HostedTaskWorker` and the daemon REST handler both claim. The daemon REST path is a request handler, not serialized with the hosted worker's `setInterval` tick. DB-level atomicity is the only correct boundary.
+
+**Why NOT "just trust better-sqlite3":** better-sqlite3's `prepare().run()` is atomic *per statement*. A SELECT-then-UPDATE without a transaction is not atomic — another writer could claim between our SELECT and UPDATE, and both workers end up thinking they own the task.
+
+**QPS ceiling (MEDIUM confidence):**
+- better-sqlite3 in WAL mode benchmarks at 5K–15K write txns/sec on SSD for trivial writes. A claim txn is: 1 SELECT, 1 UPDATE, 1 COMMIT — roughly 2–3K txns/sec sustained.
+- At a polling cadence of 2s per runtime and ~10 runtimes in CE, we're looking at ~5 claim attempts/sec. **Headroom is ~400×.** No concern for v1.4. Revisit if CE ever supports 100+ runtimes.
+- Cancellation polls every 5s per active task (daemon calls `GET /api/daemon/tasks/:id/status`). Also negligible.
+
+### 3. Pending-task uniqueness
+
+Port multica's partial unique index (migration 037), adapted for SQLite:
+```sql
+CREATE UNIQUE INDEX idx_one_pending_task_per_issue_agent
+    ON agent_task_queue (issue_id, agent_id)
+    WHERE status IN ('queued', 'dispatched');
+```
+SQLite supports partial indices since 3.8.0 — works on better-sqlite3. This prevents the WebSocket / HTTP frontend from creating duplicate pending tasks if the user double-clicks "assign".
+
+### 4. Task messages
+
+Straight port of multica migration 026: `task_message(task_id, seq, type, tool, content, input, output)` with `(task_id, seq)` index. `input` as JSON text (SQLite), parsed via `SqliteAdapter.parseJson`.
 
 ---
 
-## 4. Detailed Integration Design
-
-### 4.1 PersistentGatewayClient Refactoring
-
-**Current problems:**
-- `call()` throws if not connected (line 431-432) -- callers must pre-check
-- Ephemeral `GatewayRPCClient` used directly by 4+ services as workaround
-- No handling of `shutdown` event (the critical restart signal)
-- No reconnect state query after the connection re-establishes
-
-**Changes:**
-
-```typescript
-// 1. Handle shutdown event (in the event dispatch branch, ~line 365):
-if (msg.event === 'shutdown') {
-  const payload = msg.payload as { reason?: string; restartExpectedMs?: number };
-  this.expectedRestart = true;
-  this.expectedRestartMs = payload.restartExpectedMs ?? 30_000;
-  console.log(`[gateway-relay] Shutdown event for ${this.instanceId}: ${payload.reason}`);
-  // Connection will close; reconnect logic will fire
-  // On successful reconnect, trigger state sync (see step 3)
-  return;
-}
-
-// 2. Add request queue for calls during reconnect window:
-private pendingQueue: Array<{
-  method: string; params: Record<string, unknown>;
-  timeoutMs: number; resolve: Function; reject: Function;
-}> = [];
-
-async call(method, params, timeoutMs): Promise<unknown> {
-  if (this.connected && this.ws) {
-    return this.sendRPC(method, params, timeoutMs);
-  }
-  if (this.closed) throw new Error('Connection closed');
-  // Queue request -- will be drained after reconnect
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Timeout waiting for reconnect')), timeoutMs);
-    this.pendingQueue.push({ method, params, timeoutMs, resolve, reject });
-  });
-}
-
-// 3. After successful reconnect (in the connect response handler, after line 222):
-this.connected = true;
-this.retryCount = 0;
-this.drainQueue(); // send queued RPCs
-if (this.expectedRestart) {
-  this.expectedRestart = false;
-  // Trigger post-restart state sync
-  syncGatewayStateAfterRestart(this.instanceId).catch(err =>
-    console.warn(`[gateway-relay] Post-restart sync failed for ${this.instanceId}:`, err)
-  );
-}
-
-// 4. Add ping/pong heartbeat for WS-level liveness:
-// In connect(), after auth succeeds:
-this.heartbeatInterval = setInterval(() => {
-  if (this.ws?.readyState === WebSocket.OPEN) this.ws.ping();
-}, 30_000);
-```
-
-**What stays the same:** DLP filtering, chat session routing, exec approval handling, the `connections` Map, `reconcileConnections()` poll.
-
-### 4.2 Unified RPC Facade (`gatewayCall()`)
-
-The current `GatewayRPCClient` class becomes an internal-only ephemeral fallback. The public API:
-
-```typescript
-// In gateway-rpc.ts (refactored):
-
-export async function gatewayCall(
-  instanceId: string,
-  method: string,
-  params: Record<string, unknown>,
-  opts?: { timeoutMs?: number; requirePersistent?: boolean }
-): Promise<unknown> {
-  const persistent = getGatewayClient(instanceId);
-  if (persistent) {
-    return persistent.call(method, params, opts?.timeoutMs ?? 30_000);
-  }
-  if (opts?.requirePersistent) {
-    throw new Error(`No persistent connection for ${instanceId}`);
-  }
-  // Ephemeral fallback for startup race window only
-  const { endpoint, token } = await getInstanceConnection(instanceId);
-  const client = new GatewayRPCClient(endpoint, token);
-  try {
-    const result = await client.call(method, params, opts?.timeoutMs ?? 30_000);
-    // Side-effect: if ephemeral worked, force-reconnect persistent
-    if (!getGatewayClient(instanceId)) {
-      connectGateway(instanceId, endpoint, token);
-    }
-    return result;
-  } finally {
-    client.close();
-  }
-}
-```
-
-**Migration table:**
-
-| Current Call Site | Current Pattern | New Pattern |
-|-------------------|----------------|-------------|
-| `extension-lifecycle.ts:145` | `new GatewayRPCClient(ep, tok); rpc.call('skills.list')` | `gatewayCall(id, 'skills.status', {})` (correct method) |
-| `extension-lifecycle.ts:228` | `new GatewayRPCClient(ep, tok); rpc.call('plugins.list')` | `gatewayCall(id, 'tools.catalog', { includePlugins: true })` (plugins.list does not exist) |
-| `plugin-store.ts:132` | `new GatewayRPCClient(...)` for `plugins.install` | `gatewayCall(id, 'plugins.install', {...})` |
-| `plugin-store.ts:209` | `new GatewayRPCClient(...)` for `platform.ping` | `gatewayCall(id, 'platform.ping', {})` or HTTP `/ready` |
-| `skill-store.ts:165` | `new GatewayRPCClient(ep, tok)` for `skills.install` | `gatewayCall(id, 'skills.install', {...})` |
-| `skill-store.ts:288-293` | `new GatewayRPCClient(ep, tok)` for `skills.update` | `gatewayCall(id, 'skills.update', {...})` |
-| `adapter.ts:825` | `translateRPC` tries persistent then ephemeral | Delegate to `gatewayCall(instanceId, method, params)` |
-
-**Impact:** `adapter.translateRPC` becomes a thin wrapper. The retry-with-delay loop in adapter.ts (lines 843-878) moves into `gatewayCall` or is removed (persistent client handles reconnect).
-
-### 4.3 GatewayStateSyncer (New: `gateway-sync.ts`)
-
-**Why NOT event-driven sync:** The gateway emits zero events for config/plugin/skill state changes. There is nothing to subscribe to.
-
-**The actual pattern: Reconnect-Then-Query**
-
-```typescript
-// gateway-sync.ts
-
-import { gatewayCall } from '../agent-types/openclaw/gateway-rpc.js';
-import { db } from '../db/index.js';
-
-/**
- * Called after PersistentGatewayClient reconnects following a shutdown event
- * or after any reconnect to a running instance.
- *
- * Queries the gateway for current state and syncs DB.
- */
-export async function syncGatewayStateAfterRestart(instanceId: string): Promise<void> {
-  // 1. Sync config state
-  const configResult = await gatewayCall(instanceId, 'config.get', {}) as {
-    config?: Record<string, unknown>;
-    hash?: string;
-  };
-  if (configResult?.config && configResult?.hash) {
-    await db('instances').where({ id: instanceId }).update({
-      config: JSON.stringify(configResult.config),
-      config_hash: configResult.hash,
-      updated_at: db.fn.now(),
-    });
-  }
-
-  // 2. Sync skill state via skills.status
-  const skillsResult = await gatewayCall(instanceId, 'skills.status', {}) as {
-    skills?: Array<{ name: string; eligible: boolean; disabled: boolean; missing?: { envVars?: string[] } }>;
-  };
-  if (skillsResult?.skills) {
-    await syncSkillsFromGateway(instanceId, skillsResult.skills);
-  }
-
-  // 3. Sync plugin state via tools.catalog
-  const toolsResult = await gatewayCall(instanceId, 'tools.catalog', { includePlugins: true }) as {
-    groups?: Array<{ id: string; source: string; pluginId?: string; tools: unknown[] }>;
-  };
-  if (toolsResult?.groups) {
-    await syncPluginsFromToolsCatalog(instanceId, toolsResult.groups);
-  }
-}
-
-async function syncSkillsFromGateway(instanceId: string, gatewaySkills: Array<Record<string, unknown>>): Promise<void> {
-  const dbSkills = await db('instance_skills').where({ instance_id: instanceId });
-  const gatewaySkillNames = new Set(gatewaySkills.map(s => s.name as string));
-
-  for (const dbSkill of dbSkills) {
-    const skillId = dbSkill.skill_id as string;
-    const gwSkill = gatewaySkills.find(s => s.name === skillId);
-    const inGateway = gatewaySkillNames.has(skillId);
-
-    if (dbSkill.status === 'active' && !inGateway) {
-      // Was active but gone after restart -- mark failed
-      await db('instance_skills').where({ instance_id: instanceId, skill_id: skillId })
-        .update({ status: 'failed', error_message: 'Not found after gateway restart', updated_at: db.fn.now() });
-    } else if (dbSkill.status === 'pending' && inGateway) {
-      // Completed during restart -- promote
-      await db('instance_skills').where({ instance_id: instanceId, skill_id: skillId })
-        .update({ status: 'active', pending_owner: null, updated_at: db.fn.now() });
-    }
-    // Other states: leave as-is
-  }
-}
-
-async function syncPluginsFromToolsCatalog(
-  instanceId: string,
-  groups: Array<{ id: string; source: string; pluginId?: string; tools: unknown[] }>,
-): Promise<void> {
-  const pluginGroups = groups.filter(g => g.source === 'plugin' && g.pluginId);
-  const activePluginIds = new Set(pluginGroups.map(g => g.pluginId!));
-
-  const dbPlugins = await db('instance_plugins').where({ instance_id: instanceId });
-
-  for (const dbPlugin of dbPlugins) {
-    const pluginId = dbPlugin.plugin_id as string;
-    const inGateway = activePluginIds.has(pluginId);
-
-    if (dbPlugin.status === 'active' && !inGateway) {
-      await db('instance_plugins').where({ instance_id: instanceId, plugin_id: pluginId })
-        .update({ status: 'failed', error_message: 'Plugin not loaded after gateway restart', updated_at: db.fn.now() });
-    } else if (dbPlugin.status === 'pending' && inGateway) {
-      await db('instance_plugins').where({ instance_id: instanceId, plugin_id: pluginId })
-        .update({ status: 'active', pending_owner: null, updated_at: db.fn.now() });
-    }
-  }
-}
-```
-
-**Integration point:** Called from `PersistentGatewayClient` after reconnect (see Section 4.1, step 3).
-
-**Also called from:** `reconcileExtensions()` at boot time (replaces current ephemeral RPC pattern).
-
-### 4.4 Gateway-First `patchGatewayConfig`
-
-**Current flow (instance-manager.ts:736-845):**
-1. Deep-merge configPatch into DB config, persist to DB (line 774)
-2. If running: reseedConfigFiles() + config.patch { raw } with retry
-3. On gateway fail: log and ignore (DB already dirty)
-
-**New flow:**
-
-```typescript
-export async function patchGatewayConfig(
-  instanceId: string,
-  userId: string,
-  configPatch: Record<string, unknown>,
-  note?: string,
-): Promise<void> {
-  const instance = await getInstance(instanceId, userId);
-  if (!instance) throw new Error('Instance not found');
-  await safeAutoSnapshot(instanceId, userId, 'Gateway config change');
-
-  // NOT RUNNING: DB-only update (correct -- config seeds on next start)
-  if (instance.status !== 'running' || !instance.controlEndpoint) {
-    const mergedConfig = deepMerge(
-      (instance.config || {}) as Record<string, unknown>,
-      configPatch,
-    );
-    await updateInstanceConfig(instanceId, userId, mergedConfig);
-    return;
-  }
-
-  // RUNNING: Gateway-first via merge-patch
-  // 1. Get current gateway config hash for optimistic concurrency
-  const cfgResult = await gatewayCall(instanceId, 'config.get', {}) as {
-    config?: Record<string, unknown>;
-    hash?: string;
-  };
-  const baseHash = cfgResult?.hash;
-
-  // 2. Send merge-patch via raw string
-  //    The gateway applies RFC 7396 merge-patch semantics:
-  //    - null values delete keys
-  //    - Objects merge recursively
-  //    - Arrays merge by id field
-  const rawPatch = JSON.stringify(configPatch);
-  await gatewayCall(instanceId, 'config.patch', {
-    raw: rawPatch,
-    baseHash,
-    note: note || 'Platform config update',
-  });
-
-  // 3. config.patch may trigger gateway restart (for plugins.* changes).
-  //    The shutdown event handler + reconnect + syncGatewayStateAfterRestart
-  //    will update the DB automatically.
-  //
-  //    For non-restart changes (models, hooks, cron), read back immediately:
-  const isRestartTrigger = configPatch.plugins !== undefined || configPatch.gateway !== undefined;
-  if (!isRestartTrigger) {
-    const updatedResult = await gatewayCall(instanceId, 'config.get', {}) as {
-      config?: Record<string, unknown>;
-      hash?: string;
-    };
-    if (updatedResult?.config) {
-      await updateInstanceConfig(instanceId, userId, updatedResult.config);
-    }
-    if (updatedResult?.hash) {
-      await db('instances').where({ id: instanceId }).update({ config_hash: updatedResult.hash });
-    }
-  }
-  // For restart-triggering changes, syncGatewayStateAfterRestart handles DB update
-}
-```
-
-**Key differences from current:**
-- DB is NOT written before gateway confirms (eliminates split-brain)
-- Uses `{ raw: JSON.stringify(delta) }` (correct merge-patch format)
-- Uses `baseHash` for optimistic concurrency (from config.get)
-- No `reseedConfigFiles()` call
-- No 3-second `setTimeout` hack
-- Restart-triggering changes are handled asynchronously via reconnect sync
-
-### 4.5 `reseedConfigFiles` -- When Still Needed vs. Eliminated
-
-**ELIMINATED for running instances:**
-- `patchGatewayConfig` no longer calls reseed
-- `checkConfigIntegrity` no longer triggers reseed (DB syncs FROM gateway)
-- Plugin enable/disable no longer restarts (uses config.patch)
-
-**STILL NEEDED (rename to `seedInitialConfig`):**
-- Instance creation (`startInstanceAsync` line 498-521) -- initial seed before gateway boots
-- Error recovery (`checkInstances` line 120) -- pod recovered, gateway may have lost state
-- Manual restart (`restartInstance` line 675) -- stop + start triggers full reseed
-
-### 4.6 Health Monitor Changes
-
-**Add gateway-level health via HTTP `/ready`:**
-
-```typescript
-import http from 'node:http';
-
-async function checkGatewayReadiness(): Promise<void> {
-  const rows = await db('instances')
-    .where({ status: 'running' })
-    .whereNotNull('control_endpoint');
-
-  for (const row of rows) {
-    try {
-      // control_endpoint is ws://host:port/ws -- derive HTTP URL
-      const wsUrl = new URL(row.control_endpoint as string);
-      const httpUrl = `http://${wsUrl.hostname}:${wsUrl.port}/ready`;
-
-      const result = await fetchReadiness(httpUrl, 5_000);
-
-      if (!result.ready) {
-        broadcast(row.id, {
-          type: 'instance:status',
-          instanceId: row.id,
-          payload: {
-            status: 'running',
-            statusMessage: `Gateway degraded: ${result.failing.join(', ')}`,
-          },
-        });
-      }
-    } catch {
-      // HTTP unreachable -- Docker-level check will handle
-    }
-  }
-}
-```
-
-**Replace `checkConfigIntegrity` with gateway-authoritative sync:**
-
-```typescript
-async function checkConfigIntegrity(): Promise<void> {
-  // Instead of: hash on-disk file -> compare -> reseed
-  // Now: query gateway -> sync DB if different
-  for (const row of runningInstances) {
-    try {
-      const gwConfig = await gatewayCall(row.id, 'config.get', {}) as {
-        config?: Record<string, unknown>;
-        hash?: string;
-      };
-      if (gwConfig?.hash && gwConfig.hash !== row.config_hash) {
-        // Gateway has different config -- sync DB FROM gateway
-        if (gwConfig.config) {
-          await db('instances').where({ id: row.id }).update({
-            config: JSON.stringify(gwConfig.config),
-            config_hash: gwConfig.hash,
-            updated_at: db.fn.now(),
-          });
-        }
-      }
-    } catch { /* skip */ }
-  }
-}
-```
-
-### 4.7 Extension Activation via config.patch (Replacing Restart)
-
-**CRITICAL: Plugin changes trigger gateway restart.** This is a gateway constraint (Section 2, Constraint 3). However, the restart is INTERNAL to the gateway process -- the container stays running. The platform does NOT need to call `restartInstance()`.
-
-**New plugin activation flow:**
-
-```typescript
-async function _activatePluginWithLock(instanceId, pluginId, userId, fencingToken, operationId): Promise<InstancePlugin> {
-  // 1. Build the config delta for this plugin
-  const pluginConfig = buildPluginConfigEntry(pluginId, existing.source, existing.config);
-
-  // 2. Get current config hash
-  const cfgResult = await gatewayCall(instanceId, 'config.get', {}) as { hash?: string };
-
-  // 3. Send config.patch -- gateway will restart internally (SIGUSR1)
-  await gatewayCall(instanceId, 'config.patch', {
-    raw: JSON.stringify({ plugins: { entries: [pluginConfig] } }),
-    baseHash: cfgResult?.hash,
-    note: `Activate plugin: ${pluginId}`,
-  });
-
-  // 4. Gateway will:
-  //    a. Apply merge-patch (arrays merge by id)
-  //    b. Write config to disk
-  //    c. Schedule SIGUSR1 restart
-  //    d. Emit shutdown event
-  //    e. Process restarts
-  //    f. Persistent WS reconnects
-  //    g. syncGatewayStateAfterRestart() queries tools.catalog
-  //    h. DB is updated with actual plugin state
-
-  // 5. Wait for reconnect + state sync to complete
-  //    (implement as a Promise that resolves when syncGatewayStateAfterRestart finishes)
-  await waitForGatewayRestart(instanceId, { timeoutMs: 60_000 });
-
-  // 6. Verify plugin loaded
-  const toolsResult = await gatewayCall(instanceId, 'tools.catalog', { includePlugins: true });
-  const pluginLoaded = toolsResult.groups?.some(g => g.pluginId === pluginId);
-
-  if (!pluginLoaded) {
-    // Rollback: remove plugin from config
-    await gatewayCall(instanceId, 'config.patch', {
-      raw: JSON.stringify({ plugins: { entries: [{ id: pluginId, _delete: true }] } }),
-      note: `Rollback failed plugin: ${pluginId}`,
-    });
-    await db('instance_plugins').where({ instance_id: instanceId, plugin_id: pluginId })
-      .update({ status: 'failed', error_message: 'Plugin did not load after gateway restart' });
-    throw new Error('Plugin activation failed');
-  }
-
-  // 7. DB already updated by syncGatewayStateAfterRestart -- just return
-  return (await getPluginById(instanceId, pluginId))!;
-}
-```
-
-**Key differences from current:**
-- No `restartInstance()` -- container stays running, only gateway process restarts
-- No double-restart for rollback -- send another config.patch to remove the plugin
-- `waitForGatewayRestart()` replaces the `platform.ping` health check
-- Verification via `tools.catalog` instead of `plugins.list` (which does not exist)
-
-**Rate limit handling:** Since config.patch is limited to 3/min, batch multiple plugin changes:
-
-```typescript
-// When activating multiple plugins, merge into one config.patch:
-const pluginEntries = pluginIds.map(id => buildPluginConfigEntry(id, ...));
-await gatewayCall(instanceId, 'config.patch', {
-  raw: JSON.stringify({ plugins: { entries: pluginEntries } }),
-  baseHash,
-  note: `Activate ${pluginIds.length} plugins`,
-});
-// One restart instead of N restarts
-```
-
-### 4.8 `reconcileExtensions` Changes
-
-**Current issues:**
-- Calls `plugins.list` which does not exist in the gateway
-- Uses ephemeral `GatewayRPCClient` directly
-- Only runs at boot
-
-**New implementation:**
-
-```typescript
-export async function reconcileExtensions(instanceId: string): Promise<ReconcileResult> {
-  // Skills: use skills.status (verified RPC)
-  const skillsResult = await gatewayCall(instanceId, 'skills.status', {}, { timeoutMs: 15_000 });
-  // ... reconcile skills against DB ...
-
-  // Plugins: use tools.catalog (plugins.list does not exist)
-  const toolsResult = await gatewayCall(instanceId, 'tools.catalog', { includePlugins: true }, { timeoutMs: 15_000 });
-  const activePluginIds = new Set(
-    toolsResult.groups?.filter(g => g.source === 'plugin').map(g => g.pluginId) ?? []
-  );
-  // ... reconcile plugins against DB ...
-
-  return { promoted, demoted, unchanged };
-}
-```
-
-**Signature change:** Remove `controlEndpoint` and `authToken` params (gatewayCall resolves internally).
-
-**Called from:**
-- `startInstanceAsync` (boot-time, Phase 2 of startup) -- keep as-is
-- `syncGatewayStateAfterRestart` (post-reconnect) -- NEW call site
+## Service Layer Decomposition
+
+### New services (v1.4)
+
+| File | Responsibility | Talks to | Does NOT touch |
+|---|---|---|---|
+| `services/runtime-registry.ts` | CRUD for `runtimes` table. Heartbeat/deregister. Offline sweeper (setInterval). | db, WS broadcast | InstanceManager (see below re: hosted bridge) |
+| `services/task-queue.ts` | `enqueueForIssue`, `enqueueForMention`, `claimForRuntime` (BEGIN IMMEDIATE), `startTask`, `completeTask`, `failTask`, `cancelTask`. Enforces `max_concurrent_tasks` and the partial unique index. Emits task:* WS events. | db, WS broadcast | DockerEngine, gateway RPC |
+| `services/task-messages.ts` | Insert task messages with seq; `listSince(taskId, seq)` for browser catch-up after reconnect. | db, WS broadcast | — |
+| `services/agents.ts` | Agent CRUD bound to a runtime. Skills, custom_env, custom_args, max_concurrent_tasks. | db | runtime, task-queue |
+| `services/issue-service.ts` | Issue CRUD, assignment, mentions. On assignee change → calls `task-queue.enqueueForIssue`. | db, task-queue, WS | — |
+| `services/comment-service.ts` | Issue comment CRUD. On agent-mention in comment → calls `task-queue.enqueueForMention`. | db, task-queue, WS | — |
+| `services/daemon-tokens.ts` | `mdt_` token issuance + hash lookup + expiry. | db | — |
+| `task-dispatch/hosted-worker.ts` | **The glue.** setInterval per online hosted runtime. Claims tasks, invokes gateway RPC, streams messages. Cancellation via `cancelChatCompletion`. | task-queue, gateway-rpc, gateway-event-relay | Docker, k8s, InstanceManager.updateStatus |
+| `task-dispatch/runtime-bridge.ts` | Registers one synthetic `runtimes` row per running Aquarium instance at startup/on instance state change. Hooks into existing `broadcast()` on instance status. | runtime-registry, db | gateway, daemon-worker |
+| `agent-backends/` (daemon-side only) | CLI executors — claude-code.ts, codex.ts, openclaw.ts, opencode.ts, hermes.ts. Each implements `Backend { execute(prompt, opts) → Session }` with JSON-stream parsing. **Ships in the daemon code path, not the server code path.** | child_process.spawn, daemon HTTP client | db (daemon is stateless w.r.t. server DB) |
+
+### Existing services touched (minimally)
+
+| Service | How v1.4 touches it | Why |
+|---|---|---|
+| `services/instance-manager.ts` | Event hook: when an instance transitions to `running` / `stopped`, `runtime-bridge.ts` upserts/updates the mirror `hosted` runtime row. **No InstanceManager internals are modified.** | Preserves "only one place transitions instance state" invariant. |
+| `services/gateway-event-relay.ts` | Read-only: `HostedTaskWorker` uses existing `gatewayCall(instanceId, method, params)` + `waitForChatCompletion(instanceId, sessionKey)` facade. | Reuses existing persistent WS; no new connection. |
+| `ws/index.ts` | Add new subscription type: `subscribe_task` (taskId → receive task:message events). Parallel to existing `subscribe_chat_session`. | Browser issue-detail page subscribes to task stream. |
+| `middleware/auth.ts` | **Not modified.** Existing `requireAuth` remains the user middleware. | Daemon routes get a separate middleware (see Auth section). |
+
+### Existing services explicitly NOT touched
+
+- `runtime/types.ts`, `runtime/factory.ts`, `runtime/docker.ts`, `runtime/kubernetes.ts` — Docker/K8s runtime engines are for *container* lifecycle, independent of agent-task runtimes. Do not overload `RuntimeEngine` with task dispatch.
+- `agent-types/registry.ts`, `agent-types/openclaw/*` — the existing "agent type" concept (openclaw / opencode / claude-code with manifests) is about *container image + RPC shape*. v1.4's `agents` table is about *task-executing identities*. The two coexist. A single `hosted` agent in v1.4 references an instance whose `agent_type` is (typically) `openclaw`.
+- `services/group-chats.ts`, `services/skills.ts` (existing extension skills), `services/plugins.ts` — all unrelated paths.
 
 ---
 
-## 5. New Files to Create
+## Auth / Token Model
 
-| File | Purpose | Depends On | Depended On By |
-|------|---------|-----------|----------------|
-| `apps/server/src/services/gateway-sync.ts` | Post-restart state query + DB sync | gatewayCall, DB | gateway-event-relay (on reconnect) |
+**Goal:** Daemon authenticates with a workspace-scoped `mdt_*` token; existing cookie-based JWT auth for browser remains untouched; services downstream of middleware see a uniform `req.auth`-equivalent context regardless of which layer authenticated.
 
-## 6. Files to Modify
+### Recommendation: separate `/api/daemon/*` routes with a dedicated `requireDaemonAuth` middleware
 
-| File | What Changes | Risk |
-|------|-------------|------|
-| `gateway-rpc.ts` | Add `gatewayCall()` facade; keep `GatewayRPCClient` as internal fallback | Low (additive) |
-| `gateway-event-relay.ts` | Add shutdown event handler, request queue, reconnect-with-sync, ping/pong | Medium (core transport) |
-| `adapter.ts` | Simplify `translateRPC` to delegate to `gatewayCall` | Low (behavior-preserving) |
-| `instance-manager.ts` | Rewrite `patchGatewayConfig` to gateway-first; rename `reseedConfigFiles` | Medium (core flow change) |
-| `extension-lifecycle.ts` | Fix RPC methods (skills.status, tools.catalog); route through facade | Medium (API correction) |
-| `plugin-store.ts` | Replace `restartInstance()` with `config.patch` + restart-wait | High (core behavior change) |
-| `skill-store.ts` | Route through facade; minor (already uses RPC correctly) | Low |
-| `health-monitor.ts` | Add HTTP `/ready` check; replace integrity reseed with gateway-auth sync | Medium |
+**Reasons vs "unified middleware on all routes":**
+- Daemon routes accept *only* `mdt_` tokens, never cookie JWTs — reuse across user routes would invite the browser to accidentally call daemon-scoped endpoints without a workspace context.
+- Different auth carries different permission models: user auth → `req.auth.userId`; daemon auth → `req.daemon.workspaceId` + `req.daemon.daemonId` (no user). Conflating them complicates every downstream service.
+- Multica does the same split — its `/api/daemon/*` route tree uses `DaemonAuth` middleware that permits only daemon tokens (plus PAT fallback for backward compat).
 
----
+### Middleware stack for daemon routes
 
-## 7. Suggested Build Order
-
-### Phase 1: Consolidate RPC Routing (Foundation)
-
-**Files:** `gateway-rpc.ts`, `adapter.ts`
-**Risk:** Low -- additive, no behavior change
-**Enables:** All subsequent phases
-
-1. Add `gatewayCall()` function to `gateway-rpc.ts`
-2. Add `getInstanceConnection()` helper (DB lookup for endpoint/token)
-3. Refactor `adapter.translateRPC` to delegate to `gatewayCall()`
-4. Keep `GatewayRPCClient` class as internal detail
-
-### Phase 2: Config Lifecycle Management (Gateway-First Config)
-
-**Files:** `instance-manager.ts`
-**Risk:** Medium -- changes the config update flow
-**Depends on:** Phase 1
-**Enables:** Phase 4 (extension ops use config.patch)
-
-1. Rewrite `patchGatewayConfig` to gateway-first flow
-2. Use `{ raw: JSON.stringify(delta) }` with `baseHash`
-3. Handle restart vs. non-restart config changes
-4. Eliminate `reseedConfigFiles()` from config update path
-5. Track `baseHash` lifecycle (re-fetch on CONFLICT)
-
-### Phase 3: Restart Cycle + State Sync
-
-**Files:** `gateway-event-relay.ts`, new `gateway-sync.ts`
-**Risk:** Medium -- core transport change
-**Depends on:** Phase 1
-**Enables:** Phase 4 (plugin ops need restart handling)
-
-1. Add `shutdown` event handler in `PersistentGatewayClient`
-2. Add request queue for calls during reconnect window
-3. Create `gateway-sync.ts` with `syncGatewayStateAfterRestart()`
-4. Implement `syncSkillsFromGateway()` using `skills.status` RPC
-5. Implement `syncPluginsFromToolsCatalog()` using `tools.catalog` RPC
-6. Wire reconnect handler to call sync on every reconnect
-
-### Phase 4: Extension Operations (Migrate Call Sites)
-
-**Files:** `extension-lifecycle.ts`, `plugin-store.ts`, `skill-store.ts`
-**Risk:** High for plugins (config.patch + restart cycle), low for skills
-**Depends on:** Phases 1, 2, 3
-
-1. Migrate all call sites to `gatewayCall()` facade
-2. Fix `reconcileExtensions` to use `skills.status` + `tools.catalog`
-3. Replace `restartInstance()` in plugin-store with `config.patch` + restart-wait
-4. Implement `waitForGatewayRestart()` Promise
-5. Implement plugin activation verification via `tools.catalog`
-6. Add rate-limit batching for multi-plugin operations
-
-### Phase 5: Health Integration
-
-**Files:** `health-monitor.ts`
-**Risk:** Low -- additive alongside existing checks
-**Depends on:** Phase 1
-**Can run in parallel with:** Phases 2-4
-
-1. Add `checkGatewayReadiness()` using HTTP `/ready` endpoint
-2. Replace `checkConfigIntegrity` reseed with gateway-authoritative sync
-3. Keep Docker-level polling as backstop
-4. Add periodic `reconcileRunningExtensions()` in slow loop (safety net)
-
-**Phase ordering rationale:**
-- Phase 1 is pure infrastructure (zero behavior change)
-- Phase 2 before 3: config.patch triggers restart; we need to understand the flow before handling it
-- Phase 3 before 4: extension ops cause restarts; the restart handler must be in place first
-- Phase 5 is independent (health checks are additive)
-- No Phase 6-8 needed: cleanup is integrated into each phase
-
----
-
-## 8. Patterns to Follow
-
-### Pattern: Command-Then-Readback (for non-restart changes)
-
-```typescript
-// For config changes that do NOT trigger restart (models, hooks, cron):
-await gatewayCall(instanceId, 'config.patch', { raw, baseHash, note });
-const actual = await gatewayCall(instanceId, 'config.get', {});
-await updateDB(instanceId, actual.config, actual.hash);
+```
+POST /api/daemon/register
+  ↓ cookieParser (shared)
+  ↓ requireDaemonAuth                 -- sets req.daemon = { workspaceId, daemonId }
+  ↓ requireDaemonWorkspaceAccess(...) -- for routes with :workspaceId / :runtimeId
+  ↓ handler
 ```
 
-### Pattern: Command-Wait-Verify (for restart-triggering changes)
+```ts
+// middleware/daemon-auth.ts
+export interface DaemonAuthPayload { workspaceId: string; daemonId: string; tokenId: string; }
+declare global { namespace Express { interface Request { daemon?: DaemonAuthPayload } } }
 
-```typescript
-// For config changes that DO trigger restart (plugins, gateway):
-await gatewayCall(instanceId, 'config.patch', { raw, baseHash, note });
-// Gateway emits shutdown event -> WS disconnects -> reconnects
-await waitForGatewayRestart(instanceId, { timeoutMs: 60_000 });
-// syncGatewayStateAfterRestart already ran on reconnect
-const verified = await gatewayCall(instanceId, 'tools.catalog', { includePlugins: true });
-// Check if desired plugin loaded
+export async function requireDaemonAuth(req, res, next) {
+  const hdr = req.headers.authorization;
+  if (!hdr?.startsWith('Bearer mdt_')) return res.status(401).json({ ok: false, error: 'daemon token required' });
+  const token = hdr.slice(7);
+  const hash = sha256(token);
+  const row = await db('daemon_tokens').where({ token_hash: hash }).first();
+  if (!row || new Date(row.expires_at) < new Date()) {
+    return res.status(401).json({ ok: false, error: 'invalid or expired token' });
+  }
+  req.daemon = { workspaceId: row.workspace_id, daemonId: row.daemon_id, tokenId: row.id };
+  next();
+}
 ```
 
-### Pattern: Graceful Degradation
+### Context propagation
 
-```typescript
-// When persistent connection is unavailable (startup race):
-result = await gatewayCall(instanceId, method, params);
-// gatewayCall internally: try persistent -> fall back to ephemeral -> reconnect persistent
+- Services **do not read `req` directly**. Every call passes an explicit `ctx` object: `{ userId?: string; workspaceId: string; daemonId?: string }`. This matches the existing CE pattern where `createInstance(userId, req)` takes `userId` as a first positional arg.
+- Route handlers are the only layer that translates either `req.auth.userId` or `req.daemon.workspaceId` into that ctx.
+- For CE single-user mode: routes in the daemon namespace that need a `userId` resolve to the workspace's `owner_user_id`. Admin user already exists (see `server-core.ts` line 222-238) and the `runtimes.owner_user_id` column we're adding can reference it.
+
+### Token lifecycle
+
+- Browser UI issues tokens under `POST /api/users/me/daemon-tokens { workspaceId, ttlDays }` → returns plaintext `mdt_<random-48-byte>` exactly once (then we only keep the hash). Matches multica behaviour.
+- Migration creates `daemon_tokens(id, token_hash UNIQUE, workspace_id FK, daemon_id, expires_at, created_at, last_used_at)`.
+- Revocation = `DELETE FROM daemon_tokens WHERE id = ?`. The next request with that token 401s.
+
+### WebSocket auth
+
+**Recommendation:** keep the existing `/ws` endpoint for browsers only. Do not add WS for the daemon (see next section).
+
+---
+
+## WebSocket Unification
+
+### Recommendation: HTTP long-poll for daemon, WS for browser (matches multica)
+
+#### Rejected: `/ws-daemon` persistent WebSocket
+
+Pros: Lower latency task dispatch (push instead of poll).
+Cons, weighted heavy:
+- **Corporate proxy hostility.** Long-lived WS through HTTP proxies is a common pain point. Dropped idle connections, aggressive NAT timeouts, interception boxes that mangle upgrade headers.
+- **Reconnect complexity.** The daemon must resume task state after every disconnect — retry unclaimed tasks, verify active task status. Polling avoids this class of bug entirely. Multica's poll-every-1s-with-5s-cancellation-tick design is fine for tens of runtimes.
+- **Two WS servers.** We already have `/ws` for browser and the backend-to-gateway WS. Adding a third protocol surface for daemons increases test surface with no user-visible benefit.
+- **The long-poll path is already hardened** in CE. Existing HTTP routes go through `helmet`, `dynamicCors`, rate limiters. WS needs separate hardening.
+
+#### Chosen: REST polling for daemon
+
+| Endpoint | Cadence | Notes |
+|---|---|---|
+| `POST /api/daemon/register` | 1× at start | Returns list of `runtime_id` assignments |
+| `POST /api/daemon/heartbeat` | 30s | Can piggyback pending-ping + pending-update IDs |
+| `POST /api/daemon/runtimes/:id/claim` | 1s (exponential backoff to 5s when idle) | Returns `{ task: ... }` or `{ task: null }` |
+| `POST /api/daemon/tasks/:id/start` | on claim | |
+| `POST /api/daemon/tasks/:id/messages` | batched every 500ms during execution | Deliberately batched — avoids per-token HTTP roundtrip |
+| `POST /api/daemon/tasks/:id/progress` | on agent step | |
+| `POST /api/daemon/tasks/:id/complete` / `/fail` | on finish | |
+| `GET  /api/daemon/tasks/:id/status` | 5s during active task | Cancellation signal |
+| `POST /api/daemon/deregister` | shutdown | |
+
+This maps 1:1 to multica's `internal/handler/daemon.go` surface area and is proven.
+
+### Failure-mode analysis
+
+| Failure | Daemon behaviour | Server behaviour |
+|---|---|---|
+| Corporate proxy drops idle connection | Next poll re-establishes TCP — no state loss | — |
+| Server restarts mid-task | Daemon's in-flight messages 502 → retry with exp-backoff; eventually succeeds after restart | `/tasks/:id/complete` is idempotent (CHECK `status='running'`); `task.status` re-reads from DB |
+| Network partition >30s | Heartbeat loop flags runtime as offline after 90s (3 missed heartbeats) → runtime sweeper flips status | `Task.status` stays `running`; no auto-cancel — admin must manually cancel |
+| Token rotated mid-task | 401s on next call → daemon must re-auth; tasks already claimed stall and surface as stale-running in UI | — |
+
+The "stale running task" problem is addressed via a sweeper (see Boot Sequence).
+
+### Browser WS additions
+
+Extend `/ws` protocol (in `ws/index.ts`) with:
+- `subscribe_issue` / `unsubscribe_issue` → receive `task:dispatch`, `task:message`, `task:completed`, `task:failed`, `task:cancelled`, `comment:created` events scoped to an issue.
+- `subscribe_workspace` → receive agent-status and runtime-status updates for the whole workspace (CE = `default`).
+
+No change to auth model (existing `auth` frame with `ce-admin` / `test:<uid>` token continues to work).
+
+---
+
+## Boot Sequence Impact
+
+### Current CE boot order (from `server-core.ts` lines 202–266)
+
+```
+1.  db.migrate.latest()
+2.  onAfterMigrate()                    — EE hook
+3.  CE default user seed
+4.  reloadDynamicMiddleware()
+5.  recoverOrphanedOperations()         — extension lifecycle
+6.  reconcileInstances()                — transitions 'starting' → 'running' / 'error' based on Docker
+7.  engine.cleanupOrphanNetworks()
+8.  startHealthMonitor()                — per-instance Docker health polling
+9.  startGatewayEventRelay()            — persistent WS to gateways, reconciles every 10s
+10. onBeforeListen()                    — EE hook
+11. server.listen()
 ```
 
+### v1.4 additions (in dependency order)
+
+```
+    ... steps 1–9 unchanged ...
+
+9a. await runtimeBridge.reconcileFromInstances()
+        — For every instance in 'running' state, ensure a matching
+          runtimes row exists with kind='hosted'.
+        — MUST run AFTER reconcileInstances (step 6) and AFTER
+          startGatewayEventRelay (step 9) — because:
+            • We need reconciled instance state to mirror correctly.
+            • HostedTaskWorker depends on gateway RPC being connectable
+              within ~10s (the gateway-relay reconcile interval).
+
+9b. taskQueueSweeper.start()
+        — setInterval(60s): mark any task stuck in 'dispatched' for >5min
+          as 'failed' with error='dispatch timeout';
+          mark any task in 'running' whose runtime has been offline for
+          >5min as 'failed' with error='runtime offline'.
+
+9c. hostedTaskWorker.start()
+        — One setInterval tick per online hosted runtime (polling cadence 2s).
+        — Ticks are NO-OPs if no matching gateway client exists yet
+          (isGatewayConnected(instanceId) === false) — the worker
+          silently skips and retries next tick.
+
+9d. runtimeRegistryOfflineSweeper.start()
+        — setInterval(30s): flip runtimes.status='offline' where
+          last_heartbeat_at < now()-90s AND kind IN ('daemon-local','daemon-remote').
+        — Hosted runtimes don't heartbeat; their status mirrors the
+          underlying instance.status.
+
+    ... step 10 (onBeforeListen) ...
+    ... step 11 (server.listen) ...
+```
+
+### In-flight-task semantics on server restart
+
+- **Daemon tasks:** survive. Daemon reconnects, next poll to `/tasks/:id/status` returns `running`, next `/messages` POST succeeds. Daemon finishes and POSTs `/complete`.
+- **Hosted tasks:** do NOT survive. The in-process chat completion promise dies. The persistent gateway client reconnects but has no record of the pending callback. Server-side sweeper (step 9b) times these out at 5min. The user sees "failed: dispatch timeout" and can re-assign.
+  - **Mitigation:** on startup, query `SELECT id FROM agent_task_queue WHERE status IN ('dispatched','running') AND runtime.kind='hosted'` and immediately fail these with `error='server restarted; please retry'`. Faster and clearer than 5min timeout.
+
+### Daemon-CLI boot sequence (separate process)
+
+```
+aquarium daemon start [--server URL] [--token mdt_...] [--agents claude,codex]
+  1. Load config (~/.aquarium/daemon.json)
+  2. Resolve token: --token flag > env AQUARIUM_DAEMON_TOKEN > config file
+  3. Detect CLIs on PATH: which claude, which codex, which openclaw, which opencode, which hermes
+  4. Build runtimes list with {type, version, status:'online'}
+  5. POST /api/daemon/register → get runtime_ids, persist mapping
+  6. go heartbeatLoop() (30s)
+  7. go pollLoop() (claim tasks, spawn CLI, stream messages)
+  8. Trap SIGTERM → POST /api/daemon/deregister with 5s timeout
+```
+
+Same binary (`@aquaclawai/aquarium`). Subcommand pattern in `cli.ts` — router after the arg parse decides `server` (default — current behaviour) vs `daemon start` / `daemon stop` / `daemon status`.
+
 ---
 
-## 9. Anti-Patterns to Avoid
+## File Layout Proposal
 
-### Anti-Pattern: Polling for Config Changes
+**Principle:** co-locate v1.4 code into named subsystems within the existing `apps/server/src` tree, rather than a catch-all `apps/server/src/multica/`. The multica namespace would signal a foreign codebase; these are first-class Aquarium concerns now.
 
-**What:** Periodically calling `config.get` to detect if config changed.
-**Why bad:** Wastes rate-limit budget (config.get is not rate-limited but creates load). Gateway does not emit config.changed events, so the temptation is to poll.
-**Instead:** Use command-then-readback for Aquarium-initiated changes. For external changes (user editing config in Control UI), the reconnect-on-shutdown pattern catches them on the next restart.
+```
+apps/server/src/
+├── cli.ts                              -- existing, modified to dispatch subcommands
+├── cli/                                -- NEW: subcommand entry points
+│   ├── server.ts                       -- current default behaviour moved here
+│   ├── daemon.ts                       -- `aquarium daemon start|stop|status`
+│   └── help.ts
+├── daemon/                             -- NEW: LOCAL daemon (runs on user's machine)
+│   ├── daemon.ts                       -- Daemon class (port of multica daemon.go)
+│   ├── config.ts                       -- config load, agent autodetect (which <cli>)
+│   ├── http-client.ts                  -- calls back to server /api/daemon/*
+│   ├── poll-loop.ts
+│   ├── heartbeat-loop.ts
+│   └── task-runner.ts                  -- orchestrates backend → stream → post messages
+├── agent-backends/                     -- NEW: CLI executors, used ONLY by daemon
+│   ├── types.ts                        -- Backend, Session, MessageType, ExecOptions
+│   ├── claude-code.ts                  -- spawns `claude`, parses --stream-json
+│   ├── codex.ts
+│   ├── openclaw-backend.ts             -- (distinct from existing agent-types/openclaw)
+│   ├── opencode.ts
+│   ├── hermes.ts
+│   └── registry.ts
+├── routes/
+│   ├── daemon.ts                       -- NEW: /api/daemon/* routes (mounted after requireDaemonAuth)
+│   ├── issues.ts                       -- NEW: /api/issues/* routes (user auth)
+│   ├── comments.ts                     -- NEW: /api/issues/:id/comments (user auth)
+│   ├── agents.ts                       -- NEW: /api/agents/* routes
+│   ├── runtimes.ts                     -- NEW: /api/runtimes/* (user-visible list)
+│   ├── tasks.ts                        -- NEW: /api/tasks/:id/messages (user-visible history)
+│   └── ...(existing routes unchanged)
+├── services/
+│   ├── runtime-registry.ts             -- NEW
+│   ├── task-queue.ts                   -- NEW
+│   ├── task-messages.ts                -- NEW
+│   ├── agents.ts                       -- NEW (agents table, not agent-types)
+│   ├── issue-service.ts                -- NEW
+│   ├── comment-service.ts              -- NEW
+│   ├── daemon-tokens.ts                -- NEW
+│   └── ...(existing services unchanged)
+├── task-dispatch/                      -- NEW: the glue between task-queue and instance RPC
+│   ├── hosted-worker.ts                -- setInterval worker for hosted runtimes
+│   ├── runtime-bridge.ts               -- mirrors instances ↔ runtimes
+│   └── sweepers.ts                     -- stale task + offline runtime sweepers
+├── middleware/
+│   └── daemon-auth.ts                  -- NEW: requireDaemonAuth
+├── db/
+│   └── migrations/
+│       ├── 003_workspace_agent_runtime.ts      -- NEW
+│       ├── 004_issues_comments_activity.ts     -- NEW
+│       ├── 005_agent_task_queue.ts             -- NEW
+│       ├── 006_task_messages.ts                -- NEW
+│       └── 007_daemon_tokens.ts                -- NEW
 
-### Anti-Pattern: Attempting Plugin Hot-Reload
+apps/web/src/
+├── pages/
+│   ├── issues/                         -- NEW
+│   │   ├── IssueBoardPage.tsx          -- kanban by status
+│   │   └── IssueDetailPage.tsx         -- title, description, comments, live task stream
+│   ├── agents/
+│   │   ├── AgentsPage.tsx
+│   │   └── AgentDetailPage.tsx
+│   ├── runtimes/
+│   │   └── RuntimesPage.tsx            -- daemon runtimes + hosted runtimes in one list
+│   └── daemon-tokens/
+│       └── DaemonTokensPage.tsx
+├── components/
+│   ├── issues/
+│   │   ├── IssueCard.tsx
+│   │   ├── IssueStatusBadge.tsx
+│   │   ├── TaskMessageStream.tsx       -- subscribes to subscribe_issue WS
+│   │   └── ToolCallBubble.tsx
+│   └── ...
+└── i18n/locales/{en,zh,fr,de,es,it}.json  -- extend each
+```
 
-**What:** Expecting `config.patch` with plugin changes to take effect without restart.
-**Why bad:** Gateway WILL restart on any `plugins.*` change. Pretending otherwise creates false UX.
-**Instead:** Design UI to show "gateway will restart" warning. Batch all plugin changes into one config.patch call.
+### Justification vs alternatives
 
-### Anti-Pattern: Using `plugins.list` RPC
+| Alternative | Problem |
+|---|---|
+| Single `apps/server/src/multica/` dir holding ALL new code | Signals foreign code; creates two parallel patterns (services vs multica-style). Hurts discoverability — a new contributor looking at `/api/issues` would search `routes/` and find nothing. |
+| `apps/daemon/` as a new workspace package | Daemon is small (~1.5k LOC ported from multica). A whole workspace adds build overhead (tsconfig, package.json, npm workspace wiring, `@aquarium/daemon` imports) for no gain; it ships in the same npm tarball anyway. |
+| Leave `agent-backends/` in `agent-types/` | Conflates "how to format an agent CLI prompt" (daemon-side) with "which Docker image to spawn" (server-side). Two different concerns; must split. |
 
-**What:** Calling `plugins.list` to get plugin state.
-**Why bad:** This RPC does not exist in the gateway.
-**Where it exists now:** `extension-lifecycle.ts:228`
-**Instead:** Use `tools.catalog` (for active plugin tools) and `config.get` (for configured plugins).
+### Daemon code bundled with server package
 
-### Anti-Pattern: DB-First for Running Instances
-
-**What:** Writing config to DB before confirming gateway accepted it.
-**Why bad:** Creates split-brain. Dashboard shows new state, gateway has old state.
-**Where it exists now:** `patchGatewayConfig` line 774
-**Instead:** Gateway-first, DB-second.
-
-### Anti-Pattern: Ephemeral WebSocket Per Operation
-
-**What:** `new GatewayRPCClient()` for each RPC.
-**Why bad:** Full WS + handshake overhead (~100-300ms per call).
-**Where it exists now:** `extension-lifecycle.ts:145,228`, `plugin-store.ts:132,209`, `skill-store.ts:165`
-**Instead:** `gatewayCall()` routes through persistent client.
+- `@aquaclawai/aquarium` stays a single npm package. `bin.aquarium` entry still points to `./dist/cli.js`. The CLI routes to either the server subcommand or the daemon subcommand.
+- User installs via `npx @aquaclawai/aquarium` (server) or `npm i -g @aquaclawai/aquarium && aquarium daemon start` (daemon).
+- **Pitfall flagged downstream:** daemon code imports `agent-backends/*`, which must NOT import anything from `db/`, `services/`, `middleware/`, `routes/`, `runtime/`. If it does, the daemon will pull in knex + better-sqlite3 + docker-modem and boot time explodes. Enforce via a lint rule or tsc project references.
 
 ---
 
-## 10. Risk Assessment
+## Shared Types Scope
 
-| Risk | Severity | Mitigation |
-|------|----------|------------|
-| config.patch with plugin changes causes unexpected UX (restart delay) | HIGH | Show "gateway restarting" indicator in UI; batch changes; implement `waitForGatewayRestart` with progress |
-| Rate limit (3/min) exhausted during multi-plugin install | HIGH | Batch all plugin changes into single config.patch; implement client-side rate tracking |
-| baseHash conflict with concurrent Control UI edits | MEDIUM | Retry pattern: re-fetch hash -> re-apply patch -> max 3 retries |
-| Reconnect window: RPCs queued during restart may timeout | MEDIUM | Queue with per-request timeout; expose estimated restart time from shutdown event |
-| `tools.catalog` may not include all plugin info needed for reconciliation | MEDIUM | Supplement with `config.get` to read `plugins.entries` from config |
-| Circular dependency: `gateway-sync.ts` -> DB -> `instance-manager.ts` -> `gateway-event-relay.ts` | LOW | gateway-sync writes DB directly, does not import instance-manager |
+### Must live in `packages/shared/src/types.ts`
+
+These are used by both server AND the web UI AND (in some cases) the daemon HTTP request bodies:
+
+```ts
+// Core domain
+export interface Issue { id, workspaceId, title, description, status, priority, assigneeType, assigneeId, creatorType, creatorId, parentIssueId, dueDate, createdAt, updatedAt }
+export type IssueStatus = 'backlog'|'todo'|'in_progress'|'in_review'|'done'|'blocked'|'cancelled'
+export type IssuePriority = 'urgent'|'high'|'medium'|'low'|'none'
+export interface Agent { id, workspaceId, runtimeId, name, avatarUrl, description, instructions, visibility, status, maxConcurrentTasks, customEnv, customArgs, ownerId, archivedAt }
+export type AgentStatus = 'idle'|'working'|'blocked'|'error'|'offline'
+export interface Runtime { id, workspaceId, name, kind, provider, status, daemonId?, instanceId?, deviceInfo?, metadata, lastHeartbeatAt?, ownerUserId?, createdAt, updatedAt }
+export type RuntimeKind = 'daemon-local'|'daemon-remote'|'hosted'
+export interface AgentTask { id, agentId, runtimeId, issueId?, chatSessionId?, status, priority, dispatchedAt?, startedAt?, completedAt?, error?, result?, sessionId?, workDir?, triggerCommentId? }
+export type TaskStatus = 'queued'|'dispatched'|'running'|'completed'|'failed'|'cancelled'
+export interface TaskMessage { id, taskId, seq, type, tool?, content?, input?, output?, createdAt }
+export type TaskMessageType = 'tool_use'|'tool_result'|'text'|'thinking'|'error'
+export interface Comment { id, issueId, authorType, authorId, content, type, parentId?, createdAt }
+
+// WS events
+export type TaskEventType = 'task:dispatch'|'task:progress'|'task:message'|'task:completed'|'task:failed'|'task:cancelled'
+export interface TaskMessagePayload { taskId, issueId?, chatSessionId?, seq, type, tool?, content?, input?, output? }
+
+// Daemon API (used by routes/daemon.ts AND daemon/http-client.ts)
+export interface DaemonRegisterRequest { workspaceId, daemonId, deviceName, cliVersion, launchedBy, runtimes: Array<{ name, type, version, status }> }
+export interface DaemonRegisterResponse { runtimes: Runtime[] }
+export interface ClaimedTask extends AgentTask { agent: { id, name, instructions, skills, customEnv, customArgs }, repos: Array<{ url, description }>, workspaceId, priorSessionId?, priorWorkDir?, triggerCommentContent? }
+```
+
+### Stays server-only (`apps/server/src/...`)
+
+- DB row types (`DbAgentRow`, `DbTaskRow`) — shape differs from wire types (snake_case, JSON-as-string for SQLite).
+- `InstanceSpec`, `RuntimeEngine` (already server-only).
+- Gateway RPC internals.
+
+### Stays daemon-only (`apps/server/src/daemon/`, `apps/server/src/agent-backends/`)
+
+- `Backend`, `Session`, `BackendConfig`, `ExecOptions` — these are the CLI-executor contract; the server never sees them.
+- Parser state types for stream-json.
+
+### Not shared: DaemonCli ↔ Server wire types are shared; internal daemon types are not
+
+The daemon HTTP client in `daemon/http-client.ts` imports `@aquarium/shared` for request/response shapes. Its internal task-runner types are local.
 
 ---
 
-## Sources
+## Build Order (Phase Dependency Sketch)
 
-- Direct source code analysis: `gateway-event-relay.ts`, `gateway-rpc.ts`, `adapter.ts`, `instance-manager.ts`, `health-monitor.ts`, `extension-lifecycle.ts`, `plugin-store.ts`, `skill-store.ts`
-- `docs/gateway-communication-analysis.md` -- prior issue analysis
-- `.planning/PROJECT.md` -- project context and constraints
-- `.planning/research/FEATURES.md` -- verified OpenClaw gateway source findings (24 events, config.patch merge-patch semantics, plugin restart behavior, health endpoints, RPC methods)
-- `.planning/research/STACK.md` -- technology decisions (no new deps, typed EventEmitter)
-- Confidence: HIGH -- architecture informed by both Aquarium code reading and verified gateway behavior
+Downstream planners need concrete sequencing. The dependency graph looks like:
+
+```
+                ┌── Phase A: Schema + Types ──┐
+                │                              │
+                ▼                              ▼
+Phase B: Runtime Registry        Phase C: Agent + Issue Services
+(+ runtime-bridge hooks)         (agents, issues, comments, activity)
+                │                              │
+                └──────────┬───────────────────┘
+                           ▼
+                Phase D: Task Queue (enqueue/claim/lifecycle, BEGIN IMMEDIATE)
+                           │
+              ┌────────────┴────────────────────┐
+              ▼                                  ▼
+  Phase E: Daemon Server-Side          Phase F: Hosted Worker + Dispatch
+  (routes + auth middleware +           (task-dispatch/hosted-worker using
+   daemon_tokens)                        existing gatewayCall + waitForChatCompletion)
+              │
+              ▼
+  Phase G: Daemon CLI + Agent Backends
+  (stream-json parsers for claude/codex/openclaw/opencode)
+              │
+              ▼
+  Phase H: Web UI — Issue Board + Issue Detail
+              │
+              ▼
+  Phase I: Web UI — Agents, Runtimes, Daemon Tokens
+              │
+              ▼
+  Phase J: Boot-sequence integration, sweepers, in-flight-task recovery
+              │
+              ▼
+  Phase K: E2E tests + docs + release
+```
+
+### Why this order
+
+- **A before everything:** no service can be built without its table + shared types. Running migrations first lets every other phase be merge-independent.
+- **B parallel with C:** runtime-registry and agent/issue service don't touch each other's tables directly.
+- **D depends on both B + C:** task queue FKs point at runtimes and agents; issue assignment triggers enqueue.
+- **E and F parallel:** both consume D. E does not touch the gateway; F does not touch daemon auth.
+- **G depends on E:** daemon HTTP client needs server endpoints to exist.
+- **H depends on D:** issue board reads tasks.
+- **I depends on B, C, E:** agent/runtime/token CRUD UI.
+- **J comes late:** sweepers test the "what happens after restart" path — need all earlier phases in place.
+- **K is final:** integration tests require the full system.
+
+### Critical path gotchas flagged for pitfalls researcher
+
+1. **Migration number collisions.** Aquarium CE has existing migrations 001–002; multica has 001–046 and duplicates at 020, 026, 027, 029, 032, 040, 041, 043, 046 (merge conflicts not cleaned up). We do NOT port multica's numbering — we pick sequential numbers in our migration dir starting at 003. Note: CLAUDE.md warns "35 migrations with duplicate numbers at 021 and 027" — this is a multi-package reference, ours starts clean.
+2. **`reconcileInstances()` → `runtime-bridge` race.** If `startGatewayEventRelay()` (step 9) races with `runtimeBridge.reconcileFromInstances()` (step 9a), the bridge may create a `hosted` runtime row with `status='online'` before its gateway is actually connected. `hostedTaskWorker` tick that sees `isGatewayConnected(instanceId)===false` must silently skip — not fail the task.
+3. **Hosted task worker + persistent WS queue semantics.** `gatewayCall` already queues if the persistent client is "disconnected but client exists" (30s timeout). That's a gift for hosted tasks: a brief gateway reconnect blip doesn't fail the task. But it also means `hostedTaskWorker` MUST NOT treat `gatewayCall` timing out as "runtime offline" — it just means "one task failed; runtime is likely still fine".
+4. **better-sqlite3 is synchronous; knex wraps it async.** `await db.transaction(async trx => { ... })` still works but the underlying operations are sync — no I/O yield inside the transaction. This is fine for our claim size.
+5. **Extension code and v1.4 code share the `services/` dir.** Be careful not to name-collide. Existing: `extension-lifecycle.ts`, `skill-store.ts`, `plugin-store.ts`. New: `agents.ts` (risky — plural of "agent-types"?), consider `agent-store.ts` or `agents-service.ts` to avoid confusion with `agent-types/`.
+6. **Daemon CLI shares its binary with server CLI.** The binary name `aquarium` is ambiguous. Make the subcommand split explicit at the top of `cli.ts` — no flag-only detection, always require `aquarium server` or `aquarium daemon start`. For backward compat, `aquarium` (no subcommand) defaults to server mode with a deprecation notice.
+
+### Migration path from existing instances — recommendation: virtual row per running instance
+
+- **Do NOT backfill.** Existing `instances` rows are *not* automatically promoted to a `runtimes` row on migrate.
+- Instead, `runtime-bridge.ts` runs at boot (step 9a): for every instance currently `running`, upsert a `runtimes` row with `kind='hosted'`, `instance_id=<that instance>`, `provider=<instance.agent_type>`, `name="<instance.name> (hosted)"`.
+- When an instance stops, the bridge marks the mirror runtime `status='offline'` (but doesn't delete — agent references should remain resolvable for UI history).
+- When an instance is deleted, ON DELETE CASCADE on `runtimes.instance_id` cleans up.
+- Net result: users see all their existing instances in the new "Runtimes" UI without any explicit migration step, but the two tables remain loosely coupled.
+
+This preserves the "InstanceManager is the single place that transitions instance state" invariant — `runtime-bridge` only *mirrors* state, never writes to `instances`.
+
+---
+
+## Open Questions for Pitfalls Research
+
+The pitfalls researcher should focus on these high-risk areas discovered during architecture:
+
+1. **SQLite transaction deadlock surface.** What happens if `hostedTaskWorker` holds `BEGIN IMMEDIATE` and a daemon REST handler tries the same? better-sqlite3 serializes — but does that serialize across Node async ticks correctly under knex? (Investigate: knex's SQLite connection pool size, acquireTimeout defaults.)
+
+2. **Stale-running task zombies.** If a daemon crashes after `/start` but before `/complete`, the task sits in `running` forever until the sweeper. For hosted, the server restart scenario. For daemon, an uncaught exception in the CLI. The sweeper's 5-min timeout is a tradeoff — too short kills legitimately-long tasks (multica's default is 20min). What's the right default?
+
+3. **Gateway RPC timeout vs task duration.** `gatewayCall` default is 30s. Chat completions can take minutes. Existing code passes 120_000ms for `waitForChatCompletion`. The hosted worker must use generous timeouts AND still respect user cancellation. Can cancellation interrupt mid-`waitForChatCompletion`?
+
+4. **Agent-type registry vs agent backends.** Two parallel concepts with the word "agent". High confusion risk for new contributors. Which one does a user mean when they say "my agent"? Naming audit recommended.
+
+5. **Task message ordering under retry.** Daemon batches messages every 500ms. If the batch POST fails, the daemon retries. `seq` is assigned by the daemon monotonically — fine for ordering. But two daemons could never run the same task (claim is unique), so there's no merge problem. Confirm: does the daemon persist `seq` across crashes? Probably not.
+
+6. **Port range for hosted runtimes.** Existing `openclaw-net` uses 19000–19999 for instance containers. Hosted runtimes don't need new ports — they reuse the instance's gateway. Confirm no port clash with new daemon health port (multica uses 47321; we should do the same but document it).
+
+7. **Rate-limiter coverage.** `/api/daemon/*` is under `/api/` which gets the production rate limiter (300 req per 15min per IP). A daemon doing 1s-cadence claim calls = 900 req / 15min. **That exceeds the limit.** The daemon subtree needs its own limiter or exemption. Address in phase E.
+
+8. **Cookie parser + bearer token dual.** Express routes all pass through `cookieParser()`. This is harmless for daemon routes — they ignore cookies — but verify no middleware auto-sets `req.auth` based on a stale cookie header from the daemon process env. The default `requireAuth` pattern (auto-auth as first user) should NOT apply to daemon routes.
+
+9. **Web UI WebSocket fan-out scale.** One browser subscribing to issue detail + opening agent page + looking at runtimes list = 3 subscriptions. Not a problem at CE scale. Flag for EE.
+
+10. **ESM `.js` import hygiene in new dirs.** CLAUDE.md warns about dropping the `.js` extension. With the large number of new files in `daemon/`, `agent-backends/`, `task-dispatch/`, the probability of one missed import causing a runtime crash is high. ESLint rule `import/extensions` set to always-require `.js` on relative imports is mandatory.
+
+11. **DB writer lock-up if a sync better-sqlite3 call inside a transaction does a large JSON parse.** The `task_message.input` column is JSON; for very long agent tool inputs, parsing on claim could pause the writer long enough to block hearts/claims. Consider indexing with `SELECT ... FROM agent_task_queue` avoiding the JSON field during claim, and only fetching full rows outside the transaction.
+
+12. **Daemon binary self-update.** Multica has a brew/download auto-update path (`handleUpdate` in daemon.go). v1.4 should **defer** this — it's ambitious and orthogonal. Users install via `npm i -g` and update via `npm update`. Flag for v1.5.
+
+---
+
+*Confidence notes:* All claims about Aquarium CE internals are HIGH (verified against the code). Claims about multica are HIGH (verified against `/tmp/multica`). The recommendation to use long-polling over WebSocket is MEDIUM (well-reasoned but the alternative is defensible; a spike test of WS through a corporate proxy would upgrade confidence). The SQLite QPS ceiling of ~2–3K claim txns/sec is MEDIUM — extrapolated from public better-sqlite3 benchmarks, not measured on the actual claim query shape.
