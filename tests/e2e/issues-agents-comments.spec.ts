@@ -35,7 +35,6 @@ import { join } from 'node:path';
 
 const API = 'http://localhost:3001/api';
 const DB_PATH = process.env.AQUARIUM_DB_PATH || join(homedir(), '.aquarium', 'aquarium.db');
-const DEFAULT_WORKSPACE_ID = 'AQ';
 
 function uniqueEmail(): string {
   return `phase17-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@e2e.test`;
@@ -43,24 +42,6 @@ function uniqueEmail(): string {
 
 function uniqueName(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-}
-
-async function pollUntil<T>(
-  fn: () => Promise<T | null> | T | null,
-  timeoutMs: number,
-  intervalMs = 100,
-  label = 'condition',
-): Promise<T> {
-  const deadline = Date.now() + timeoutMs;
-  let last: T | null = null;
-  while (Date.now() < deadline) {
-    last = await fn();
-    if (last !== null) return last;
-    await new Promise((r) => setTimeout(r, intervalMs));
-  }
-  throw new Error(
-    `[issues-agents-comments.spec] pollUntil '${label}' timed out after ${timeoutMs}ms (last=${String(last)})`,
-  );
 }
 
 function readDb<T>(fn: (db: Database.Database) => T): T {
