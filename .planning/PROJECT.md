@@ -26,6 +26,7 @@ Users can discover and activate extensions for their AI agent instances without 
 ### Validated
 
 - [x] Schema: workspace / runtimes / agents / issues / comments / agent_task_queue / task_messages / daemon_tokens tables with SQLite WAL + busy_timeout PRAGMAs and v1.4 shared types (validated in Phase 15)
+- [x] Runtime registry + bridge: unified `GET /api/runtimes` listing hosted + daemon runtimes, automatic mirroring of existing Aquarium instances into `runtimes` table via InstanceManager hooks, derived-via-JOIN status for hosted rows, and 30s offline sweeper for daemon heartbeats — all without modifying InstanceManager's write path (validated in Phase 16)
 
 ### Active
 
@@ -96,4 +97,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-16 after Phase 15 (Schema & Shared Types) completion*
+*Last updated: 2026-04-16 after Phase 16 (Runtime Registry + Runtime-Bridge) completion*
