@@ -6,7 +6,7 @@ import { db } from '../db/index.js';
  *
  * Scope (Phase 16, RT-05):
  *   • Only affects runtimes where `kind IN ('local_daemon','external_cloud_daemon')`.
- *     hosted_instance rows are NEVER touched (ST1 HARD: instance-derived status is
+ *     Hosted-mirror rows are NEVER touched (ST1 HARD: instance-derived status is
  *     computed at read time via LEFT JOIN in runtime-registry.listAll).
  *   • Runs every SWEEP_INTERVAL_MS. First sweep fires immediately on start.
  *   • Standalone module (not merged into health-monitor) — see 16-RESEARCH
@@ -22,7 +22,7 @@ async function sweepOnce(): Promise<number> {
   const cutoffIso = new Date(Date.now() - HEARTBEAT_WINDOW_MS).toISOString();
 
   // Batched UPDATE: transitions ALL stale daemon runtimes in a single round-trip.
-  // The whereIn('kind', [...daemon kinds]) clause is the ST1 guard — hosted_instance
+  // The whereIn('kind', [...daemon kinds]) clause is the ST1 guard — hosted-mirror
   // rows cannot be flipped by this sweeper even by accident.
   const affected = await db('runtimes')
     .whereIn('kind', ['local_daemon', 'external_cloud_daemon'])

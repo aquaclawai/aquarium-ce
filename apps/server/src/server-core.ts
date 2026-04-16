@@ -16,6 +16,8 @@ import { getRuntimeEngine } from './runtime/factory.js';
 import { startHealthMonitor } from './services/health-monitor.js';
 import { startGatewayEventRelay } from './services/gateway-event-relay.js';
 import { runDailySnapshots } from './services/snapshot-store.js';
+import { reconcileFromInstances as runtimeBridgeReconcile } from './task-dispatch/runtime-bridge.js';
+import { startRuntimeOfflineSweeper } from './task-dispatch/offline-sweeper.js';
 import {
   dynamicCors,
   dynamicGeneralLimiter,
@@ -49,6 +51,7 @@ import systemConfigRoutes from './routes/system-config.js';
 import snapshotRoutes from './routes/snapshots.js';
 import instanceFilesRoutes from './routes/instance-files.js';
 import uiProxyRoutes from './routes/ui-proxy.js';
+import runtimeRoutes from './routes/runtimes.js';
 import { attachWebSocketProxy } from './routes/instance-proxy.js';
 import { getInstance } from './services/instance-manager.js';
 import type { AuthPayload } from './middleware/auth.js';
@@ -146,6 +149,7 @@ export function createApp(options: CreateAppOptions = {}): { app: express.Applic
   // Shared routes (both CE and EE)
   app.use('/api/auth', authRoutes);
   app.use('/api/instances', instanceRoutes);
+  app.use('/api/runtimes', runtimeRoutes);
   app.use('/api/instances', credentialRoutes);
   app.use('/api/instances', rpcProxyRoutes);
   app.use('/api/agent-types', agentTypeRoutes);
@@ -263,6 +267,29 @@ export async function startServer(server: HttpServer, options: StartServerOption
 
     startHealthMonitor();
     startGatewayEventRelay();
+
+    // Step 9a: initial runtime-bridge reconcile (mirrors existing instances into the
+    // `runtimes` table as `hosted_instance` rows). Awaited so the first HTTP request
+    // after server.listen sees the full mirror (RT-03 "within 2s" SLA).
+    try {
+      await runtimeBridgeReconcile();
+    } catch (err) {
+      console.warn('[startup] initial runtime-bridge reconcile failed:', err instanceof Error ? err.message : String(err));
+    }
+
+    // Step 9a (continued): 10s safety-net loop. Catches any instance write path
+    // that forgets to call the explicit hooks (16-RESEARCH §"Why hybrid (hook + poll)").
+    // The interval lives in server-core (not inside runtime-bridge.ts) so every
+    // platform timer is visible in one file.
+    setInterval(() => {
+      runtimeBridgeReconcile().catch((err) => {
+        console.warn('[runtime-bridge] reconcile failed:', err instanceof Error ? err.message : String(err));
+      });
+    }, 10_000);
+
+    // Step 9e: offline sweeper — flips daemon runtimes whose last_heartbeat_at
+    // is > 90s old to status='offline'. Does NOT touch hosted_instance rows (ST1).
+    startRuntimeOfflineSweeper();
 
     setInterval(async () => {
       console.log('[Scheduler] Running daily snapshots...');
