@@ -35,6 +35,12 @@ export function setAuthHandler(handler: AuthHandler): void {
  *   - Production EE (Clerk secret present): delegate to registered Clerk auth handler
  */
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+  // AUTH1 — reject adt_* bearer tokens on user routes (Phase 19 daemon-auth privilege-confusion guard).
+  const _authHdr = req.header('authorization') ?? '';
+  if (/^Bearer\s+adt_/.test(_authHdr)) {
+    res.status(401).json({ ok: false, error: 'daemon tokens not accepted on user routes' });
+    return;
+  }
   // Test-mode bypass: if NODE_ENV=test, check for test auth cookie first.
   // The test cookie has the format `test:<userId>` set by /api/auth/test-signup.
   if (config.nodeEnv === 'test' || !config.clerk.secretKey) {
