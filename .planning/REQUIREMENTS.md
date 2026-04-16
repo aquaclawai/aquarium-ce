@@ -76,11 +76,11 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 
 ### Runtime Registry
 
-- [ ] **RT-01**: User can list all runtimes (hosted + daemon) in a single view showing kind, provider, status, device info, last heartbeat
-- [ ] **RT-02**: System automatically mirrors existing Aquarium instances into the `runtimes` table as `hosted_instance` rows at boot
-- [ ] **RT-03**: System creates/updates/removes `hosted_instance` runtime rows when instances are created, renamed, archived, or deleted
-- [ ] **RT-04**: `runtime.status` for `hosted_instance` is derived from the underlying `instance.status` via JOIN (never stored independently)
-- [ ] **RT-05**: Runtimes inactive beyond the heartbeat window are automatically marked offline by a background sweeper
+- [x] **RT-01**: User can list all runtimes (hosted + daemon) in a single view showing kind, provider, status, device info, last heartbeat
+- [x] **RT-02**: System automatically mirrors existing Aquarium instances into the `runtimes` table as `hosted_instance` rows at boot
+- [x] **RT-03**: System creates/updates/removes `hosted_instance` runtime rows when instances are created, renamed, archived, or deleted
+- [x] **RT-04**: `runtime.status` for `hosted_instance` is derived from the underlying `instance.status` via JOIN (never stored independently)
+- [x] **RT-05**: Runtimes inactive beyond the heartbeat window are automatically marked offline by a background sweeper
 
 ### Agent, Issue, Comment Services
 
