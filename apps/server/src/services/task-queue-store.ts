@@ -121,7 +121,7 @@ function resolveDb(dbOverride?: Knex): Knex {
  * If Knex ever exposes a native IMMEDIATE option this helper collapses into
  * `kx.transaction(fn, { immediate: true })`.
  */
-async function withImmediateTx<T>(
+export async function withImmediateTx<T>(
   kx: Knex,
   fn: (trx: Knex.Transaction) => Promise<T>,
 ): Promise<T> {
