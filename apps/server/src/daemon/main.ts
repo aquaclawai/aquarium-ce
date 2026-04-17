@@ -2,10 +2,12 @@
  * Daemon orchestrator entry point (Phase 21 Plan 03).
  *
  * Composes the primitives shipped by 21-01 / 21-02 / earlier 21-03 tasks into
- * the running daemon:
+ * the running daemon. Plan 22-04 generalised the dispatch to an N-backend
+ * polymorphic map (detectBackends + backendByRuntimeId):
  *
- *   loadDaemonConfig → detectClaude → DaemonHttpClient.register
- *     → startPollLoop (semaphore-gated claim) → runClaudeTask per task
+ *   loadDaemonConfig → detectBackends → DaemonHttpClient.register
+ *     → build backendByRuntimeId (match by name, not index — T-22-18)
+ *     → startPollLoop (semaphore-gated claim) → backend.run(deps) per task
  *     → StreamBatcher (500 ms flush) → startCancelPoller (5 s poll)
  *     → startHeartbeatLoop (15 s ping)
  *     → registerProcessHandlers (unhandledRejection / uncaughtException / SIGTERM / SIGINT)
@@ -22,8 +24,10 @@
  *   • PM2 — `inFlight` Map tracks every running task; `handleFatal` walks it
  *     to `failTask` each entry before exit. Orphan-pid replay (full pgrep
  *     sweep on startup) is deferred — see `AQUARIUM_DAEMON_TEST_CRASH_AT`.
- *   • T-21-03 — `[daemon] claude=<absolute path> (v<version>)` logged at
- *     startup so operators can see the binary that will be spawned.
+ *   • T-21-03 / T-22-16 — `[daemon] <provider>=<absolute path> (v<version>)`
+ *     logged at startup for EVERY detected backend so operators can see
+ *     exactly which binaries will be spawned (generalised from 21-03's
+ *     claude-only audit — see 22-04 dispatch rewrite).
  *   • T-21-01 / T-21-11 — `config.token` is NEVER passed to `console.log` or
  *     any logger; grep-verifiable in this file.
  *
@@ -41,14 +45,14 @@ import os from 'node:os';
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { loadDaemonConfig } from './config.js';
-import { detectClaude } from './detect.js';
 import { DaemonHttpClient } from './http-client.js';
 import { Semaphore } from './semaphore.js';
 import { StreamBatcher } from './stream-batcher.js';
 import { startCancelPoller } from './cancel-poller.js';
 import { startPollLoop } from './poll-loop.js';
 import { startHeartbeatLoop } from './heartbeat.js';
-import { runClaudeTask } from './backends/claude.js';
+import { detectBackends } from './backends/index.js';
+import type { Backend } from './backend.js';
 import {
   handleFatal,
   gracefulShutdown,
@@ -81,14 +85,20 @@ export async function startDaemon(opts: DaemonStartOpts): Promise<void> {
   logSafe(`[daemon] server=${config.server}`);
   logSafe(`[daemon] data-dir=${config.dataDir}`);
 
-  // 2. Detect claude. If missing, the daemon still runs and sends heartbeats
-  //    (so the server keeps this daemon online) but it registers no backends.
-  const claude = await detectClaude();
-  if (!claude) {
-    console.warn('[daemon] claude not found on PATH — continuing without backends');
+  // 2. Detect ALL backends. Each per-backend detect() failure is isolated
+  //    (PG2). If zero backends are found, the daemon still sends heartbeats
+  //    (so the server keeps this daemon online) but it registers no runtimes.
+  const detected = await detectBackends();
+  if (detected.length === 0) {
+    console.warn(
+      '[daemon] no agent backends found on PATH — continuing with 0 runtimes (heartbeats still sent so server keeps daemon "online")',
+    );
   } else {
-    // T-21-03 — audit the resolved path so users see what will be spawned.
-    logSafe(`[daemon] claude=${claude.path} (v${claude.version})`);
+    // T-21-03 / T-22-16 — audit every resolved binary absolute path so
+    // operators see exactly which binaries will be spawned.
+    for (const d of detected) {
+      logSafe(`[daemon] ${d.backend.provider}=${d.path} (v${d.version})`);
+    }
   }
 
   // 3. PID file (best-effort; non-fatal if the dir is read-only).
@@ -117,17 +127,40 @@ export async function startDaemon(opts: DaemonStartOpts): Promise<void> {
     deviceName: config.deviceName,
     cliVersion: readPackageVersion(),
     launchedBy: os.userInfo().username,
-    runtimes: claude
-      ? [{
-          name: `${config.deviceName}-claude`,
-          provider: 'claude' as const,
-          version: claude.version,
-          status: 'online' as const,
-        }]
-      : [],
+    runtimes: detected.map((d) => ({
+      name: `${config.deviceName}-${d.backend.provider}`,
+      provider: d.backend.provider,
+      version: d.version,
+      status: 'online' as const,
+    })),
   };
   const { runtimes } = await http.register(registerBody);
-  logSafe(`[daemon] registered ${runtimes.length} runtime(s)`);
+  const providerList = runtimes.map((r: Runtime) => r.provider).join(', ');
+  logSafe(
+    `[daemon] registered ${runtimes.length} runtime(s)${
+      runtimes.length > 0 ? ': ' + providerList : ''
+    }`,
+  );
+
+  // Build dispatch map — match the server's returned runtime rows to the
+  // daemon's detected backends by NAME (not array index). T-22-18 defence:
+  // even if the server reorders runtimes in its response (assumption A8),
+  // the backend binding stays correct. A mismatch logs a warning and skips
+  // that runtime (it will remain unclaimed — `runTask` will never see it
+  // because poll-loop gets only the IDs of runtimes that DID bind).
+  const backendByRuntimeId = new Map<string, { backend: Backend; binaryPath: string }>();
+  for (const rt of runtimes) {
+    const match = detected.find(
+      (d) => `${config.deviceName}-${d.backend.provider}` === rt.name,
+    );
+    if (match) {
+      backendByRuntimeId.set(rt.id, { backend: match.backend, binaryPath: match.path });
+    } else {
+      console.warn(
+        `[daemon] no backend for server-returned runtime '${rt.name}' (id=${rt.id}) — it will be unused`,
+      );
+    }
+  }
 
   // 5. In-flight tracking for crash handler + graceful shutdown.
   const inFlight = new Map<string, InFlight>();
@@ -162,7 +195,7 @@ export async function startDaemon(opts: DaemonStartOpts): Promise<void> {
   // daemon.crash.log). See `maybeTestCrashAt` header for semantics.
   maybeTestCrashAt('after-register');
 
-  if (!claude || runtimes.length === 0) {
+  if (runtimes.length === 0) {
     logSafe('[daemon] no runtimes registered; idling (heartbeats continue so server keeps daemon "online")');
   }
 
@@ -194,12 +227,23 @@ export async function startDaemon(opts: DaemonStartOpts): Promise<void> {
 
     try {
       await http.startTask(task.id);
-      if (!claude) throw new Error('no backend available');
-      const result = await runClaudeTask({
+      // T-22-15 — lookup is authoritative: a claimed task for an unknown
+      // runtime fails loudly BEFORE any child process is spawned. This guard
+      // cannot fire in practice (poll-loop is driven by the same runtimes
+      // array used to build the map), but it protects against future
+      // refactors that might feed runTask from a broader source.
+      const entry = backendByRuntimeId.get(task.runtimeId);
+      if (!entry) throw new Error(`no backend for runtime ${task.runtimeId}`);
+      const provider = entry.backend.provider;
+      const backendCfg = config.backends[provider] as
+        | { allow?: string[] }
+        | Record<string, never>;
+      const allow = 'allow' in backendCfg ? backendCfg.allow : undefined;
+      const result = await entry.backend.run({
         task,
-        claudePath: claude.path,
+        binaryPath: entry.binaryPath,
         config: {
-          backends: config.backends,
+          backend: { allow },
           gracefulKillMs: config.gracefulKillMs,
           inactivityKillMs: config.inactivityKillMs,
         },

@@ -38,7 +38,13 @@ export interface DaemonConfig {
   logLevel: 'debug' | 'info' | 'warn' | 'error';
   dataDir: string;
   configPath: string;
-  backends: { claude: { allow: string[] } };
+  backends: {
+    claude: { allow: string[] };
+    codex: { allow: string[] };
+    opencode: Record<string, never>;
+    openclaw: { allow: string[] };
+    hermes: Record<string, never>;
+  };
 }
 
 export const DEFAULT_DAEMON_CONFIG = {
@@ -52,7 +58,13 @@ export const DEFAULT_DAEMON_CONFIG = {
   gracefulKillMs: 10_000,
   gracefulShutdownMs: 15_000,
   logLevel: 'info' as const,
-  backends: { claude: { allow: ['*'] } },
+  backends: {
+    claude: { allow: ['*'] },
+    codex: { allow: ['*'] },
+    opencode: {},
+    openclaw: { allow: ['*'] },
+    hermes: {},
+  },
 } as const;
 
 export interface LoadDaemonConfigOpts {
@@ -149,10 +161,18 @@ export async function loadDaemonConfig(opts: LoadDaemonConfigOpts = {}): Promise
     );
   }
 
-  const allow =
+  const claudeAllow =
     fileConfig.backends?.claude?.allow && fileConfig.backends.claude.allow.length > 0
       ? fileConfig.backends.claude.allow.slice()
       : DEFAULT_DAEMON_CONFIG.backends.claude.allow.slice();
+  const codexAllow =
+    fileConfig.backends?.codex?.allow && fileConfig.backends.codex.allow.length > 0
+      ? fileConfig.backends.codex.allow.slice()
+      : DEFAULT_DAEMON_CONFIG.backends.codex.allow.slice();
+  const openclawAllow =
+    fileConfig.backends?.openclaw?.allow && fileConfig.backends.openclaw.allow.length > 0
+      ? fileConfig.backends.openclaw.allow.slice()
+      : DEFAULT_DAEMON_CONFIG.backends.openclaw.allow.slice();
 
   return {
     server,
@@ -169,7 +189,13 @@ export async function loadDaemonConfig(opts: LoadDaemonConfigOpts = {}): Promise
     logLevel,
     dataDir,
     configPath,
-    backends: { claude: { allow } },
+    backends: {
+      claude: { allow: claudeAllow },
+      codex: { allow: codexAllow },
+      opencode: {},
+      openclaw: { allow: openclawAllow },
+      hermes: {},
+    },
   };
 }
 

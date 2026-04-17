@@ -254,6 +254,10 @@ export interface DaemonConfigFile {
   logLevel?: 'debug' | 'info' | 'warn' | 'error';
   backends?: {
     claude?: { allow?: string[] };
+    codex?: { allow?: string[] };
+    opencode?: Record<string, never>;
+    openclaw?: { allow?: string[] };
+    hermes?: Record<string, never>;
   };
 }
 

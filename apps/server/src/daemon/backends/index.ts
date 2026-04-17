@@ -17,14 +17,14 @@ import { claudeBackend } from './claude.js';
 import { codexBackend } from './codex.js';
 import { opencodeBackend } from './opencode.js';
 import { openclawBackend } from './openclaw.js';
-// Plan 22-04 will append: hermesBackend.
+import { hermesBackend } from './hermes.js';
 
 export const ALL_BACKENDS: Backend[] = [
   claudeBackend,
   codexBackend,
   opencodeBackend,
   openclawBackend,
-  // hermesBackend    — added by Plan 22-04
+  hermesBackend,
 ];
 
 export async function detectBackends(
