@@ -144,9 +144,9 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 
 ### Issue Board & Detail UI
 
-- [ ] **UI-01**: User sees a kanban Issues page with one column per status, drag-and-drop reordering via @dnd-kit, and keyboard-accessible drag
-- [ ] **UI-02**: Optimistic local reorder reconciles with WebSocket reorder events from other sessions without corrupting drag state
-- [ ] **UI-03**: Issue board virtualises when > 100 issues are loaded to keep drag FPS smooth
+- [x] **UI-01**: User sees a kanban Issues page with one column per status, drag-and-drop reordering via @dnd-kit, and keyboard-accessible drag
+- [x] **UI-02**: Optimistic local reorder reconciles with WebSocket reorder events from other sessions without corrupting drag state
+- [x] **UI-03**: Issue board virtualises when > 100 issues are loaded to keep drag FPS smooth
 - [ ] **UI-04**: User sees an Issue Detail page with title, description, comments timeline, active task progress, and action sidebar
 - [ ] **UI-05**: Task message stream renders live `tool_use / tool_result / text / thinking` messages from WebSocket `subscribe_task`
 - [ ] **UI-06**: WebSocket reconnect replays `task_messages` from `lastSeq` so users never see a gap on reconnect
