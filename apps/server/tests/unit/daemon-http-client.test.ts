@@ -158,13 +158,18 @@ describe('DaemonHttpClient (CLI-02 / T-21-01 / PG5)', () => {
 
   test('token never appears in client-constructed error messages', async () => {
     // Server error body contains no token reference — proves client doesn't inject one.
-    const { fn } = makeFakeFetch([errJson(500, 'internal error')]);
+    // Three 500s to exhaust the retry budget (maxAttempts=3) and surface DaemonHttpError.
+    const { fn } = makeFakeFetch([
+      errJson(500, 'internal error'),
+      errJson(500, 'internal error'),
+      errJson(500, 'internal error'),
+    ]);
     const client = makeClient(fn);
     try {
       await client.startTask('t-1');
       assert.fail('expected throw');
     } catch (err) {
-      assert.ok(err instanceof DaemonHttpError);
+      assert.ok(err instanceof DaemonHttpError, `expected DaemonHttpError, got ${(err as Error).constructor.name}`);
       const msg = (err as DaemonHttpError).message;
       assert.doesNotMatch(msg, /adt_test_token_abc/, 'token must never leak into error.message');
     }
