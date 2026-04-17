@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "build:ce": "tsc -b && vite build --config vite.config.ce.ts",
     "lint": "eslint .",
+    "check:i18n": "node scripts/check-i18n-parity.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

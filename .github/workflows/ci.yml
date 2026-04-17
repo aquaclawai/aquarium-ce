@@ -20,3 +20,5 @@ jobs:
         run: npm run typecheck -w @aquaclawai/aquarium
       - name: Lint
         run: npm run lint -w @aquarium/web
+      - name: Check i18n parity
+        run: npm run check:i18n -w @aquarium/web

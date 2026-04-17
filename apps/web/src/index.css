@@ -121,6 +121,18 @@
   --space-9: 36px;
   --space-10: 40px;
 
+  /* Z-Index Ladder (Phase 23 UX3 — see 23-UI-SPEC §Z-Index Ladder) */
+  --z-base: 0;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-header: 50;
+  --z-sidebar: 100;
+  --z-sheet: 500;
+  --z-modal: 1000;
+  --z-drag-overlay: 5000;
+  --z-toast: 7000;
+  --z-critical-alert: 10000;
+
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;

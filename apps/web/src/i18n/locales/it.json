@@ -29,7 +29,9 @@
       "groupChats": "Chat di gruppo",
       "createInstance": "Crea istanza",
       "backToDashboard": "Torna alla Dashboard",
-      "backToInstances": "← Torna alle istanze"
+      "backToInstances": "← Torna alle istanze",
+      "search": "common.buttons.search",
+      "saving": "common.buttons.saving"
     },
     "labels": {
       "email": "Email",
@@ -61,13 +63,18 @@
       "stopped": "arrestato",
       "error": "errore",
       "healthy": "Funzionante",
-      "unhealthy": "Non funzionante"
+      "unhealthy": "Non funzionante",
+      "": "common.status.",
+      "active": "Active",
+      "expired": "Expired",
+      "revoked": "Revoked"
     },
     "errors": {
       "generic": "Si è verificato un errore",
       "failedToLoad": "Caricamento non riuscito",
       "actionFailed": "Azione non riuscita",
-      "deleteFailed": "Eliminazione non riuscita"
+      "deleteFailed": "Eliminazione non riuscita",
+      "loadFailed": "common.errors.loadFailed"
     },
     "time": {
       "justNow": "adesso",
@@ -80,7 +87,22 @@
       "next": "Successivo →",
       "pageOf": "Pagina {{page}} di {{totalPages}}"
     },
-    "comingSoon": "Prossimamente"
+    "comingSoon": "Prossimamente",
+    "deploymentTarget": {
+      "": "common.deploymentTarget.",
+      "docker": "Docker",
+      "kubernetes": "Kubernetes"
+    },
+    "agentType": {
+      "": "common.agentType.",
+      "openclaw": "OpenClaw",
+      "opencode": "OpenCode",
+      "claude-code": "Claude Code"
+    },
+    "loading": "Loading...",
+    "optional": "common.optional",
+    "enabled": "Enabled",
+    "disabled": "Disabled"
   },
   "auth": {
     "login": {
@@ -95,7 +117,10 @@
       "subtitle": "Accedi per continuare con Aquarium",
       "emailPlaceholder": "Inserisci la tua email",
       "passwordPlaceholder": "Inserisci la tua password",
-      "forgotPassword": "Password dimenticata?"
+      "forgotPassword": "Password dimenticata?",
+      "workosButton": "Sign in with WorkOS",
+      "workosHint": "You'll be redirected to sign in securely via your organization's identity provider.",
+      "workosError": "Authentication failed. Please try again."
     },
     "signup": {
       "title": "Registrazione",
@@ -110,13 +135,25 @@
       "subtitle": "Registrati per iniziare con Aquarium",
       "displayNamePlaceholder": "Inserisci il tuo nome",
       "emailPlaceholder": "Inserisci la tua email",
-      "passwordPlaceholder": "Inserisci la tua password"
+      "passwordPlaceholder": "Inserisci la tua password",
+      "workosButton": "Sign up with WorkOS"
     },
     "errors": {
       "generic": "Si è verificato un errore"
     },
     "showPassword": "Mostra password",
-    "hidePassword": "Nascondi password"
+    "hidePassword": "Nascondi password",
+    "waitlist": {
+      "title": "Join the Waitlist",
+      "subtitle": "We're gradually rolling out access. Leave your email and we'll notify you when it's your turn.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Enter your email",
+      "submitButton": "Join Waitlist",
+      "submitting": "Joining...",
+      "success": "You're on the list! We'll be in touch soon.",
+      "alreadyInvited": "Already invited?",
+      "loginLink": "Sign in here"
+    }
   },
   "dashboard": {
     "title": "Istanze",
@@ -168,7 +205,15 @@
         "BUDGET_CRITICAL": "{{name}} budget critico",
         "BUDGET_WARNING": "{{name}} avviso budget"
       }
-    }
+    },
+    "instanceList": {
+      "title": "dashboard.instanceList.title",
+      "subtitle": "dashboard.instanceList.subtitle",
+      "emptyTitle": "dashboard.instanceList.emptyTitle",
+      "emptyDescription": "dashboard.instanceList.emptyDescription"
+    },
+    "ofBudget": "dashboard.ofBudget",
+    "subtitle": "Welcome back, here's your platform overview"
   },
   "instance": {
     "loading": "Caricamento...",
@@ -196,7 +241,10 @@
       "files": "File",
       "security": "Sicurezza",
       "more": "Altro",
-      "extensions": "Estensioni"
+      "extensions": "Estensioni",
+      "channels": "Channels",
+      "advanced": "instance.tabs.advanced",
+      "cron": "Cron"
     },
     "overview": {
       "title": "Dettagli istanza",
@@ -216,7 +264,8 @@
         "aiProvider": "Provider AI",
         "defaultModel": "Modello predefinito",
         "created": "Creato",
-        "updated": "Aggiornato"
+        "updated": "Aggiornato",
+        "securityProfile": "Security Profile"
       },
       "oauthAuthenticated": "{{provider}} autenticato",
       "setupRequired": "Configurazione richiesta: autenticare {{provider}}",
@@ -225,14 +274,30 @@
       "exportTemplate": "Esporta come modello",
       "webhookTitle": "Webhook di notifica",
       "webhookDescription": "Configura gli URL webhook per le notifiche push IM (Feishu, DingTalk, WeCom).",
-      "webhookProviders": { "feishu": "Feishu", "dingtalk": "DingTalk", "wecom": "WeCom" },
+      "webhookProviders": {
+        "feishu": "Feishu",
+        "dingtalk": "DingTalk",
+        "wecom": "WeCom"
+      },
       "webhookConfigured": "Configurato",
       "webhookPlaceholder": "Inserisci l'URL webhook di {{provider}}",
       "apiKeyTitle": "Chiavi API fonte dati",
       "apiKeyDescription": "Chiavi API opzionali per la raccolta dati avanzata.",
-      "apiKeyProviders": { "tikhub": "TikHub" },
+      "apiKeyProviders": {
+        "tikhub": "TikHub"
+      },
       "apiKeyConfigured": "Configurato",
-      "apiKeyPlaceholder": "Inserisci la chiave API di {{provider}}"
+      "apiKeyPlaceholder": "Inserisci la chiave API di {{provider}}",
+      "cloning": "instance.overview.cloning",
+      "clone": "instance.overview.clone",
+      "savingSecurityProfile": "Saving...",
+      "changeSecurityProfile": "Change",
+      "securityProfiles": {
+        "strict": "Strict",
+        "standard": "Standard",
+        "developer": "Developer",
+        "unrestricted": "Unrestricted"
+      }
     },
     "credentials": {
       "title": "Credenziali",
@@ -399,6 +464,54 @@
         "redirectingButton": "Reindirizzamento...",
         "failedToStart": "Avvio del flusso OAuth Google non riuscito"
       }
+    },
+    "security": {
+      "status": {
+        "events24h": "Events (24h)",
+        "criticalEvents": "Critical",
+        "warningEvents": "Warning",
+        "infoEvents": "Info",
+        "protectionIndicators": "Protection Indicators",
+        "recentEvents": "Recent Events",
+        "title": "Protection Status",
+        "trustLayers": "Trust Layers",
+        "injectionDetection": "Injection Detection",
+        "outputFiltering": "Output Filtering",
+        "dlpScanning": "DLP Scanning",
+        "configIntegrity": "Config Integrity",
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
+      "timeline": {
+        "title": "Security Event Timeline",
+        "allSeverities": "All Severities",
+        "allTypes": "All Types",
+        "noEvents": "No security events recorded",
+        "page": "Page {{page}} of {{total}}",
+        "filterBySeverity": "Severity",
+        "filterByType": "Event Type",
+        "loadMore": "Load More"
+      },
+      "dashboard": {
+        "title": "Security Overview",
+        "totalEvents": "Total Events",
+        "criticalRecent": "Critical (24h)",
+        "noEvents": "No security events"
+      },
+      "title": "Security Dashboard",
+      "severity": {
+        "critical": "Critical",
+        "warning": "Warning",
+        "info": "Info"
+      },
+      "eventType": {
+        "security:prompt_injection": "Prompt Injection",
+        "security:trust_violation": "Trust Violation",
+        "security:tool_abuse": "Tool Abuse",
+        "security:credential_accessed": "Credential Access",
+        "security:config_changed": "Config Changed",
+        "security:suspicious_activity": "Suspicious Activity"
+      }
     }
   },
   "wizard": {
@@ -409,7 +522,11 @@
       "model": "Modello",
       "channels": "Canali",
       "name": "Nome",
-      "review": "Riepilogo"
+      "review": "Riepilogo",
+      "naming": "Name",
+      "principles": "Principles",
+      "identity": "Identity",
+      "confirm": "Confirm"
     },
     "agentType": {
       "title": "Scelga un tipo di agent",
@@ -419,7 +536,9 @@
         "webUI": "Web UI",
         "channels": "Canali",
         "rpc": "RPC"
-      }
+      },
+      "subtitle": "Select the type of AI agent you want to deploy.",
+      "comingSoon": "Coming Soon"
     },
     "provider": {
       "title": "Scelga un provider AI",
@@ -486,7 +605,11 @@
       "back": "Indietro",
       "next": "Avanti",
       "creating": "Creazione in corso…",
-      "createInstance": "Crea istanza"
+      "createInstance": "Crea istanza",
+      "finish": "Finish & Start Chat",
+      "backToAssistants": "← Back to My Assistants",
+      "cancel": "Cancel",
+      "create": "Create Assistant"
     },
     "confirm": {
       "title": "Confirm configuration",
@@ -554,10 +677,111 @@
       "modelSection": "Model Configuration",
       "model": "Model",
       "context": "Context",
-      "temperature": "Temperature"
+      "temperature": {
+        "work": "Work",
+        "life": "Life",
+        "creative": "Creative"
+      },
+      "summaryTitle": "Configuration Summary",
+      "summaryName": "Assistant Name",
+      "summaryPrinciples": "Behavior Principles",
+      "summaryDefault": "Default",
+      "summaryCustom": "Custom",
+      "summaryIdentity": "Identity Description",
+      "summaryMemory": "wizard.confirm.summaryMemory",
+      "memoryCloudTitle": "wizard.confirm.memoryCloudTitle",
+      "memoryMemosTitle": "wizard.confirm.memoryMemosTitle",
+      "memoryNativeTitle": "wizard.confirm.memoryNativeTitle",
+      "platformCredReady": "Available",
+      "memorySection": "wizard.confirm.memorySection",
+      "oauthPkceDesc": "Complete the sign-in in the popup window...",
+      "platformCredCount": "{{count}} credentials configured",
+      "modelHint": "Automatically selects the best model",
+      "temperatureLabel": "Creativity (Temperature)",
+      "summaryCredential": "Credential Source"
     },
     "errors": {
-      "failedToCreate": "Creazione dell'istanza non riuscita"
+      "failedToCreate": "Creazione dell'istanza non riuscita",
+      "failedToLoadAgentTypes": "Failed to load agent types. Please try again."
+    },
+    "avatar": {
+      "removeLabel": "Remove avatar",
+      "uploadLabel": "Upload custom",
+      "uploadHint": "JPG, PNG or WebP, max 2MB",
+      "general": "General",
+      "business": "Business",
+      "tech": "Tech",
+      "personal": "Personal"
+    },
+    "identity": {
+      "title": "Describe the assistant's identity",
+      "subtitle": "Describe the assistant's role and professional background in a paragraph.",
+      "descLabel": "Identity description",
+      "descPlaceholder": "e.g. You are a senior product manager with extensive internet industry experience, specializing in requirements analysis and product planning…",
+      "quickTemplates": "Quick templates:",
+      "credentialSection": "AI Source",
+      "platformTitle": "Platform Managed",
+      "platformDesc": "No API key needed. Usage-based billing with smart model routing.",
+      "byokTitle": "Bring Your Own Key (BYOK)",
+      "byokDesc": "Use your own API key with OpenAI, Anthropic, and more.",
+      "recommended": "Recommended",
+      "byokProvider": "Select provider",
+      "byokApiKey": "API Key",
+      "byokApiKeyPlaceholder": "Enter your API key",
+      "modelSection": "Model Parameters",
+      "modelLabel": "Model",
+      "contextLabel": "Context Length",
+      "temperatureLabel": "Temperature",
+      "temperatureHint": "0 = precise & consistent, 2 = highly creative"
+    },
+    "naming": {
+      "title": "Name your assistant",
+      "subtitle": "A name helps you identify this assistant in the list.",
+      "nameLabel": "Assistant Name",
+      "namePlaceholder": "e.g. My Work Assistant",
+      "nameHint": "Supports letters and numbers, up to 60 characters",
+      "avatarLabel": "Choose avatar",
+      "descPlaceholder": "Brief description of what this assistant does (optional)"
+    },
+    "principles": {
+      "title": "Set assistant principles",
+      "subtitle": "Principles define how the assistant behaves and responds.",
+      "defaultTitle": "Use default configuration",
+      "defaultDesc": "Use the platform's built-in general behavior principles, suitable for most scenarios.",
+      "customTitle": "Custom principles",
+      "customDesc": "Write your own system prompt to fully control the assistant's behavior and style.",
+      "previewLabel": "Default principles preview",
+      "customLabel": "Custom principles content",
+      "customPlaceholder": "Enter a system prompt describing the assistant's role, style, and limits…",
+      "customHint": "One rule per line, clearly expressing constraints",
+      "placeholder": "Enter a system prompt describing the assistant's role, style, and limits…",
+      "charCount": "{{current}} / {{max}}",
+      "templates": "Quick-fill templates:",
+      "templateProfessional": "Professional",
+      "templateCreative": "Creative Writing",
+      "templateTech": "Tech Expert"
+    },
+    "pageTitle": "New Assistant",
+    "pageSubtitle": "Configure your AI assistant step by step",
+    "security": {
+      "profiles": {
+        "strict": {
+          "title": "Strict",
+          "description": "Maximum security, restricts all sensitive operations"
+        },
+        "standard": {
+          "title": "Standard",
+          "description": "Balanced security and functionality for most use cases"
+        },
+        "developer": {
+          "title": "Developer",
+          "description": "Relaxed restrictions for development and testing"
+        },
+        "unrestricted": {
+          "title": "Unrestricted",
+          "description": "Fully open, recommended only for trusted environments"
+        }
+      }
     }
   },
   "groupChat": {
@@ -568,7 +792,10 @@
       "createButton": "Crea chat di gruppo",
       "memberCount": "{{count}} membri",
       "created": "Creato: {{date}}",
-      "mode": "Modalità: {{mode}}"
+      "mode": "Modalità: {{mode}}",
+      "subtitle": "groupChat.list.subtitle",
+      "emptyTitle": "groupChat.list.emptyTitle",
+      "emptyDescription": "groupChat.list.emptyDescription"
     },
     "create": {
       "title": "Crea nuova chat di gruppo",
@@ -664,7 +891,11 @@
       "devops": "DevOps",
       "education": "Formazione",
       "personal": "Personale",
-      "custom": "Personalizzato"
+      "custom": "Personalizzato",
+      "general": "General",
+      "coding": "Coding",
+      "dataAnalysis": "Data Analysis",
+      "contentCreation": "Content Creation"
     },
     "instantiate": {
       "title": "Crea da modello",
@@ -693,7 +924,17 @@
       "geoSaveButton": "Salva",
       "geoAuthFailed": "Impossibile avviare l'autenticazione SaleVoice",
       "geoSaveFailed": "Impossibile salvare la chiave API",
-      "geoRequired": "Collega SaleVoice prima di creare l'istanza"
+      "geoRequired": "Collega SaleVoice prima di creare l'istanza",
+      "lowSecurityWarning": "This template has a low security score. Consider reviewing its security configuration before deploying.",
+      "securityProfileLabel": "Security Profile",
+      "minSecurityBadge": "Min: {{profile}}",
+      "securityProfileDescription": "This template requires a minimum security level.",
+      "securityProfileDisabled": "Below minimum security level",
+      "cronScheduleSection": "templates.instantiate.cronScheduleSection",
+      "cronScheduleDescription": "templates.instantiate.cronScheduleDescription",
+      "cronScheduleTimeLabel": "templates.instantiate.cronScheduleTimeLabel",
+      "cronScheduleCustomPlaceholder": "templates.instantiate.cronScheduleCustomPlaceholder",
+      "cronScheduleCustomHint": "templates.instantiate.cronScheduleCustomHint"
     }
   },
   "profile": {
@@ -774,7 +1015,12 @@
       "resetting": "Reimpostazione...",
       "passwordTooShort": "La password deve contenere almeno 6 caratteri",
       "success": "Password reimpostata per {{email}}",
-      "failed": "Reimpostazione della password non riuscita"
+      "failed": "Reimpostazione della password non riuscita",
+      "confirmDescription": "Are you sure you want to reset the password for {{email}}? A temporary password will be generated.",
+      "confirmReset": "Confirm Reset",
+      "generatedDescription": "A temporary password has been generated for {{email}}. This will only be shown once.",
+      "copy": "Copy",
+      "tempPasswordHint": "Please share this password with the user securely. They will be required to change it on their next login."
     },
     "budget": {
       "title": "Imposta limite di budget",
@@ -786,7 +1032,13 @@
       "invalidBudget": "Il budget deve essere un numero positivo oppure vuoto per rimuoverlo",
       "success": "Budget aggiornato per {{email}}",
       "failed": "Aggiornamento del budget non riuscito"
-    }
+    },
+    "litellm": {
+      "title": "admin.litellm.title",
+      "description": "admin.litellm.description",
+      "openDashboard": "admin.litellm.openDashboard"
+    },
+    "subtitle": "admin.subtitle"
   },
   "chat": {
     "startRequired": "Avvii l'istanza per utilizzare la Chat.",
@@ -842,7 +1094,41 @@
       }
     },
     "scrollToBottom": "Scorri agli ultimi messaggi",
-    "loadingAgentUI": "Caricamento Agent UI…"
+    "loadingAgentUI": "Caricamento Agent UI…",
+    "error": {
+      "action": {
+        "dismiss": "Dismiss",
+        "retrying": "Retrying…",
+        "retry": "Retry",
+        "goToCredentials": "Go to Credentials",
+        "goToOverview": "Go to Overview",
+        "openSettings": "Open Settings"
+      },
+      "title": {
+        "timeout": "Response Timeout",
+        "auth": "Authentication Error",
+        "quota": "Quota Exceeded",
+        "model": "Model Error",
+        "gateway": "Gateway Error",
+        "unknown": "Error"
+      },
+      "description": {
+        "timeout": "The agent did not respond within the expected time.",
+        "auth": "Your API key or credentials may be invalid or expired.",
+        "quota": "You may have exceeded your API quota or rate limit.",
+        "model": "The configured model may not be available.",
+        "gateway": "Unable to connect to the agent gateway.",
+        "unknown": "An unexpected error occurred."
+      },
+      "suggestion": {
+        "timeout": "Check your credentials and try again.",
+        "auth": "Update your API key in the AI credentials tab.",
+        "quota": "Check your billing status or wait and try again.",
+        "model": "Change the model in session settings.",
+        "gateway": "Ensure the instance is running and try again.",
+        "unknown": "Try again or contact support if the issue persists."
+      }
+    }
   },
   "agentUI": {
     "unavailable": {
@@ -955,7 +1241,9 @@
     "credentials": "Credenziali",
     "account": "Account",
     "systemConfig": "Configurazione sistema",
-    "communityEdition": "Edizione Community"
+    "communityEdition": "Edizione Community",
+    "chat": "Chat",
+    "orders": "Orders"
   },
   "aiTab": {
     "providerMode": {
@@ -1007,7 +1295,13 @@
       "saved": "API key saved.",
       "saveFailed": "Failed to save API key.",
       "deleted": "API key removed.",
-      "deleteFailed": "Failed to remove API key."
+      "deleteFailed": "Failed to remove API key.",
+      "oauthConnected": "aiTab.byokCredential.oauthConnected",
+      "disconnectButton": "aiTab.byokCredential.disconnectButton",
+      "oauthButton": "aiTab.byokCredential.oauthButton",
+      "oauthDeviceHint": "aiTab.byokCredential.oauthDeviceHint",
+      "oauthHint": "aiTab.byokCredential.oauthHint",
+      "orDivider": "aiTab.byokCredential.orDivider"
     },
     "toolCredentials": {
       "title": "Tool Credentials",
@@ -1136,7 +1430,8 @@
       "allCategories": "Tutte le categorie",
       "capabilities": "Funzionalità",
       "loadMore": "Carica altro",
-      "clawhubUnavailable": "Avvia l'istanza per sfogliare il marketplace"
+      "clawhubUnavailable": "Avvia l'istanza per sfogliare il marketplace",
+      "searching": "Searching ClawHub..."
     },
     "trust": {
       "bundled": "Incluso",
@@ -1291,6 +1586,802 @@
       "degraded": "{{name}} è degradato — potrebbe essere ancora in esecuzione dalla cache",
       "retry": "Riprova",
       "integrityMismatch": "Mancata corrispondenza dell'integrità rilevata"
+    }
+  },
+  "chatHub": {
+    "showAgents": "Show agents",
+    "agents": "Agents",
+    "hideAgents": "Hide agents",
+    "searchAgents": "Search agents...",
+    "noMatch": "No agents match your search",
+    "createAgent": "New Agent",
+    "emptyTitle": "No Agents Yet",
+    "emptyDesc": "Create your first AI assistant to start chatting",
+    "createFirst": "Create Agent",
+    "starting": "Starting...",
+    "startAgent": "Start Agent",
+    "waitingStart": "Starting up...",
+    "selectAgent": "Select an agent to start chatting",
+    "status": {
+      "running": "Online",
+      "restarting": "Restarting",
+      "starting": "Starting",
+      "stopping": "Stopping",
+      "stopped": "Offline",
+      "created": "Not started",
+      "error": "Error"
+    }
+  },
+  "cron": {
+    "scheduleCron": "cron.scheduleCron",
+    "scheduleAt": "cron.scheduleAt",
+    "scheduleEvery": "cron.scheduleEvery",
+    "failedToLoad": "cron.failedToLoad",
+    "saveFailed": "cron.saveFailed",
+    "confirmDelete": "cron.confirmDelete",
+    "deleteFailed": "cron.deleteFailed",
+    "runFailed": "cron.runFailed",
+    "instanceNotRunning": "Start your instance to manage scheduled tasks.",
+    "createJob": "New Task",
+    "editJob": "cron.editJob",
+    "form": {
+      "name": "cron.form.name",
+      "namePlaceholder": "cron.form.namePlaceholder",
+      "description": "cron.form.description",
+      "enabled": "cron.form.enabled",
+      "schedule": "cron.form.schedule",
+      "seconds": "cron.form.seconds",
+      "minutes": "cron.form.minutes",
+      "hours": "cron.form.hours",
+      "payload": "cron.form.payload",
+      "systemEvent": "cron.form.systemEvent",
+      "agentTurn": "cron.form.agentTurn",
+      "systemEventPlaceholder": "cron.form.systemEventPlaceholder",
+      "agentTurnMessagePlaceholder": "cron.form.agentTurnMessagePlaceholder",
+      "modelPlaceholder": "cron.form.modelPlaceholder",
+      "timeoutPlaceholder": "cron.form.timeoutPlaceholder",
+      "sessionTarget": "cron.form.sessionTarget",
+      "isolated": "cron.form.isolated",
+      "main": "cron.form.main",
+      "delivery": "cron.form.delivery",
+      "deliveryNone": "cron.form.deliveryNone",
+      "deliveryAnnounce": "cron.form.deliveryAnnounce",
+      "channelPlaceholder": "cron.form.channelPlaceholder",
+      "toPlaceholder": "cron.form.toPlaceholder"
+    },
+    "saving": "Saving...",
+    "create": "cron.create",
+    "save": "Save",
+    "cancel": "Cancel",
+    "title": "Scheduled Tasks",
+    "noJobs": "No scheduled tasks yet. Create one to automate recurring work.",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "nextRun": "cron.nextRun",
+    "disable": "cron.disable",
+    "enable": "cron.enable",
+    "runNow": "Run Now",
+    "viewHistory": "cron.viewHistory",
+    "deleteJob": "cron.deleteJob",
+    "runHistory": "cron.runHistory",
+    "noRuns": "No runs yet.",
+    "subtitle": "Automate recurring tasks for your AI agent.",
+    "loading": "Loading tasks...",
+    "name": "Name",
+    "namePlaceholder": "e.g., Daily Report",
+    "description": "Description",
+    "descriptionPlaceholder": "What this task does...",
+    "schedule": "Schedule",
+    "scheduleType": "Type",
+    "cronExpr": "Cron Expression",
+    "cronExprPlaceholder": "0 9 * * *",
+    "cronExprHelp": "Standard 5-field cron: minute hour day month weekday",
+    "timezone": "Timezone",
+    "atDatetime": "Run At",
+    "everyInterval": "Interval",
+    "everyMs": "Every (minutes)",
+    "payload": "Task Action",
+    "payloadType": "Action Type",
+    "agentTurn": "Agent Prompt",
+    "systemEvent": "System Event",
+    "message": "Prompt",
+    "messagePlaceholder": "What should the agent do?",
+    "eventText": "Event Text",
+    "eventTextPlaceholder": "Event to trigger...",
+    "delivery": "Results Delivery",
+    "deliveryMode": "Delivery",
+    "deliveryNone": "None",
+    "deliveryAnnounce": "Announce to channel",
+    "deliveryChannel": "Channel",
+    "deliveryTo": "Recipient",
+    "sessionTarget": "Session",
+    "sessionMain": "Main session",
+    "sessionIsolated": "Isolated session",
+    "model": "Model override",
+    "timeout": "Timeout (seconds)",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this scheduled task?",
+    "runNowConfirm": "Run this task now?",
+    "running": "Running...",
+    "history": "Run History",
+    "status": {
+      "ok": "Success",
+      "error": "Failed",
+      "skipped": "Skipped",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "state": {
+      "nextRun": "Next run",
+      "lastRun": "Last run",
+      "lastStatus": "Last status",
+      "lastDuration": "Duration",
+      "errors": "Consecutive errors"
+    },
+    "scheduleTypes": {
+      "cron": "Cron schedule",
+      "at": "One-time",
+      "every": "Interval"
+    }
+  },
+  "channels": {
+    "drawer": {
+      "pluginRequired": "Plugin Required",
+      "configured": "Configured",
+      "disconnectConfirm": "This will remove your {{channel}} credentials and disconnect the bot. Continue?",
+      "status": "Status",
+      "pluginRequiredDesc": "{{channel}} requires the {{pluginId}} plugin. Install it to continue.",
+      "learnMore": "Learn more",
+      "configuration": "Configuration",
+      "notConfigured": "Not yet configured",
+      "policies": "Access Policies",
+      "incompatible": "This channel is not compatible with your current instance image."
+    },
+    "status": {
+      "lastMessage": "Last msg: {{time}}",
+      "applying": "Applying...",
+      "notConfigured": "Not configured",
+      "pendingRestart": "channels.status.pendingRestart",
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "stopped": "Stopped"
+    },
+    "actions": {
+      "configure": "Configure",
+      "setup": "Set up",
+      "installing": "Installing...",
+      "installPlugin": "Install Plugin",
+      "saving": "Saving...",
+      "save": "Save & Apply",
+      "disconnect": "Disconnect",
+      "retry": "Retry",
+      "enable": "Enable",
+      "disable": "Disable"
+    },
+    "title": "Channels",
+    "subtitle": "Connect your AI agent to messaging platforms.",
+    "instanceNotRunning": "Start your instance to manage channels.",
+    "noChannelsAvailable": "No channels available for this agent type.",
+    "whatsapp": {
+      "connected": "channels.whatsapp.connected",
+      "qrExpired": "channels.whatsapp.qrExpired",
+      "sessionPersists": "channels.whatsapp.sessionPersists",
+      "scanInstructions": "channels.whatsapp.scanInstructions",
+      "connect": "channels.whatsapp.connect",
+      "connecting": "channels.whatsapp.connecting",
+      "label": "WhatsApp",
+      "description": "Connect via QR code — uses your existing WhatsApp account."
+    },
+    "applying": "Applying changes...",
+    "policies": {
+      "dmPolicy": "DM Policy",
+      "groupPolicy": "Group Policy",
+      "allowList": "Allow List",
+      "addEntry": "Add",
+      "pairing": "Pairing",
+      "pairingDesc": "New contacts must be approved before messaging.",
+      "allowlist": "Allow List",
+      "allowlistDesc": "Only listed contacts can message.",
+      "open": "Open",
+      "openDesc": "Anyone can message the bot.",
+      "disabled": "Disabled",
+      "disabledDesc": "All messages blocked."
+    },
+    "capabilities": {
+      "dm": "DM",
+      "groups": "Groups",
+      "media": "Media",
+      "reactions": "Reactions",
+      "threads": "Threads",
+      "streaming": "Streaming"
+    },
+    "telegram": {
+      "label": "Telegram",
+      "description": "Create a bot via @BotFather and paste the token.",
+      "fields": {
+        "botToken": "Bot Token",
+        "botTokenPlaceholder": "123456789:ABCdefGHI...",
+        "botTokenHelp": "Get this from @BotFather on Telegram."
+      }
+    },
+    "discord": {
+      "label": "Discord",
+      "description": "Create a bot in the Discord Developer Portal.",
+      "fields": {
+        "token": "Bot Token",
+        "tokenHelp": "Discord Developer Portal > Bot > Token."
+      }
+    },
+    "feishu": {
+      "label": "飞书 / Lark",
+      "description": "Connect via Feishu Open Platform enterprise app.",
+      "fields": {
+        "appId": "App ID",
+        "appIdHelp": "From Feishu Open Platform console.",
+        "appSecret": "App Secret",
+        "domain": "Domain",
+        "domainFeishu": "飞书 (China)",
+        "domainLark": "Lark (Global)"
+      }
+    },
+    "slack": {
+      "label": "Slack",
+      "description": "Connect via Slack Socket Mode.",
+      "fields": {
+        "appToken": "App Token",
+        "appTokenHelp": "App-Level Token (starts with xapp-).",
+        "botToken": "Bot Token",
+        "botTokenHelp": "Bot User OAuth Token (starts with xoxb-)."
+      }
+    },
+    "qqbot": {
+      "label": "QQ Bot",
+      "description": "Connect via official QQ Bot API.",
+      "fields": {
+        "appId": "App ID",
+        "appIdHelp": "From QQ Open Platform.",
+        "clientSecret": "Client Secret"
+      }
+    },
+    "wechat": {
+      "label": "WeChat",
+      "description": "Connect via QR code login."
+    },
+    "msteams": {
+      "label": "Microsoft Teams",
+      "description": "Connect via Azure Bot Framework.",
+      "fields": {
+        "appId": "App ID",
+        "appPassword": "App Password",
+        "tenantId": "Tenant ID"
+      }
+    },
+    "signal": {
+      "label": "Signal",
+      "description": "Connect via signal-cli.",
+      "fields": {
+        "account": "Phone Number",
+        "accountHelp": "E.164 format."
+      }
+    },
+    "googlechat": {
+      "label": "Google Chat",
+      "description": "Connect via service account.",
+      "fields": {
+        "serviceAccountJson": "Service Account JSON"
+      }
+    },
+    "line": {
+      "label": "LINE",
+      "description": "Connect via LINE Messaging API.",
+      "fields": {
+        "channelAccessToken": "Channel Access Token",
+        "channelSecret": "Channel Secret"
+      }
+    },
+    "matrix": {
+      "label": "Matrix",
+      "description": "Connect to any Matrix homeserver.",
+      "fields": {
+        "homeserver": "Homeserver URL",
+        "accessToken": "Access Token"
+      }
+    }
+  },
+  "assistantChat": {
+    "notRunning": "Assistant is not running. Please enable it first.",
+    "online": "Online",
+    "alwaysReady": "Always ready",
+    "quickSuggestions": "Quick task suggestions",
+    "inputPlaceholder": "Describe your task, press Enter to send, Shift+Enter for new line...",
+    "disclaimer": "AI-generated content is for reference only. Please verify important decisions.",
+    "suggestion1": "Analyze last week's sales data",
+    "suggestion2": "Organize today's to-do list",
+    "suggestion3": "Draft a product requirements document",
+    "suggestion4": "Check code for potential bugs"
+  },
+  "systemConfig": {
+    "api": {
+      "windowMinutes": "Window (minutes)",
+      "maxRequests": "Max Requests",
+      "rateLimiting": "Rate Limiting",
+      "rateLimitGeneral": "General API",
+      "rateLimitLogin": "Login",
+      "rateLimitCredentials": "Credentials",
+      "corsOrigins": "CORS Allowed Origins",
+      "corsOriginsDesc": "Additional origins allowed to make cross-origin requests to this platform",
+      "remove": "Remove",
+      "originPlaceholder": "https://example.com",
+      "addOrigin": "Add",
+      "webhookUrl": "Webhook URL",
+      "webhookUrlDesc": "External URL to receive platform event notifications",
+      "webhookPlaceholder": "https://example.com/webhook",
+      "apiKeys": "API Keys",
+      "apiKeysDesc": "Platform-level API keys for external integrations",
+      "keyName": "Key Name",
+      "keyPrefix": "Key Prefix",
+      "createdAt": "Created",
+      "actions": "Actions",
+      "noKeys": "No API keys yet",
+      "revoke": "Revoke",
+      "keyNamePlaceholder": "My integration key",
+      "generateKey": "Generate",
+      "generatedKeyMsg": "API key generated. Copy it now — it won't be shown again:",
+      "invalidOrigin": "Origin must start with http:// or https://",
+      "failedToGenerateKey": "Failed to generate API key",
+      "failedToRevokeKey": "Failed to revoke API key"
+    },
+    "resetDefaults": "Reset Defaults",
+    "saving": "Saving...",
+    "saveConfig": "Save Config",
+    "data": {
+      "retentionPolicies": "Data Retention Policies",
+      "retentionPoliciesDesc": "Configure how long different types of data are retained before cleanup",
+      "eventLogRetention": "Event Log Retention (days)",
+      "authEventRetention": "Auth Event Retention (days)",
+      "auditLogRetention": "Audit Log Retention (days)",
+      "autoCleanup": "Auto Cleanup",
+      "autoCleanupDesc": "Automatically remove expired data based on retention policies",
+      "storageUsage": "Storage Usage",
+      "storageUsageDesc": "Database table sizes and row counts",
+      "tableName": "Table",
+      "tableSize": "Size",
+      "tableRows": "Rows",
+      "totalSize": "Total",
+      "refreshStats": "Refresh",
+      "manualCleanup": "Manual Cleanup",
+      "manualCleanupDesc": "Remove expired data now based on current retention settings",
+      "runCleanup": "Run Cleanup",
+      "dataExport": "Data Export",
+      "dataExportDesc": "Export platform data in JSON or CSV format",
+      "exportFormat": "Format",
+      "formatJson": "JSON",
+      "formatCsv": "CSV",
+      "exportUsers": "Export Users",
+      "exportInstances": "Export Instances",
+      "exportEvents": "Export Events",
+      "failedToLoadStats": "Failed to load storage stats",
+      "cleanupConfirm": "This will permanently delete expired data based on retention settings. Continue?",
+      "cleanupSuccess": "Cleanup complete. Deleted: {{events}} events, {{authEvents}} auth events, {{auditLog}} audit log entries.",
+      "cleanupFailed": "Cleanup failed",
+      "exportFailed": "Export failed",
+      "loadingStats": "Loading storage stats...",
+      "exporting": "Exporting..."
+    },
+    "general": {
+      "basicSettings": "Basic Settings",
+      "platformName": "Platform Name",
+      "platformNamePlaceholder": "My AI Platform",
+      "platformDescription": "Platform Description",
+      "platformDescriptionPlaceholder": "A powerful AI assistant management platform",
+      "timezone": "Timezone",
+      "language": "Language",
+      "featureToggles": "Feature Toggles",
+      "enableUserRegistration": "User Registration",
+      "enableUserRegistrationDesc": "Allow new users to create accounts via the signup page"
+    },
+    "permissions": {
+      "adminEmails": "Admin Email List",
+      "adminEmailsDesc": "Admins configured via ADMIN_EMAILS environment variable",
+      "roleAdmin": "Admin",
+      "noAdminEmails": "No admin emails configured in environment",
+      "roleManagement": "User Role Management",
+      "roleManagementDesc": "Assign roles to control access levels. Admins have full access, Users can manage their own instances, Viewers have read-only access.",
+      "searchUsers": "Search users by email or name...",
+      "userName": "Name",
+      "userEmail": "Email",
+      "userRole": "Role",
+      "userInstances": "Instances",
+      "userJoined": "Joined",
+      "noMatchingUsers": "No matching users",
+      "noUsersFound": "No users found",
+      "roleUser": "User",
+      "roleViewer": "Viewer",
+      "instanceQuota": "Instance Quota",
+      "instanceQuotaDesc": "Maximum number of instances each user can create (0 = unlimited)",
+      "quotaPerUser": "Quota per User",
+      "defaultRole": "Default Role for New Users",
+      "defaultRoleDesc": "Role automatically assigned when a new user registers",
+      "failedToLoadUsers": "Failed to load users",
+      "roleUpdated": "Role updated",
+      "roleUpdateFailed": "Failed to update role",
+      "loadingUsers": "Loading users..."
+    },
+    "failedToLoad": "Failed to load config",
+    "saved": "Config saved",
+    "failedToSave": "Failed to save config",
+    "title": "System Config",
+    "adminBadge": "Admin",
+    "subtitle": "Manage platform-wide settings and feature configuration",
+    "nav": {
+      "general": "General",
+      "api": "API Config",
+      "notifications": "Notifications",
+      "security": "Security",
+      "data": "Data Management",
+      "permissions": "User Permissions"
+    }
+  },
+  "skillMarket": {
+    "featuredBadge": "Featured",
+    "usageCount": "uses",
+    "subtitle": "Discover and deploy intelligent assistants for your business",
+    "featured": "Featured",
+    "allAssistants": "All Assistants"
+  },
+  "assistantEdit": {
+    "loadError": "Failed to load assistant information",
+    "deleteError": "Failed to delete",
+    "backButton": "Back to My Assistants",
+    "title": "Configure Assistant",
+    "subtitle": "Modify",
+    "subtitleOf": "'s configuration",
+    "savingText": "Saving...",
+    "savedText": "Saved",
+    "saveButton": "Save Configuration",
+    "saveError": "Save failed, please try again later",
+    "nameSection": "Assistant Name",
+    "avatarSection": "Avatar",
+    "principlesSection": "Behavior Principles",
+    "identitySection": "Identity Description",
+    "dangerZone": {
+      "title": "Danger Zone",
+      "description": "Deleting the assistant will permanently remove all configuration and data. This cannot be undone.",
+      "deleteButton": "Delete Assistant",
+      "deleting": "Deleting..."
+    },
+    "deleteModal": {
+      "title": "Confirm Delete Assistant",
+      "description": "Are you sure you want to delete this assistant?",
+      "warning": "⚠ This action cannot be undone. All configuration and data will be permanently lost.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
+    },
+    "loading": "Loading...",
+    "deleteConfirm": "Are you sure you want to delete this assistant? This action cannot be undone and all data will be permanently lost."
+  },
+  "assistantVersions": {
+    "loadFailed": "Failed to load version history",
+    "restoreFailed": "Restore failed, please try again",
+    "backToAssistants": "Back to My Assistants",
+    "titleSuffix": "Version History",
+    "currentVersion": "Current Version",
+    "versionList": "Version List",
+    "compareDiff": "Compare",
+    "noVersions": "No version history yet",
+    "restoring": "Restoring...",
+    "restoreVersion": "Restore This Version",
+    "temperature": "Temperature",
+    "persona": "Persona",
+    "rules": "Rules",
+    "contextLength": "Context Length",
+    "model": "Model",
+    "mockDesc1": "Optimize conversation flow, improve response speed",
+    "mockDesc2": "Fix known issues, improve stability",
+    "mockDesc3": "Add emotion recognition description"
+  },
+  "credentials": {
+    "failedToLoad": "Failed to load credentials",
+    "saveSuccess": "Credential saved",
+    "failedToSave": "Failed to save credential",
+    "statusUpdateSuccess": "Credential status updated",
+    "failedToUpdateStatus": "Failed to update credential status",
+    "deleteSuccess": "Credential deleted",
+    "failedToDelete": "Failed to delete credential",
+    "title": "Credential Management",
+    "subtitle": "Manage your API keys and access credentials",
+    "addCredential": "Add Credential",
+    "tabs": {
+      "myCredentials": "My Credentials",
+      "mySubscriptions": "My Subscriptions"
+    },
+    "emptyTitle": "credentials.emptyTitle",
+    "emptyDescription": "credentials.emptyDescription",
+    "usageCount": "Usage Count",
+    "disableCredential": "Disable",
+    "enableCredential": "Enable",
+    "editCredential": "Edit Credential",
+    "securityTip": "Security Tip: Rotate your API keys regularly to ensure security",
+    "subscriptions": {
+      "emptyTitle": "credentials.subscriptions.emptyTitle",
+      "emptyDescription": "credentials.subscriptions.emptyDescription",
+      "noSubscriptions": "No subscriptions yet",
+      "noSubscriptionsDesc": "You don't have any active subscription plans",
+      "currentPlan": "Current Plan",
+      "status": "Status",
+      "period": "Billing Period",
+      "autoRenew": "Auto Renew",
+      "active": "Active",
+      "expired": "Expired",
+      "cancelled": "Cancelled",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "valueHelpText": "Credential values are encrypted before storage",
+    "provider": "Provider",
+    "credentialType": "Credential Type",
+    "displayName": "Display Name",
+    "displayNamePlaceholder": "Enter credential display name",
+    "value": "Credential Value",
+    "valuePlaceholder": "Enter API Key or secret",
+    "role": {
+      "label": "Role",
+      "default": "Default",
+      "backup": "Backup",
+      "dedicated": "Dedicated"
+    },
+    "deleteConfirm": "Are you sure you want to delete this credential? This action cannot be undone.",
+    "noCredentials": "No credentials yet",
+    "noCredentialsDesc": "Add your first API key to get started",
+    "status": {
+      "label": "Status",
+      "active": "Active",
+      "disabled": "Disabled"
+    },
+    "maskedValue": "Key",
+    "providerOptions": {
+      "openai": "OpenAI",
+      "anthropic": "Anthropic",
+      "google": "Google",
+      "azure": "Azure OpenAI",
+      "deepseek": "DeepSeek",
+      "groq": "Groq",
+      "mistral": "Mistral",
+      "xai": "xAI",
+      "custom": "Custom"
+    },
+    "typeOptions": {
+      "api_key": "API Key",
+      "refresh_token": "Refresh Token",
+      "oauth_token": "OAuth Token"
+    }
+  },
+  "exportWizard": {
+    "error": "Failed to extract template",
+    "cancel": "Cancel",
+    "title": "Export as Template",
+    "loading": "Extracting template data...",
+    "retry": "Retry",
+    "name": "Template Name",
+    "slug": "Slug",
+    "description": "Description",
+    "tags": "Tags",
+    "tagsHint": "Comma-separated tags",
+    "category": "Category",
+    "agentType": "Agent Type",
+    "downloadJson": "Download JSON",
+    "saving": "Saving...",
+    "saveTemplate": "Save as Template",
+    "summary": {
+      "files": "Workspace Files",
+      "mcpServers": "MCP Servers",
+      "skills": "Skills",
+      "credentials": "Required Credentials",
+      "channels": "Channels",
+      "plugins": "Plugins"
+    },
+    "noFiles": "No workspace files",
+    "noMcp": "No MCP servers configured",
+    "noWarnings": "No security warnings",
+    "tabs": {
+      "overview": "Overview",
+      "files": "Files",
+      "mcp": "MCP Servers",
+      "warnings": "Warnings"
+    }
+  },
+  "profilePage": {
+    "basicInfo": {
+      "updateSuccess": "Profile updated",
+      "updateFailed": "Failed to update profile",
+      "title": "Basic Information",
+      "email": "Email Address",
+      "role": "Role",
+      "roleAdmin": "Admin",
+      "roleUser": "User",
+      "memberId": "User ID",
+      "memberSince": "Member Since",
+      "displayName": "Display Name",
+      "updating": "Updating...",
+      "updateProfile": "Update Profile",
+      "avatar": "Avatar",
+      "changeAvatar": "Change Avatar"
+    },
+    "security": {
+      "eventLogin": "Login",
+      "eventLoginFailed": "Login Failed",
+      "eventSignup": "Signup",
+      "eventPasswordChanged": "Password Changed",
+      "eventLogout": "Logout",
+      "title": "Security Settings",
+      "password": "Password",
+      "managedByClerk": "profilePage.security.managedByClerk",
+      "loginHistory": "Login History",
+      "loginHistoryDesc": "View recent account login records",
+      "hideHistory": "Hide History",
+      "viewHistory": "View History",
+      "noHistory": "No login records found",
+      "historyTime": "Time",
+      "historyEvent": "Event",
+      "historyIp": "IP Address",
+      "historyDevice": "Device",
+      "passwordDesc": "Last changed on {{date}}",
+      "passwordNeverChanged": "Never changed",
+      "managedByWorkOS": "Password and security settings are managed by your organization's identity provider.",
+      "changePassword": "Change Password",
+      "twoFactor": "Two-Factor Authentication",
+      "twoFactorDesc": "Use an authenticator app to enhance account security",
+      "twoFactorEnabled": "Enabled",
+      "twoFactorDisabled": "Not enabled",
+      "enableTwoFactor": "Enable",
+      "disableTwoFactor": "Disable"
+    },
+    "title": "Account Management",
+    "subtitle": "Manage your account information and security settings",
+    "dangerZone": {
+      "title": "Danger Zone",
+      "deleteAccountDesc": "Permanently delete your account and all data. This action cannot be undone.",
+      "deleteButton": "Delete Account",
+      "deleteConfirm": "Are you sure you want to delete your account? All data will be permanently deleted and cannot be recovered.",
+      "deleteAccount": "Delete Account"
+    },
+    "passwordModal": {
+      "title": "Change Password",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm New Password",
+      "passwordTooShort": "Password must be at least 6 characters",
+      "passwordsDoNotMatch": "Passwords do not match",
+      "changeButton": "Change Password",
+      "changing": "Changing...",
+      "success": "Password changed successfully",
+      "failed": "Failed to change password"
+    }
+  },
+  "forcePasswordChange": {
+    "title": "Change Your Password",
+    "subtitle": "Your password has been reset by an administrator. Please set a new password to continue.",
+    "tempPasswordLabel": "Temporary Password",
+    "tempPasswordPlaceholder": "Enter the temporary password provided by admin",
+    "newPasswordLabel": "New Password",
+    "newPasswordPlaceholder": "Enter your new password (at least 6 characters)",
+    "confirmPasswordLabel": "Confirm New Password",
+    "confirmPasswordPlaceholder": "Re-enter your new password",
+    "submitButton": "Set New Password",
+    "passwordTooShort": "Password must be at least 6 characters",
+    "passwordsDoNotMatch": "Passwords do not match"
+  },
+  "billing": {
+    "title": "Billing Overview",
+    "subtitle": "View your account balance and spending",
+    "kpi": {
+      "balance": "Account Balance",
+      "balanceUnit": "¥",
+      "balanceSubtext": "Includes subscription + top-up balance",
+      "todaySpend": "Today's Spend",
+      "todaySpendUnit": "¥",
+      "monthlyProjection": "Monthly Projection",
+      "monthlyProjectionUnit": "¥",
+      "monthlyProjectionSubtext": "Based on 7-day average consumption",
+      "vsYesterday": "vs yesterday"
+    },
+    "charts": {
+      "dailySpend": "Daily Spend",
+      "spendByInstance": "Spend by Instance",
+      "last7Days": "Last 7 days",
+      "amount": "Amount (¥)",
+      "noData": "No data available"
+    },
+    "nav": {
+      "overview": "Overview",
+      "orders": "Orders"
+    }
+  },
+  "orders": {
+    "title": "Orders & Billing",
+    "subtitle": "View order history and billing details",
+    "tabs": {
+      "orders": "Orders",
+      "billingDetails": "Billing Details"
+    },
+    "table": {
+      "orderNumber": "Order #",
+      "planName": "Plan Name",
+      "orderType": "Order Type",
+      "amount": "Amount",
+      "date": "Date",
+      "status": "Status",
+      "paymentMethod": "Payment Method"
+    },
+    "billingTable": {
+      "instanceName": "Instance",
+      "date": "Date",
+      "model": "Model",
+      "requests": "Requests",
+      "inputTokens": "Input Tokens",
+      "outputTokens": "Output Tokens",
+      "cost": "Cost"
+    },
+    "noOrders": "No orders yet",
+    "noOrdersDesc": "You don't have any order records",
+    "noBillingDetails": "No billing details",
+    "noBillingDetailsDesc": "No billing details have been generated yet",
+    "export": "Export",
+    "orderType": {
+      "subscription": "Subscription",
+      "recharge": "Top-up",
+      "upgrade": "Upgrade"
+    },
+    "orderStatus": {
+      "pending": "Pending",
+      "completed": "Completed",
+      "failed": "Failed",
+      "refunded": "Refunded"
+    },
+    "failedToLoadOrders": "Failed to load orders",
+    "failedToLoadBilling": "Failed to load billing details"
+  },
+  "costs": {
+    "title": "Cost Management",
+    "subtitle": "View cost overview and manage budgets",
+    "overview": {
+      "title": "Cost Overview",
+      "thisMonth": "This Month",
+      "lastMonth": "Last Month",
+      "yearToDate": "Year to Date",
+      "monthOverMonth": "MoM",
+      "calls": "calls",
+      "times": "times",
+      "increase": "increase",
+      "decrease": "decrease",
+      "budgetUsed": "budget used"
+    },
+    "budget": {
+      "title": "Budget Management",
+      "monthlyBudget": "Monthly Budget",
+      "annualBudget": "Annual Budget",
+      "setBudget": "Set Budget",
+      "budgetPlaceholder": "Enter budget amount",
+      "alertThreshold": "Alert Threshold",
+      "alertEnabled": "Enable Alerts",
+      "used": "Used",
+      "remaining": "Remaining",
+      "noBudget": "Not set",
+      "saveBudget": "Save Budget",
+      "saving": "Saving...",
+      "saveSuccess": "Budget saved",
+      "saveFailed": "Failed to save budget",
+      "loadFailed": "Failed to load budget",
+      "unit": "¥",
+      "editBudget": "Edit Budget"
+    },
+    "trend": {
+      "title": "Spending Trend",
+      "last7Days": "Last 7 days",
+      "amount": "Amount (¥)",
+      "noData": "No trend data available"
     }
   }
 }
