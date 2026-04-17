@@ -23,12 +23,13 @@ function makeFakeChild(opts: { killThrowsOn?: 'SIGTERM' | 'SIGKILL' } = {}) {
 describe('escalateKill (PM1 / BACKEND-04)', () => {
   test('SIGTERM fires synchronously', () => {
     const { child, signals } = makeFakeChild();
-    escalateKill(child, 10_000);
+    const cleanup = escalateKill(child, 10_000);
     assert.deepEqual(signals, ['SIGTERM']);
+    cleanup(); // cancel the real 10 s SIGKILL timer so the test process can exit
   });
 
   test('SIGKILL does NOT fire if child exits before graceMs', () => {
-    mock.timers.enable({ apis: ['setTimeout', 'clearTimeout'] });
+    mock.timers.enable({ apis: ['setTimeout'] });
     try {
       const { child, signals, emitExit } = makeFakeChild();
       escalateKill(child, 10_000);
@@ -43,7 +44,7 @@ describe('escalateKill (PM1 / BACKEND-04)', () => {
   });
 
   test('SIGKILL fires exactly once after graceMs if child still alive', () => {
-    mock.timers.enable({ apis: ['setTimeout', 'clearTimeout'] });
+    mock.timers.enable({ apis: ['setTimeout'] });
     try {
       const { child, signals } = makeFakeChild();
       escalateKill(child, 10_000);
@@ -59,7 +60,7 @@ describe('escalateKill (PM1 / BACKEND-04)', () => {
   });
 
   test('SIGKILL throw is swallowed (child already dead)', () => {
-    mock.timers.enable({ apis: ['setTimeout', 'clearTimeout'] });
+    mock.timers.enable({ apis: ['setTimeout'] });
     try {
       const { child } = makeFakeChild({ killThrowsOn: 'SIGKILL' });
       escalateKill(child, 10_000);
@@ -70,7 +71,7 @@ describe('escalateKill (PM1 / BACKEND-04)', () => {
   });
 
   test('cleanup function cancels pending SIGKILL', () => {
-    mock.timers.enable({ apis: ['setTimeout', 'clearTimeout'] });
+    mock.timers.enable({ apis: ['setTimeout'] });
     try {
       const { child, signals } = makeFakeChild();
       const cleanup = escalateKill(child, 10_000);
@@ -101,7 +102,7 @@ describe('escalateKill (PM1 / BACKEND-04)', () => {
   });
 
   test('graceMs=0 fires SIGKILL on the next microtask', () => {
-    mock.timers.enable({ apis: ['setTimeout', 'clearTimeout'] });
+    mock.timers.enable({ apis: ['setTimeout'] });
     try {
       const { child, signals } = makeFakeChild();
       escalateKill(child, 0);
