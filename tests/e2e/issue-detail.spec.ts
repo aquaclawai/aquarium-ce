@@ -188,12 +188,139 @@ test.describe.serial('Phase 24 — Issue Detail + Task Message Streaming', () =>
     expect(replyAncestorClass).toContain('pl-6');
   });
 
-  test.skip('task stream live', async () => {
-    // plan 24-02: task messages stream live via WS subscribe_task
+  test('task stream live', async ({ page, request }) => {
+    // Plan 24-02: TaskPanel renders the latest task's state + message stream.
+    // Seed an issue + runtime + agent + queued task + 3 task_messages of
+    // different kinds (text / tool_use / tool_result) and assert the page
+    // renders them through the deterministic data-attribute selectors.
+    //
+    // Backgrounded-tab recovery (24-02-02) stays manual-only below.
+
+    // Clear prior issues so list pages stay under the N-issue virtualizer
+    // threshold and the detail page is the only thing under test.
+    const existingRes = await request.get(`${API}/issues`);
+    if (existingRes.ok()) {
+      const existingBody = (await existingRes.json()) as { ok: boolean; data: { id: string }[] };
+      if (existingBody.ok) {
+        for (const row of existingBody.data) {
+          await request.delete(`${API}/issues/${row.id}`);
+        }
+      }
+    }
+
+    // Seed an issue via the API so issue_number + auth flow through the
+    // server's normal paths.
+    const seedRes = await request.post(`${API}/issues`, {
+      data: { title: 'Phase 24-02 task stream', status: 'todo' },
+    });
+    expect(seedRes.status()).toBe(201);
+    const seedBody = (await seedRes.json()) as { ok: boolean; data: { id: string } };
+    expect(seedBody.ok).toBe(true);
+    const issueId = seedBody.data.id;
+
+    // Seed a runtime + agent + task + 3 messages directly in the DB — the
+    // CE build doesn't expose admin routes for these and Wave 0's Playwright
+    // scaffold already established this pattern for the board spec.
+    const runtimeId = `rt-24-02-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const agentId = `ag-24-02-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const taskId = `task-24-02-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const msg1 = `msg1-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const msg2 = `msg2-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const msg3 = `msg3-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+    writeDb((db) => {
+      // Runtime row — minimum columns that satisfy NOT NULL constraints.
+      // daemon_id is part of a UNIQUE composite index — use the full unique
+      // runtimeId tail to avoid colliding with prior test invocations.
+      db.prepare(
+        `INSERT INTO runtimes (id, workspace_id, name, kind, provider, status,
+                               daemon_id, instance_id, metadata,
+                               created_at, updated_at)
+         VALUES (?, 'AQ', ?, 'local_daemon', 'claude', 'online',
+                 ?, NULL, '{}',
+                 datetime('now'), datetime('now'))`,
+      ).run(runtimeId, `phase24-02-rt-${runtimeId}`, `daemon-${runtimeId}`);
+
+      // Agent row.
+      db.prepare(
+        `INSERT INTO agents (id, workspace_id, runtime_id, name, instructions,
+                             custom_env, custom_args, max_concurrent_tasks,
+                             visibility, status, created_at, updated_at)
+         VALUES (?, 'AQ', ?, ?, 'stream live test',
+                 '{}', '[]', 6,
+                 'workspace', 'idle', datetime('now'), datetime('now'))`,
+      ).run(agentId, runtimeId, `phase24-02-agent-${agentId}`);
+
+      // Task row — running state so TaskPanel shows the cancel button.
+      db.prepare(
+        `INSERT INTO agent_task_queue
+           (id, workspace_id, issue_id, agent_id, runtime_id,
+            trigger_comment_id, status, priority,
+            metadata, created_at, updated_at)
+         VALUES (?, 'AQ', ?, ?, ?,
+                 NULL, 'running', 0,
+                 '{}', datetime('now', '-5 seconds'), datetime('now'))`,
+      ).run(taskId, issueId, agentId, runtimeId);
+
+      // Three task_messages — one of each kind the SafeMarkdown / pre / pre
+      // renderers cover. seq values 1, 2, 3 in insertion order.
+      const insertMsg = db.prepare(
+        `INSERT INTO task_messages
+           (id, task_id, seq, type, tool, content, input, output, metadata, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, '{}', datetime('now'))`,
+      );
+      insertMsg.run(msg1, taskId, 1, 'text', null, 'Agent **hello** reply', null, null);
+      insertMsg.run(
+        msg2,
+        taskId,
+        2,
+        'tool_use',
+        'Read',
+        null,
+        JSON.stringify({ path: 'README.md' }),
+        null,
+      );
+      insertMsg.run(
+        msg3,
+        taskId,
+        3,
+        'tool_result',
+        'Read',
+        null,
+        null,
+        JSON.stringify('file contents preview'),
+      );
+    });
+
+    await page.goto(`http://localhost:5173/issues/${issueId}`);
+    await expect(page.getByTestId('issue-detail')).toBeVisible();
+
+    // TaskPanel rendered with the seeded task id.
+    await expect(page.locator(`[data-task-panel="${taskId}"]`)).toBeVisible();
+    await expect(
+      page.locator(`[data-task-panel="${taskId}"][data-task-state="running"]`),
+    ).toHaveCount(1);
+
+    // All three seeded messages render with their kind-specific data-attrs.
+    // The REST seed (GET /api/tasks/:id/messages?afterSeq=0) delivers them
+    // before the WS subscribe_task live takeover, so they're visible without
+    // waiting on a WS event.
+    await expect(
+      page.locator('[data-task-message-seq="1"][data-task-message-kind="text"]'),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-task-message-seq="2"][data-task-message-kind="tool_use"]'),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-task-message-seq="3"][data-task-message-kind="tool_result"]'),
+    ).toBeVisible();
   });
 
   test.skip('background tab recovery', async () => {
-    // plan 24-02 (CI-skipped / manual-only): tab-throttle + useTransition keeps main thread unblocked at 500+ msgs
+    // plan 24-02 (CI-skipped / manual-only per 24-VALIDATION.md row 24-02-02):
+    // Chrome tab-throttle + BFcache behaviour is not reliably reproducible in
+    // headless Playwright. Manual verification steps live in
+    // 24-VALIDATION.md §Manual-Only Verifications.
   });
 
   test.skip('reconnect replay', async () => {
