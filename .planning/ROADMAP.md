@@ -449,6 +449,18 @@ Plans:
 4. Agent-authored output never executes as HTML (no `dangerouslySetInnerHTML`); task output is truncated to 16 KB server-side with an explicit "truncated" marker
 5. Chat-on-issue flow: user types message → task enqueued with `trigger_comment_id` → response streams as task_messages → completes as a threaded agent comment
 
+**Plans:** 7 plans
+
+Plans:
+- [ ] 24-00-PLAN.md — Wave 0 foundation: 16 KB truncation + overflow table + /messages?afterSeq + /full + /cancel routes, WS subscribe_task/pause/resume + buffer-replay-live ordering, shared WsEventType extension, rehype-sanitize install, component scaffold, Playwright 8-skip stub, 70+ i18n keys in all 6 locales (UI-05, UI-06, UI-07, UI-08)
+- [ ] 24-01-PLAN.md — Wave 1 read-only detail page: /issues/:id route, IssueHeader + IssueDescription + CommentsTimeline + CommentThread + CommentCard + CommentComposer + IssueActionSidebar + useIssueDetail + SafeMarkdown + IssueCard onClick nav (UI-04, UI-07)
+- [ ] 24-02-PLAN.md — Wave 2 live task stream: WebSocketContext requestTaskReplay/pause/resume trio, useTaskStream hook with useTransition+useDeferredValue, TaskPanel + TaskStateBadge + TaskMessageList (virtualized >100) + TaskMessageItem per-kind renderers, visibility pause/resume (UI-05)
+- [ ] 24-03-PLAN.md — Wave 3 reconnect replay: isConnected-driven resubscribe + defence-in-depth sort + ReconnectBanner + dual-browser Playwright proof (UI-06 / ST2 HARD)
+- [ ] 24-04-PLAN.md — Wave 4 truncation + XSS hardening: TruncationMarker component + Show-full + CI grep guards on dangerouslySetInnerHTML + react-markdown imports (UI-07 / UX6 HARD)
+- [ ] 24-05-PLAN.md — Wave 5 chat-on-issue: createAgentComment service + hosted-worker + daemon-complete threaded-reply callback + ChatComposer + enqueuedTask → latestTask wiring (CHAT-01)
+- [ ] 24-06-PLAN.md — Wave 6 i18n polish: translate issues.detail.* + chat.* to zh/fr/de/es/it, parity gate green, optional zh smoke (UI-08 / UX5)
+
+
 ### Phase 25: Management UIs
 **Goal:** Users manage agents, runtimes, and daemon tokens through dedicated pages with i18n coverage across all 6 locales.
 **Depends on:** Phase 16, Phase 17, Phase 19
@@ -499,7 +511,7 @@ Plans:
 | 21. Daemon CLI + claude-code | v1.4 | 0/4 | Not started | - |
 | 22. Remaining Agent Backends | v1.4 | 4/4 | Complete    | 2026-04-17 |
 | 23. Issue Board UI (Kanban) | v1.4 | 6/6 | Complete    | 2026-04-17 |
-| 24. Issue Detail + Streaming | v1.4 | 0/? | Not started | - |
+| 24. Issue Detail + Streaming | v1.4 | 0/7 | Not started | - |
 | 25. Management UIs | v1.4 | 0/? | Not started | - |
 | 26. Integration, E2E, Release | v1.4 | 0/? | Not started | - |
 
