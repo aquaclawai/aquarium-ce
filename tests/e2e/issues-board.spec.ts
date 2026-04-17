@@ -3,6 +3,7 @@ import type { APIRequestContext } from '@playwright/test';
 import Database from 'better-sqlite3';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { seed200Issues } from './helpers/seed-200-issues';
 
 /**
  * Phase 23 — Issue Board UI (Kanban) E2E coverage.
@@ -502,12 +503,181 @@ test.describe.serial('Phase 23 — Issue Board UI (Kanban)', () => {
     expect(values.length).toBeGreaterThanOrEqual(1);
   });
 
-  test('virtualization', () => {
-    test.skip(true, 'wired in 23-03');
+  test('virtualization', async ({ page, request }) => {
+    // Scenario 23-03-01 (UI-03 / UX4): with 200 issues seeded in the Todo
+    // column, the virtualizer MUST window the DOM so at most ~25 issue cards
+    // are attached at once. We also assert that scrolling reveals DIFFERENT
+    // cards (proving windowing, not coincidental 25-card rendering).
+    //
+    // Pre-clean any existing issues from earlier runs for determinism.
+    const existingRes = await request.get(`${API}/issues`);
+    if (existingRes.ok()) {
+      const existingBody = (await existingRes.json()) as { ok: boolean; data: { id: string }[] };
+      if (existingBody.ok) {
+        for (const row of existingBody.data) {
+          await request.delete(`${API}/issues/${row.id}`);
+        }
+      }
+    }
+
+    // Bulk-seed via the atomic DB helper — 200 HTTP POSTs would be 10 s of
+    // overhead per scenario.
+    const seededIds = seed200Issues(DB_PATH);
+    expect(seededIds.length).toBe(200);
+
+    await page.goto('http://localhost:5173/issues');
+    await expect(page.getByTestId('issues-board')).toBeVisible();
+    await expect(page.locator('[data-issue-column="todo"]')).toHaveCount(1);
+    // Give the fetch + render pipeline a moment to settle — 200 rows from
+    // the API + initial virtualizer measurement.
+    await page.waitForTimeout(1000);
+
+    // Assert virtualization kicked in: ≤ 25 cards in DOM for the Todo column.
+    // 23-VALIDATION row 23-03-01 specifies ≤ 25 as the threshold.
+    const rendered = await page
+      .locator('[data-issue-column="todo"] [data-issue-card]')
+      .count();
+    expect(rendered, `Todo column DOM card count (want ≤ 25 for virtualization)`).toBeLessThanOrEqual(25);
+    // Sanity: at least some rendered (otherwise column is empty or selector
+    // is wrong — this catches regressions too).
+    expect(rendered).toBeGreaterThan(0);
+
+    // Capture which card ids are in the DOM BEFORE scrolling.
+    const beforeIds = await page
+      .locator('[data-issue-column="todo"] [data-issue-card]')
+      .evaluateAll(els => els.map(e => e.getAttribute('data-issue-card')));
+
+    // Scroll the Todo column's virtualizer scroll container deep into the
+    // list. The container has `data-scroll-container` attribute (added by
+    // plan 23-03 Task 1 on the virtualizer wrapper div). Then wait for the
+    // virtualizer to render the newly-visible slice.
+    await page
+      .locator('[data-issue-column="todo"][data-scroll-container], [data-issue-column="todo"] [data-scroll-container]')
+      .first()
+      .evaluate(el => {
+        const target = el as HTMLElement;
+        target.scrollTo({ top: 5000, behavior: 'instant' as ScrollBehavior });
+      });
+    await page.waitForTimeout(300);
+
+    const afterIds = await page
+      .locator('[data-issue-column="todo"] [data-issue-card]')
+      .evaluateAll(els => els.map(e => e.getAttribute('data-issue-card')));
+
+    // Proof of windowing: the two id sets should differ. If the full list
+    // was rendered as a plain .map (no virtualization), both sets would be
+    // identical. We accept any non-zero difference — even partial overlap
+    // with overscan is fine, the critical invariant is that afterIds is
+    // not equal to beforeIds.
+    const beforeSet = new Set(beforeIds);
+    const afterSet = new Set(afterIds);
+    const intersection = [...beforeSet].filter(id => afterSet.has(id));
+    expect(
+      intersection.length,
+      `before=${beforeIds.length} after=${afterIds.length} intersection=${intersection.length} — expected scroll to reveal new cards`,
+    ).toBeLessThan(beforeSet.size);
   });
 
-  test('virtualization drag', () => {
-    test.skip(true, 'wired in 23-03');
+  test('virtualization drag', async ({ page, request }) => {
+    // Scenario 23-03-02 (UI-03 / UX4 / Pitfall 7): with 200 items in Todo,
+    // start a drag on the first card. While held, scroll the column past
+    // where index 0 would be — the dragged card MUST remain attached in the
+    // DOM (overscan bumped to items.length while activeId !== null).
+    // Release the drop onto In Progress and verify the card landed there.
+    //
+    // Pre-clean.
+    const existingRes = await request.get(`${API}/issues`);
+    if (existingRes.ok()) {
+      const existingBody = (await existingRes.json()) as { ok: boolean; data: { id: string }[] };
+      if (existingBody.ok) {
+        for (const row of existingBody.data) {
+          await request.delete(`${API}/issues/${row.id}`);
+        }
+      }
+    }
+
+    const seededIds = seed200Issues(DB_PATH);
+    expect(seededIds.length).toBe(200);
+
+    await page.goto('http://localhost:5173/issues');
+    await expect(page.getByTestId('issues-board')).toBeVisible();
+    await expect(page.locator('[data-issue-column="todo"]')).toHaveCount(1);
+    await page.waitForTimeout(1000);
+
+    // Capture the first rendered card's id (this will be the topmost in the
+    // Todo column by position).
+    const firstCardLocator = page
+      .locator('[data-issue-column="todo"] [data-issue-card]')
+      .first();
+    await expect(firstCardLocator).toBeVisible();
+    const id0 = await firstCardLocator.getAttribute('data-issue-card');
+    expect(id0).not.toBeNull();
+
+    // Start a drag on the first card. PointerSensor activation requires >5 px
+    // movement — use steps: 5 so intermediate pointermoves are emitted.
+    const sourceBox = await firstCardLocator.boundingBox();
+    expect(sourceBox).not.toBeNull();
+    await page.mouse.move(
+      sourceBox!.x + sourceBox!.width / 2,
+      sourceBox!.y + sourceBox!.height / 2,
+    );
+    await page.mouse.down();
+    await page.mouse.move(
+      sourceBox!.x + sourceBox!.width / 2 + 20,
+      sourceBox!.y + sourceBox!.height / 2 + 20,
+      { steps: 5 },
+    );
+
+    // Now scroll the Todo column scroll container WAY past where index 0
+    // would normally live. If overscan did NOT bump to items.length, the
+    // virtualizer would unmount id0 from the DOM here.
+    await page
+      .locator('[data-issue-column="todo"][data-scroll-container], [data-issue-column="todo"] [data-scroll-container]')
+      .first()
+      .evaluate(el => {
+        const target = el as HTMLElement;
+        target.scrollTo({ top: 10000, behavior: 'instant' as ScrollBehavior });
+      });
+    await page.waitForTimeout(300);
+
+    // The dragged card MUST still be attached to the DOM. This is the core
+    // invariant — if this fails, @dnd-kit loses its grip on the dragged
+    // node and the drop handler fires with corrupted state.
+    await expect(page.locator(`[data-issue-card="${id0}"]`)).toBeAttached();
+
+    // Move the mouse over the In Progress column center and release.
+    const targetColumn = page.locator('[data-issue-column="in_progress"]');
+    await expect(targetColumn).toHaveCount(1);
+    const targetBox = await targetColumn.boundingBox();
+    expect(targetBox).not.toBeNull();
+    await page.mouse.move(
+      targetBox!.x + targetBox!.width / 2,
+      targetBox!.y + targetBox!.height / 2,
+      { steps: 10 },
+    );
+    await page.mouse.up();
+
+    // Wait for the PATCH + POST /reorder round-trip.
+    await page.waitForTimeout(1500);
+
+    // Server-side ground truth: the dragged issue now has status='in_progress'.
+    const finalRes = await request.get(`${API}/issues/${id0}`);
+    expect(finalRes.ok()).toBeTruthy();
+    const finalBody = (await finalRes.json()) as {
+      ok: boolean;
+      data: { status: string };
+    };
+    expect(finalBody.ok).toBe(true);
+    expect(finalBody.data.status).toBe('in_progress');
+
+    // DOM side: the dragged card should now live inside the In Progress
+    // column. The virtualizer may not render index 0 of the Todo column
+    // after the drop (it moved out), and the In Progress column is small
+    // enough that virtualization is not active there — the card should be
+    // directly attached under [data-issue-column="in_progress"].
+    await expect(
+      page.locator(`[data-issue-column="in_progress"] [data-issue-card="${id0}"]`),
+    ).toBeAttached();
   });
 
   test('keyboard drag', () => {

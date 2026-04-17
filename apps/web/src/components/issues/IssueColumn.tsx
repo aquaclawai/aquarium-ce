@@ -89,8 +89,12 @@ export function IssueColumn({ status, items, activeId }: IssueColumnProps) {
             ref={scrollRef}
             data-scroll-container
             data-issue-column={status}
-            className="flex-1 overflow-auto min-h-[40px]"
-            style={{ height: '70vh' }}
+            className="overflow-auto"
+            // min-height: 0 is required to prevent the flex-item default
+            // (min-height: auto = content-size) from stretching this div to
+            // fit the 14400px spacer inside, which would defeat virtualization.
+            // height is bounded to 70vh so the virtualizer can window the list.
+            style={{ height: '70vh', minHeight: 0 }}
           >
             <div
               style={{
