@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card } from '@/components/ui/card';
@@ -25,6 +26,7 @@ function priorityVariant(priority: IssuePriority): BadgeVariant {
 
 function IssueCardImpl({ issue }: IssueCardProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   // Plan 23-02: useSortable wires drag listeners + transform onto the card
   // root. `data.status` is consumed by useIssueBoard.resolveTargetStatus to
@@ -66,7 +68,26 @@ function IssueCardImpl({ issue }: IssueCardProps) {
       className="p-3 min-h-[72px] gap-2 flex flex-col cursor-grab"
     >
       <div className="flex items-start justify-between gap-2">
-        <h3 className="text-sm font-medium leading-snug line-clamp-2">{issue.title}</h3>
+        {/*
+         * Phase 24-01 navigation: title is a button, not a plain <h3>, so
+         * clicking it routes to /issues/:id. We rely on @dnd-kit's
+         * PointerSensor activation constraint (pointerDistance: 5) to
+         * discriminate click vs drag: a stationary press + release fires
+         * onClick here; a >5 px pointermove starts a drag through the Card
+         * root's drag listeners. We deliberately do NOT stopPropagation on
+         * pointerdown — that would break the drag when the user grabs the
+         * title area (Phase 23 "own echo" regression).
+         */}
+        <button
+          type="button"
+          className="text-sm font-medium leading-snug line-clamp-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] rounded"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/issues/${issue.id}`);
+          }}
+        >
+          {issue.title}
+        </button>
         {issue.priority !== 'none' && (
           <Badge variant={priorityVariant(issue.priority)}>
             {t(`issues.board.priority.${issue.priority}`)}
