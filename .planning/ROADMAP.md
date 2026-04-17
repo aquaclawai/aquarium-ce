@@ -365,6 +365,13 @@ Plans:
 4. Hosted task with agent `custom_env` set completes successfully with a WARN log citing `custom_env ignored for hosted_instance runtime`
 5. Hosted task dispatch never modifies `instances.status` — verified by spying on `instance-manager.updateStatus` during a full task run
 
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] 20-01-PLAN.md — Gateway-event-relay `registerChatStreamListener` multi-shot hook (infra for HOSTED-03)
+- [x] 20-02-PLAN.md — HostedTaskWorker: tick + chat.send + streaming + cancel + ignored-fields WARN (HOSTED-01, HOSTED-02, HOSTED-03, HOSTED-05, HOSTED-06)
+- [x] 20-03-PLAN.md — Boot orphan sweep + server-core.ts Step 9b/9d wiring (HOSTED-04)
+
 ### Phase 21: Daemon CLI + Claude-Code Backend + Unit Harness
 **Goal:** `npx @aquaclawai/aquarium daemon start` runs on macOS/Linux, auto-detects installed `claude` CLI, registers as a runtime, claims tasks, and streams Claude Code stream-json output back to the server with bounded concurrency and clean SIGTERM handling. Establishes the concurrency + testing primitives that Phase 22 extends.
 **Depends on:** Phase 19
@@ -462,7 +469,7 @@ Plans:
 | 17. Agent/Issue/Comment Services | v1.4 | 5/5 | Complete    | 2026-04-16 |
 | 18. Task Queue & Dispatch | v1.4 | 4/4 | Complete    | 2026-04-16 |
 | 19. Daemon REST API & Auth | v1.4 | 3/4 | Complete    | 2026-04-16 |
-| 20. Hosted-Instance Driver | v1.4 | 0/? | Not started | - |
+| 20. Hosted-Instance Driver | v1.4 | 3/3 | Complete    | 2026-04-17 |
 | 21. Daemon CLI + claude-code | v1.4 | 0/? | Not started | - |
 | 22. Remaining Agent Backends | v1.4 | 0/? | Not started | - |
 | 23. Issue Board UI (Kanban) | v1.4 | 0/? | Not started | - |

@@ -119,12 +119,12 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 
 ### Hosted-Instance Driver
 
-- [ ] **HOSTED-01**: An in-process `HostedTaskWorker` polls the task queue every 2 s for each online `hosted_instance` runtime
-- [ ] **HOSTED-02**: Hosted dispatch invokes `gatewayCall(instanceId, 'chat.send', …, 120_000)` reusing the existing persistent-WS gateway client
-- [ ] **HOSTED-03**: Gateway `text / toolCall / toolResult / thinking` events translate 1:1 into `task_message` rows with correct `type` and `seq`
-- [ ] **HOSTED-04**: On server restart, all in-process hosted tasks in `dispatched` / `running` are failed during boot (rather than waiting for the reaper)
-- [ ] **HOSTED-05**: Hosted tasks ignore `session_id`, `work_dir`, `custom_env`, `custom_args` with a logged warning; users needing these features pick a daemon runtime
-- [ ] **HOSTED-06**: When the gateway is disconnected, the worker silently skips its tick (task stays queued) instead of failing
+- [x] **HOSTED-01**: An in-process `HostedTaskWorker` polls the task queue every 2 s for each online `hosted_instance` runtime
+- [x] **HOSTED-02**: Hosted dispatch invokes `gatewayCall(instanceId, 'chat.send', …, 120_000)` reusing the existing persistent-WS gateway client
+- [x] **HOSTED-03**: Gateway `text / toolCall / toolResult / thinking` events translate 1:1 into `task_message` rows with correct `type` and `seq`
+- [x] **HOSTED-04**: On server restart, all in-process hosted tasks in `dispatched` / `running` are failed during boot (rather than waiting for the reaper)
+- [x] **HOSTED-05**: Hosted tasks ignore `session_id`, `work_dir`, `custom_env`, `custom_args` with a logged warning; users needing these features pick a daemon runtime
+- [x] **HOSTED-06**: When the gateway is disconnected, the worker silently skips its tick (task stays queued) instead of failing
 
 ### Daemon CLI & Agent Backends
 
