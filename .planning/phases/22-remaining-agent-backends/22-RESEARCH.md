@@ -945,14 +945,19 @@ Phase 22 is an extension phase — it adds new backend files but doesn't rename 
 
 **If this table were empty:** It's not. A1 and A3 in particular call for Wave 0 verification before plan acceptance.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Codex approval-response enum values.** Research flagged `'approved'`/`'denied'` but did not verify the exact strings in `CommandExecutionRequestApprovalResponse.json`. Wave 0 task: read that file + 3 others (ExecCommandApprovalResponse, FileChangeRequestApprovalResponse, PermissionsRequestApprovalResponse), enumerate exact `decision` values, confirm OR correct §Codex Backend approval sketch.
-2. **OpenClaw stream shape.** Wave 0 task: install openclaw locally OR decide to ship stub-with-error (documented in §OpenClaw).
-3. **Codex `input: UserInput[]` format for `turn/start`.** `UserInput` is a discriminated union; `{type:'text', text:'...'}` is the assumed shape. Wave 0 quick read of `$TMP/v2/TurnStartParams.json`'s `UserInput` definition confirms / corrects.
-4. **OpenCode workspace / `--dir` ergonomics.** OpenCode run opens a browser tab to share sessions if `--share` is set; Aquarium does NOT want that. Verify default of `--share=false`. (Looking at `--help`: `--share` flag is explicit; omitting it = no share.)
-5. **Graceful shutdown with codex mid-turn.** On `gracefulShutdown` signal, codex's `turn/interrupt` is preferred over hard kill. Should `gracefulShutdown` wait for ALL in-flight codex turns to interrupt before letting execa signal-escalate? Plan's `waitForInFlightDrain` already polls on `inFlight.size === 0`, which waits for each `runTask` to complete — so `turn/interrupt` → `turn/completed` cycle is naturally awaited. OK as-is, but worth documenting.
-6. **Runtime provider → backend binding at register time vs claim time.** Settled above as register-time binding via `backendByRuntimeId` map. Confirm in plan that if the user adds a new backend mid-daemon-lifetime (e.g. installs codex after daemon started), the daemon MUST be restarted for codex to appear. Document in `aquarium daemon status` output hint.
+All six items below have been resolved by planning decisions — each is now
+handled either by a Wave 0 task in `22-01-PLAN.md` / `22-02-PLAN.md` or by a
+recorded assumption in the Assumptions Log. Kept here as an audit trail of
+what was open during research and how planning closed it.
+
+1. **Codex approval-response enum values.** RESOLVED by A1 + `22-02` Wave 0 task "read `CommandExecutionRequestApprovalResponse.json` before implementing `buildCodexApprovalResponse`" + protocol-drift unit test asserting the exact `decision` enum value. If the file's actual enum differs from `'approved'`/`'denied'`, the Wave 0 read surfaces it and the test catches regressions.
+2. **OpenClaw stream shape.** RESOLVED by A3 + `22-03`'s conditional deliverable: plan instructs the implementer to install openclaw locally and capture a live sample IF available, otherwise ship `backends/openclaw.ts` as a documented stub-with-error matching the hermes pattern. Either path is acceptable; planner chose not to hard-block on OpenClaw being installed on CI.
+3. **Codex `input: UserInput[]` format for `turn/start`.** RESOLVED — `22-02` Wave 0 task includes reading `$TMP/v2/TurnStartParams.json` alongside the approval schemas. The planned fixture uses `{type:'text', text:'...'}` and the unit test asserts this exact shape in the outbound JSON-RPC frame. A divergence would be caught immediately.
+4. **OpenCode `--share` ergonomics.** RESOLVED — `22-03`'s OpenCode spawn explicitly omits the `--share` flag. Unit test asserts the spawned-command arg vector contains `['run', '--format', 'json']` and does NOT contain `'--share'`.
+5. **Graceful shutdown with codex mid-turn.** RESOLVED — carried over from Phase 21 unchanged. `waitForInFlightDrain` already polls `inFlight.size === 0`, so codex's `turn/interrupt` → `turn/completed` cycle is naturally awaited. Documented in `22-04`'s threat model (T-22-08) for transparency; no new code.
+6. **Runtime binding lifetime.** RESOLVED — settled as register-time binding via the `backendByRuntimeId` map, which `22-04` builds. If a user installs a new backend mid-daemon-lifetime, the daemon MUST be restarted; `22-04` adds a hint to `aquarium daemon status` output documenting this.
 
 ## Sources
 

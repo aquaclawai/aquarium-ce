@@ -44,7 +44,7 @@ created: 2026-04-17
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
 | 22-01-01 | 01 | 0 | BACKEND-02/03 (interface) | — | AQUARIUM_* tokens stripped from child env | unit | `npx tsx --test apps/server/tests/unit/backend-env.test.ts` | ❌ Wave 0 | ⬜ pending |
 | 22-01-02 | 01 | 0 | BACKEND-02/03 (interface) | — | Only available backends registered (detect probe) | unit | `npx tsx --test apps/server/tests/unit/detect-backends.test.ts` | ❌ Wave 0 | ⬜ pending |
-| 22-01-03 | 01 | 1 | BACKEND-02/03 (interface) | — | Claude backend refactored behind `Backend` interface; no behaviour drift | unit | `npx tsx --test apps/server/tests/unit/claude-backend.test.ts` | ✅ shipped (extend) | ⬜ pending |
+| 22-01-03 | 01 | 1 | BACKEND-02/03 (interface) | — | Claude backend refactored behind `Backend` interface; no behaviour drift | unit | `npx tsx --test apps/server/tests/unit/claude-control-request.test.ts` | ✅ shipped (extend) | ⬜ pending |
 | 22-02-01 | 02 | 2 | BACKEND-02 | — | Codex JSON-RPC init/thread/turn happy path → AgentMessage union | unit | `npx tsx --test apps/server/tests/unit/codex-backend.test.ts` | ❌ Wave 0 | ⬜ pending |
 | 22-02-02 | 02 | 2 | BACKEND-02 | T-22-02 | Codex approval requests answered with correct enum (approved/denied per allow-list) | unit | same file | ❌ Wave 0 | ⬜ pending |
 | 22-02-03 | 02 | 2 | BACKEND-02 | — | Codex `turn/interrupt` sent on AbortSignal within 10 s | unit | same file | ❌ Wave 0 | ⬜ pending |
