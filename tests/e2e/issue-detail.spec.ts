@@ -323,12 +323,249 @@ test.describe.serial('Phase 24 — Issue Detail + Task Message Streaming', () =>
     // 24-VALIDATION.md §Manual-Only Verifications.
   });
 
-  test.skip('reconnect replay', async () => {
-    // plan 24-03: WS drop mid-stream → reconnect replays gap with no duplicates
+  test('reconnect replay', async ({ page, request }) => {
+    // Plan 24-03 / UI-06 / ST2 end-to-end proof. Scenario:
+    //   1. Seed an issue + runtime + agent + running task + 5 task_messages
+    //      (seq 1..5) via direct DB writes.
+    //   2. Navigate the page; confirm the first 5 messages render through the
+    //      REST seed (GET /api/tasks/:id/messages?afterSeq=0).
+    //   3. Force-close the WS socket via the `__aquariumForceWsClose` test
+    //      hook (gated to DEV / test mode by WebSocketContext).
+    //   4. While the page is disconnected, seed seq 6..10 into the DB —
+    //      these are the "missed" messages the client never saw.
+    //   5. Wait for WebSocketContext's 3 s reconnect backoff + auth handshake.
+    //      useTaskStream's isConnected-driven effect re-fires subscribe_task
+    //      with lastSeqRef.current = 5. Server replays 6..10 via the Wave 0
+    //      DESC-LIMIT-500 path.
+    //   6. Assert seq 1..10 all present, total row count = 10 (no duplicates).
+
+    const existingRes = await request.get(`${API}/issues`);
+    if (existingRes.ok()) {
+      const existingBody = (await existingRes.json()) as { ok: boolean; data: { id: string }[] };
+      if (existingBody.ok) {
+        for (const row of existingBody.data) {
+          await request.delete(`${API}/issues/${row.id}`);
+        }
+      }
+    }
+
+    const seedRes = await request.post(`${API}/issues`, {
+      data: { title: 'Phase 24-03 reconnect replay', status: 'todo' },
+    });
+    expect(seedRes.status()).toBe(201);
+    const seedBody = (await seedRes.json()) as { ok: boolean; data: { id: string } };
+    expect(seedBody.ok).toBe(true);
+    const issueId = seedBody.data.id;
+
+    const runtimeId = `rt-24-03r-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const agentId = `ag-24-03r-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const taskId = `task-24-03r-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+    writeDb((db) => {
+      db.prepare(
+        `INSERT INTO runtimes (id, workspace_id, name, kind, provider, status,
+                               daemon_id, instance_id, metadata,
+                               created_at, updated_at)
+         VALUES (?, 'AQ', ?, 'local_daemon', 'claude', 'online',
+                 ?, NULL, '{}',
+                 datetime('now'), datetime('now'))`,
+      ).run(runtimeId, `phase24-03r-rt-${runtimeId}`, `daemon-${runtimeId}`);
+      db.prepare(
+        `INSERT INTO agents (id, workspace_id, runtime_id, name, instructions,
+                             custom_env, custom_args, max_concurrent_tasks,
+                             visibility, status, created_at, updated_at)
+         VALUES (?, 'AQ', ?, ?, 'reconnect replay test',
+                 '{}', '[]', 6,
+                 'workspace', 'idle', datetime('now'), datetime('now'))`,
+      ).run(agentId, runtimeId, `phase24-03r-agent-${agentId}`);
+      db.prepare(
+        `INSERT INTO agent_task_queue
+           (id, workspace_id, issue_id, agent_id, runtime_id,
+            trigger_comment_id, status, priority,
+            metadata, created_at, updated_at)
+         VALUES (?, 'AQ', ?, ?, ?,
+                 NULL, 'running', 0,
+                 '{}', datetime('now', '-5 seconds'), datetime('now'))`,
+      ).run(taskId, issueId, agentId, runtimeId);
+      // Seed the initial 5 messages. Bulk insert via a prepared statement —
+      // seq is monotonic ASC, content payload is a plain text string.
+      const insertMsg = db.prepare(
+        `INSERT INTO task_messages
+           (id, task_id, seq, type, tool, content, input, output, metadata, created_at)
+         VALUES (?, ?, ?, 'text', NULL, ?, NULL, NULL, '{}', datetime('now'))`,
+      );
+      for (let i = 1; i <= 5; i++) {
+        insertMsg.run(`m-${taskId}-${i}`, taskId, i, `seq ${i}`);
+      }
+    });
+
+    await page.goto(`http://localhost:5173/issues/${issueId}`);
+    await expect(page.getByTestId('issue-detail')).toBeVisible();
+    await expect(page.locator(`[data-task-panel="${taskId}"]`)).toBeVisible();
+
+    // REST seed delivered the initial 5 rows; all visible before we drop WS.
+    await expect(page.locator('[data-task-message-seq="5"]')).toBeVisible();
+    await expect(page.locator('[data-task-message-seq]')).toHaveCount(5);
+
+    // Force-close the WS socket. The test hook is exposed in DEV (Vite
+    // `npm run dev -w @aquarium/web` sets import.meta.env.DEV = true).
+    await page.evaluate(() => {
+      const win = window as unknown as { __aquariumForceWsClose?: () => void };
+      if (typeof win.__aquariumForceWsClose !== 'function') {
+        throw new Error('__aquariumForceWsClose not available — reconnect test needs DEV or MODE=test build');
+      }
+      win.__aquariumForceWsClose();
+    });
+
+    // While disconnected, seed the next 5 rows. The client can never see
+    // these via live broadcast because there's no socket — the only delivery
+    // channel is the reconnect replay.
+    writeDb((db) => {
+      const insertMsg = db.prepare(
+        `INSERT INTO task_messages
+           (id, task_id, seq, type, tool, content, input, output, metadata, created_at)
+         VALUES (?, ?, ?, 'text', NULL, ?, NULL, NULL, '{}', datetime('now'))`,
+      );
+      for (let i = 6; i <= 10; i++) {
+        insertMsg.run(`m-${taskId}-${i}`, taskId, i, `seq ${i}`);
+      }
+    });
+
+    // Wait for the 3 s WebSocketContext reconnect backoff + auth handshake +
+    // replay flush. The isConnected effect in useTaskStream fires
+    // subscribe_task with lastSeqRef.current = 5.
+    await expect(page.locator('[data-task-message-seq="10"]')).toBeVisible({ timeout: 15_000 });
+
+    // No gaps: every seq 1..10 must appear exactly once.
+    for (let i = 1; i <= 10; i++) {
+      await expect(page.locator(`[data-task-message-seq="${i}"]`)).toHaveCount(1);
+    }
+    // No duplicates: total row count matches the DB row count.
+    await expect(page.locator('[data-task-message-seq]')).toHaveCount(10);
   });
 
-  test.skip('replay no reorder', async () => {
-    // plan 24-03: server-side replay + live-handoff buffer prevents out-of-order delivery
+  test('replay no reorder', async ({ page, request }) => {
+    // Plan 24-03 / UI-06 / ST2. Tighter than "reconnect replay" — seeds 40
+    // rows across two post-disconnect waves and asserts the final DOM order
+    // is monotonically increasing. Exercises the defence-in-depth sort
+    // client-side (useTaskStream) + the buffer-replay-live ordering
+    // server-side (Wave 0 — ws/index.ts subscribe_task handler).
+
+    const existingRes = await request.get(`${API}/issues`);
+    if (existingRes.ok()) {
+      const existingBody = (await existingRes.json()) as { ok: boolean; data: { id: string }[] };
+      if (existingBody.ok) {
+        for (const row of existingBody.data) {
+          await request.delete(`${API}/issues/${row.id}`);
+        }
+      }
+    }
+
+    const seedRes = await request.post(`${API}/issues`, {
+      data: { title: 'Phase 24-03 replay no reorder', status: 'todo' },
+    });
+    expect(seedRes.status()).toBe(201);
+    const seedBody = (await seedRes.json()) as { ok: boolean; data: { id: string } };
+    expect(seedBody.ok).toBe(true);
+    const issueId = seedBody.data.id;
+
+    const runtimeId = `rt-24-03o-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const agentId = `ag-24-03o-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const taskId = `task-24-03o-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+    writeDb((db) => {
+      db.prepare(
+        `INSERT INTO runtimes (id, workspace_id, name, kind, provider, status,
+                               daemon_id, instance_id, metadata,
+                               created_at, updated_at)
+         VALUES (?, 'AQ', ?, 'local_daemon', 'claude', 'online',
+                 ?, NULL, '{}',
+                 datetime('now'), datetime('now'))`,
+      ).run(runtimeId, `phase24-03o-rt-${runtimeId}`, `daemon-${runtimeId}`);
+      db.prepare(
+        `INSERT INTO agents (id, workspace_id, runtime_id, name, instructions,
+                             custom_env, custom_args, max_concurrent_tasks,
+                             visibility, status, created_at, updated_at)
+         VALUES (?, 'AQ', ?, ?, 'replay no reorder test',
+                 '{}', '[]', 6,
+                 'workspace', 'idle', datetime('now'), datetime('now'))`,
+      ).run(agentId, runtimeId, `phase24-03o-agent-${agentId}`);
+      db.prepare(
+        `INSERT INTO agent_task_queue
+           (id, workspace_id, issue_id, agent_id, runtime_id,
+            trigger_comment_id, status, priority,
+            metadata, created_at, updated_at)
+         VALUES (?, 'AQ', ?, ?, ?,
+                 NULL, 'running', 0,
+                 '{}', datetime('now', '-5 seconds'), datetime('now'))`,
+      ).run(taskId, issueId, agentId, runtimeId);
+      const insertMsg = db.prepare(
+        `INSERT INTO task_messages
+           (id, task_id, seq, type, tool, content, input, output, metadata, created_at)
+         VALUES (?, ?, ?, 'text', NULL, ?, NULL, NULL, '{}', datetime('now'))`,
+      );
+      for (let i = 1; i <= 20; i++) {
+        insertMsg.run(`m-${taskId}-${i}`, taskId, i, `seq ${i}`);
+      }
+    });
+
+    await page.goto(`http://localhost:5173/issues/${issueId}`);
+    await expect(page.getByTestId('issue-detail')).toBeVisible();
+    await expect(page.locator(`[data-task-panel="${taskId}"]`)).toBeVisible();
+    await expect(page.locator('[data-task-message-seq="20"]')).toBeVisible();
+
+    // Force the socket down.
+    await page.evaluate(() => {
+      const win = window as unknown as { __aquariumForceWsClose?: () => void };
+      if (typeof win.__aquariumForceWsClose !== 'function') {
+        throw new Error('__aquariumForceWsClose not available — reconnect test needs DEV or MODE=test build');
+      }
+      win.__aquariumForceWsClose();
+    });
+
+    // Wave A: seq 21..30 while disconnected.
+    writeDb((db) => {
+      const insertMsg = db.prepare(
+        `INSERT INTO task_messages
+           (id, task_id, seq, type, tool, content, input, output, metadata, created_at)
+         VALUES (?, ?, ?, 'text', NULL, ?, NULL, NULL, '{}', datetime('now'))`,
+      );
+      for (let i = 21; i <= 30; i++) {
+        insertMsg.run(`m-${taskId}-${i}`, taskId, i, `seq ${i}`);
+      }
+    });
+
+    // Small gap then wave B: seq 31..40.
+    await page.waitForTimeout(800);
+    writeDb((db) => {
+      const insertMsg = db.prepare(
+        `INSERT INTO task_messages
+           (id, task_id, seq, type, tool, content, input, output, metadata, created_at)
+         VALUES (?, ?, ?, 'text', NULL, ?, NULL, NULL, '{}', datetime('now'))`,
+      );
+      for (let i = 31; i <= 40; i++) {
+        insertMsg.run(`m-${taskId}-${i}`, taskId, i, `seq ${i}`);
+      }
+    });
+
+    // Reconnect + replay. The watermark at reconnect is 20 → server emits
+    // 21..40 in a single DESC-LIMIT-500-sorted-ASC stream.
+    await expect(page.locator('[data-task-message-seq="40"]')).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('[data-task-message-seq]')).toHaveCount(40);
+
+    // Extract the DOM order of data-task-message-seq attrs. useTaskStream's
+    // defence-in-depth sort guarantees strict ASC even if the server
+    // delivered them out of order. Assert monotonic.
+    const seqs = await page
+      .locator('[data-task-message-seq]')
+      .evaluateAll((els) => els.map((e) => Number(e.getAttribute('data-task-message-seq'))));
+    expect(seqs.length).toBe(40);
+    for (let i = 1; i < seqs.length; i++) {
+      expect(
+        seqs[i] > seqs[i - 1],
+        `DOM out of order at i=${i}: ${seqs[i - 1]} then ${seqs[i]}`,
+      ).toBe(true);
+    }
   });
 
   test.skip('truncation marker', async () => {
