@@ -1,0 +1,6 @@
+{"type":"system","subtype":"init","session_id":"sess-test-001","tools":["Read","Edit","Bash"]}
+{"type":"assistant","message":{"id":"msg_1","role":"assistant","content":[{"type":"text","text":"I'll read the file."}]}}
+{"type":"assistant","message":{"id":"msg_2","role":"assistant","content":[{"type":"tool_use","id":"toolu_01","name":"Read","input":{"file_path":"/tmp/x.txt"}}]}}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01","content":"hello 🔍","is_error":false}]}}
+{"type":"assistant","message":{"id":"msg_3","role":"assistant","content":[{"type":"text","text":"Done."}]}}
+{"type":"result","subtype":"success","is_error":false,"duration_ms":1234,"result":"done"}

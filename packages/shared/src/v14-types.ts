@@ -210,6 +210,46 @@ export interface DaemonRegisterResponse {
   runtimes: Runtime[];
 }
 
+// ── Daemon CLI agent-backend shared types (Phase 21) ─────────────────────────
+
+/**
+ * Unified discriminated union emitted by EVERY agent backend (Phase 21: claude;
+ * Phase 22: codex / openclaw / opencode / hermes). The daemon translates each
+ * backend's native stream into this shape before batching HTTP messages.
+ *
+ * `kind` is the discriminator. Every branch uses primitive / JSON-serialisable
+ * fields so the union round-trips through `/api/daemon/tasks/:id/messages`.
+ */
+export type AgentMessage =
+  | { kind: 'text'; text: string }
+  | { kind: 'thinking'; thinking: string }
+  | { kind: 'tool_use'; toolUseId: string; toolName: string; input: unknown }
+  | { kind: 'tool_result'; toolUseId: string; content: string; isError: boolean }
+  | { kind: 'error'; error: string };
+
+/**
+ * On-disk shape of `~/.aquarium/daemon.json`. All fields optional — the
+ * daemon overlays env vars + CLI flags + built-in defaults before using.
+ * Tokens MUST live here (or env) — NEVER on argv (PM7 leak via `ps aux`).
+ */
+export interface DaemonConfigFile {
+  server?: string;
+  token?: string;
+  deviceName?: string;
+  maxConcurrentTasks?: number;
+  pollIntervalMs?: number;
+  heartbeatIntervalMs?: number;
+  cancelPollIntervalMs?: number;
+  messageFlushIntervalMs?: number;
+  inactivityKillMs?: number;
+  gracefulKillMs?: number;
+  gracefulShutdownMs?: number;
+  logLevel?: 'debug' | 'info' | 'warn' | 'error';
+  backends?: {
+    claude?: { allow?: string[] };
+  };
+}
+
 /** Returned by POST /api/daemon/runtimes/:id/tasks/claim when a task is available. */
 export interface ClaimedTask extends AgentTask {
   agent: {
