@@ -1464,7 +1464,8 @@
     "credentials": "Credentials",
     "account": "Account",
     "systemConfig": "System Config",
-    "communityEdition": "Community Edition"
+    "communityEdition": "Community Edition",
+    "issues": "Issues"
   },
   "credentials": {
     "title": "Credential Management",
@@ -2382,6 +2383,58 @@
       "degraded": "{{name}} is degraded — may still be running from cache",
       "retry": "Retry",
       "integrityMismatch": "Integrity mismatch detected"
+    }
+  },
+  "issues": {
+    "board": {
+      "title": "Issues",
+      "actions": {
+        "create": "New issue",
+        "filter": "Filter",
+        "sort": "Sort",
+        "hideCompleted": "Hide completed"
+      },
+      "columns": {
+        "backlog": "Backlog",
+        "todo": "Todo",
+        "in_progress": "In Progress",
+        "done": "Done",
+        "blocked": "Blocked",
+        "cancelled": "Cancelled"
+      },
+      "columnCount": "{{count}}",
+      "priority": {
+        "urgent": "Urgent",
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low",
+        "none": "None"
+      },
+      "empty": {
+        "heading": "No issues yet",
+        "body": "Create your first issue to start assigning work to agents.",
+        "cta": "New issue"
+      },
+      "emptyColumn": "No issues",
+      "dropHere": "Drop to move here",
+      "noMatches": "No issues match your filters",
+      "clearFilters": "Clear filters",
+      "reorderFailed": "Couldn't move issue — please try again",
+      "statusChangeFailed": "Couldn't update status — please try again",
+      "reorderConflict": "Another session moved this issue — refreshing",
+      "offline": "Reconnecting…",
+      "loadFailed": "Couldn't load issues.",
+      "a11y": {
+        "picked": "Picked up issue \"{{title}}\"",
+        "movedWithin": "Issue \"{{title}}\" moved to position {{pos}} of {{total}} in {{column}}",
+        "movedAcross": "Issue \"{{title}}\" moved to {{column}} column, position {{pos}} of {{total}}",
+        "dropped": "Dropped \"{{title}}\" into {{column}}",
+        "cancelled": "Move cancelled. \"{{title}}\" returned to original position"
+      },
+      "tooltip": {
+        "dragHint": "Drag or press Space to move",
+        "keyboardHint": "Space to grab · ↑↓ to move · ← → to change column · Space to drop · Esc to cancel"
+      }
     }
   }
 }

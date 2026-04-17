@@ -1433,7 +1433,8 @@
     "credentials": "凭证管理",
     "account": "账号管理",
     "systemConfig": "系统配置",
-    "communityEdition": "社区版"
+    "communityEdition": "社区版",
+    "issues": "问题"
   },
   "assistantEdit": {
     "backButton": "返回我的助手",
@@ -2381,6 +2382,58 @@
       "fields": {
         "homeserver": "Homeserver URL",
         "accessToken": "Access Token"
+      }
+    }
+  },
+  "issues": {
+    "board": {
+      "title": "问题",
+      "actions": {
+        "create": "新建问题",
+        "filter": "筛选",
+        "sort": "排序",
+        "hideCompleted": "隐藏已完成"
+      },
+      "columns": {
+        "backlog": "待办池",
+        "todo": "待办",
+        "in_progress": "进行中",
+        "done": "已完成",
+        "blocked": "阻塞",
+        "cancelled": "已取消"
+      },
+      "columnCount": "{{count}}",
+      "priority": {
+        "urgent": "紧急",
+        "high": "高",
+        "medium": "中",
+        "low": "低",
+        "none": "无"
+      },
+      "empty": {
+        "heading": "暂无问题",
+        "body": "创建第一个问题以开始向智能体分配工作。",
+        "cta": "新建问题"
+      },
+      "emptyColumn": "暂无问题",
+      "dropHere": "拖放至此移动",
+      "noMatches": "没有符合筛选条件的问题",
+      "clearFilters": "清除筛选",
+      "reorderFailed": "无法移动问题 — 请重试",
+      "statusChangeFailed": "无法更新状态 — 请重试",
+      "reorderConflict": "其他会话已移动此问题 — 正在刷新",
+      "offline": "正在重连…",
+      "loadFailed": "无法加载问题。",
+      "a11y": {
+        "picked": "已拾起问题 \"{{title}}\"",
+        "movedWithin": "问题 \"{{title}}\" 移动至 {{column}} 的第 {{pos}}/{{total}} 位",
+        "movedAcross": "问题 \"{{title}}\" 移动至 {{column}} 列第 {{pos}}/{{total}} 位",
+        "dropped": "已将 \"{{title}}\" 放入 {{column}}",
+        "cancelled": "移动已取消。\"{{title}}\" 已返回原位"
+      },
+      "tooltip": {
+        "dragHint": "拖动或按空格键移动",
+        "keyboardHint": "空格拾起 · ↑↓ 移动 · ← → 切换列 · 空格放下 · Esc 取消"
       }
     }
   }

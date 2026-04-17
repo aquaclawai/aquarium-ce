@@ -1243,7 +1243,8 @@
     "systemConfig": "Configuración del sistema",
     "communityEdition": "Edicion Comunitaria",
     "chat": "Chat",
-    "orders": "Orders"
+    "orders": "Orders",
+    "issues": "Incidencias"
   },
   "aiTab": {
     "providerMode": {
@@ -2382,6 +2383,58 @@
       "last7Days": "Last 7 days",
       "amount": "Amount (¥)",
       "noData": "No trend data available"
+    }
+  },
+  "issues": {
+    "board": {
+      "title": "Incidencias",
+      "actions": {
+        "create": "Nueva incidencia",
+        "filter": "Filtrar",
+        "sort": "Ordenar",
+        "hideCompleted": "Ocultar completadas"
+      },
+      "columns": {
+        "backlog": "Pendiente",
+        "todo": "Por hacer",
+        "in_progress": "En progreso",
+        "done": "Hecho",
+        "blocked": "Bloqueado",
+        "cancelled": "Cancelado"
+      },
+      "columnCount": "{{count}}",
+      "priority": {
+        "urgent": "Urgente",
+        "high": "Alta",
+        "medium": "Media",
+        "low": "Baja",
+        "none": "Ninguna"
+      },
+      "empty": {
+        "heading": "Aún no hay incidencias",
+        "body": "Crea tu primera incidencia para empezar a asignar trabajo a los agentes.",
+        "cta": "Nueva incidencia"
+      },
+      "emptyColumn": "Sin incidencias",
+      "dropHere": "Soltar aquí para mover",
+      "noMatches": "Ninguna incidencia coincide con tus filtros",
+      "clearFilters": "Limpiar filtros",
+      "reorderFailed": "No se pudo mover la incidencia — inténtalo de nuevo",
+      "statusChangeFailed": "No se pudo actualizar el estado — inténtalo de nuevo",
+      "reorderConflict": "Otra sesión movió esta incidencia — actualizando",
+      "offline": "Reconectando…",
+      "loadFailed": "No se pudieron cargar las incidencias.",
+      "a11y": {
+        "picked": "Incidencia \"{{title}}\" tomada",
+        "movedWithin": "Incidencia \"{{title}}\" movida a la posición {{pos}} de {{total}} en {{column}}",
+        "movedAcross": "Incidencia \"{{title}}\" movida a la columna {{column}}, posición {{pos}} de {{total}}",
+        "dropped": "\"{{title}}\" soltada en {{column}}",
+        "cancelled": "Movimiento cancelado. \"{{title}}\" volvió a la posición original"
+      },
+      "tooltip": {
+        "dragHint": "Arrastra o presiona Espacio para mover",
+        "keyboardHint": "Espacio para tomar · ↑↓ para mover · ← → para cambiar de columna · Espacio para soltar · Esc para cancelar"
+      }
     }
   }
 }

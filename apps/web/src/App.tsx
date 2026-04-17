@@ -53,6 +53,7 @@ const AssistantChatPage = lazy(() => import('./pages/AssistantChatPage').then(m 
 const AssistantVersionsPage = lazy(() => import('./pages/AssistantVersionsPage').then(m => ({ default: m.AssistantVersionsPage })));
 const AssistantEditPage = lazy(() => import('./pages/AssistantEditPage').then(m => ({ default: m.AssistantEditPage })));
 const ExportWizardPage = lazy(() => import('./pages/ExportWizardPage').then(m => ({ default: m.ExportWizardPage })));
+const IssuesBoardPage = lazy(() => import('./pages/IssuesBoardPage').then(m => ({ default: m.IssuesBoardPage })));
 
 // Docs pages (separate chunk)
 const DocsLayout = lazy(() => import('./pages/docs/DocsLayout').then(m => ({ default: m.DocsLayout })));
@@ -96,6 +97,7 @@ function App() {
             <Route path="/assistants/:id/chat" element={<AssistantChatPage />} />
             <Route path="/assistants/:id/versions" element={<AssistantVersionsPage />} />
             <Route path="/assistants/:id/edit" element={<AssistantEditPage />} />
+            <Route path="/issues" element={<IssuesBoardPage />} />
             <Route path="/export/:id" element={<ExportWizardPage />} />
             <Route path="/create" element={<CreateWizardPage />} />
             <Route path="/group-chats" element={<GroupChatsListPage />} />

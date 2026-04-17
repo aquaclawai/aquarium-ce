@@ -1243,7 +1243,8 @@
     "systemConfig": "Configuration système",
     "communityEdition": "Edition Communautaire",
     "chat": "Chat",
-    "orders": "Orders"
+    "orders": "Orders",
+    "issues": "Tickets"
   },
   "aiTab": {
     "providerMode": {
@@ -2382,6 +2383,58 @@
       "last7Days": "Last 7 days",
       "amount": "Amount (¥)",
       "noData": "No trend data available"
+    }
+  },
+  "issues": {
+    "board": {
+      "title": "Tickets",
+      "actions": {
+        "create": "Nouveau ticket",
+        "filter": "Filtrer",
+        "sort": "Trier",
+        "hideCompleted": "Masquer les terminés"
+      },
+      "columns": {
+        "backlog": "Backlog",
+        "todo": "À faire",
+        "in_progress": "En cours",
+        "done": "Terminé",
+        "blocked": "Bloqué",
+        "cancelled": "Annulé"
+      },
+      "columnCount": "{{count}}",
+      "priority": {
+        "urgent": "Urgent",
+        "high": "Haute",
+        "medium": "Moyenne",
+        "low": "Basse",
+        "none": "Aucune"
+      },
+      "empty": {
+        "heading": "Aucun ticket pour le moment",
+        "body": "Créez votre premier ticket pour commencer à assigner du travail aux agents.",
+        "cta": "Nouveau ticket"
+      },
+      "emptyColumn": "Aucun ticket",
+      "dropHere": "Déposer ici pour déplacer",
+      "noMatches": "Aucun ticket ne correspond à vos filtres",
+      "clearFilters": "Effacer les filtres",
+      "reorderFailed": "Impossible de déplacer le ticket — veuillez réessayer",
+      "statusChangeFailed": "Impossible de mettre à jour le statut — veuillez réessayer",
+      "reorderConflict": "Une autre session a déplacé ce ticket — actualisation",
+      "offline": "Reconnexion…",
+      "loadFailed": "Impossible de charger les tickets.",
+      "a11y": {
+        "picked": "Ticket \"{{title}}\" saisi",
+        "movedWithin": "Ticket \"{{title}}\" déplacé à la position {{pos}} sur {{total}} dans {{column}}",
+        "movedAcross": "Ticket \"{{title}}\" déplacé vers la colonne {{column}}, position {{pos}} sur {{total}}",
+        "dropped": "\"{{title}}\" déposé dans {{column}}",
+        "cancelled": "Déplacement annulé. \"{{title}}\" est revenu à sa position d'origine"
+      },
+      "tooltip": {
+        "dragHint": "Glisser ou appuyer sur Espace pour déplacer",
+        "keyboardHint": "Espace pour saisir · ↑↓ pour déplacer · ← → pour changer de colonne · Espace pour déposer · Échap pour annuler"
+      }
     }
   }
 }

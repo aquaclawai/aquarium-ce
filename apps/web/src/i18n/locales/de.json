@@ -1243,7 +1243,8 @@
     "systemConfig": "Systemkonfiguration",
     "communityEdition": "Community Edition",
     "chat": "Chat",
-    "orders": "Orders"
+    "orders": "Orders",
+    "issues": "Tickets"
   },
   "aiTab": {
     "providerMode": {
@@ -2382,6 +2383,58 @@
       "last7Days": "Last 7 days",
       "amount": "Amount (¥)",
       "noData": "No trend data available"
+    }
+  },
+  "issues": {
+    "board": {
+      "title": "Tickets",
+      "actions": {
+        "create": "Neues Ticket",
+        "filter": "Filtern",
+        "sort": "Sortieren",
+        "hideCompleted": "Abgeschlossene ausblenden"
+      },
+      "columns": {
+        "backlog": "Backlog",
+        "todo": "Zu erledigen",
+        "in_progress": "In Bearbeitung",
+        "done": "Erledigt",
+        "blocked": "Blockiert",
+        "cancelled": "Abgebrochen"
+      },
+      "columnCount": "{{count}}",
+      "priority": {
+        "urgent": "Dringend",
+        "high": "Hoch",
+        "medium": "Mittel",
+        "low": "Niedrig",
+        "none": "Keine"
+      },
+      "empty": {
+        "heading": "Noch keine Tickets",
+        "body": "Erstellen Sie Ihr erstes Ticket, um Agenten Arbeit zuzuweisen.",
+        "cta": "Neues Ticket"
+      },
+      "emptyColumn": "Keine Tickets",
+      "dropHere": "Hier ablegen, um zu verschieben",
+      "noMatches": "Keine Tickets entsprechen Ihren Filtern",
+      "clearFilters": "Filter löschen",
+      "reorderFailed": "Ticket konnte nicht verschoben werden — bitte erneut versuchen",
+      "statusChangeFailed": "Status konnte nicht aktualisiert werden — bitte erneut versuchen",
+      "reorderConflict": "Eine andere Sitzung hat dieses Ticket verschoben — wird aktualisiert",
+      "offline": "Verbindung wird wiederhergestellt…",
+      "loadFailed": "Tickets konnten nicht geladen werden.",
+      "a11y": {
+        "picked": "Ticket \"{{title}}\" aufgenommen",
+        "movedWithin": "Ticket \"{{title}}\" zu Position {{pos}} von {{total}} in {{column}} verschoben",
+        "movedAcross": "Ticket \"{{title}}\" in Spalte {{column}}, Position {{pos}} von {{total}} verschoben",
+        "dropped": "\"{{title}}\" in {{column}} abgelegt",
+        "cancelled": "Verschieben abgebrochen. \"{{title}}\" an ursprüngliche Position zurückgesetzt"
+      },
+      "tooltip": {
+        "dragHint": "Ziehen oder Leertaste drücken, um zu verschieben",
+        "keyboardHint": "Leertaste zum Aufnehmen · ↑↓ zum Verschieben · ← → zum Spaltenwechsel · Leertaste zum Ablegen · Esc zum Abbrechen"
+      }
     }
   }
 }

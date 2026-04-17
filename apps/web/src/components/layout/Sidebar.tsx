@@ -18,6 +18,7 @@ import {
   KeyRound,
   FileText,
   ShieldCheck,
+  Kanban,
 } from 'lucide-react';
 import {
   Sidebar as SidebarRoot,
@@ -97,6 +98,7 @@ function NavMain() {
 
   const workspaceItems: NavItemDef[] = [
     { to: '/dashboard', icon: LayoutDashboard, label: t('sidebar.dashboard') },
+    { to: '/issues', icon: Kanban, label: t('sidebar.issues') },
     { to: '/templates', icon: Store, label: t('sidebar.skills') },
     { to: '/assistants', icon: Bot, label: t('sidebar.assistants') },
   ];
