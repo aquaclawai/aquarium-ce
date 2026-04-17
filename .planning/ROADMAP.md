@@ -425,6 +425,16 @@ Plans:
 3. Board with 200+ issues maintains 60 FPS during drag (virtualization kicks in above 100 issues)
 4. Keyboard users can move cards between columns using arrow keys (demonstrated via Playwright keyboard E2E)
 5. All board UI strings are translated across en/zh/fr/de/es/it
+**Plans:** 6 plans
+
+Plans:
+- [ ] 23-00-PLAN.md — Wave 0 foundation: 5 npm deps (@dnd-kit x4 + @tanstack/react-virtual) + z-index CSS ladder + Toaster zIndex + i18n parity script + CI wiring + WsEventType extension + component dir scaffold + Playwright spec stub + A1 WS-semantics verification note
+- [ ] 23-01-PLAN.md — Wave 1 read-only slice: /issues route + sidebar nav + IssuesBoardPage + IssueBoard/Column/Card + useBoardReconciler scaffold + WS subscribe('AQ') + issues.board.* en namespace + placeholders in 5 locales (UI-01 read-only)
+- [ ] 23-02-PLAN.md — Wave 2 DnD + optimistic reorder + WS deferral + own-echo skip: useIssueBoard hook + DndContext + SortableContext + IssueCardOverlay + Playwright concurrent-reorder + own-echo scenarios (UI-01 mouse + UI-02 / UX1 HARD)
+- [ ] 23-03-PLAN.md — Wave 3 virtualization: per-column @tanstack/react-virtual above 100 items + overscan-during-drag + Playwright virtualization + virtualization drag scenarios (UI-03 / UX4)
+- [ ] 23-04-PLAN.md — Wave 4 keyboard a11y polish: DndContext accessibility prop with i18n announcements + screenReaderInstructions + Playwright keyboard-drag + a11y-announcer scenarios (UX2)
+- [ ] 23-05-PLAN.md — Wave 5 i18n polish: translate issues.board.* + sidebar.issues in zh/fr/de/es/it (UX5)
+
 
 ### Phase 24: Issue Detail UI + Task Message Streaming
 **Goal:** Users open an issue, see its full timeline (description + comments + system events) and watch any running task stream live tool-use / tool-result / text / thinking messages over WebSocket, with automatic replay on reconnect.
@@ -488,7 +498,7 @@ Plans:
 | 20. Hosted-Instance Driver | v1.4 | 3/3 | Complete    | 2026-04-17 |
 | 21. Daemon CLI + claude-code | v1.4 | 0/4 | Not started | - |
 | 22. Remaining Agent Backends | v1.4 | 4/4 | Complete    | 2026-04-17 |
-| 23. Issue Board UI (Kanban) | v1.4 | 0/? | Not started | - |
+| 23. Issue Board UI (Kanban) | v1.4 | 0/6 | Not started | - |
 | 24. Issue Detail + Streaming | v1.4 | 0/? | Not started | - |
 | 25. Management UIs | v1.4 | 0/? | Not started | - |
 | 26. Integration, E2E, Release | v1.4 | 0/? | Not started | - |
