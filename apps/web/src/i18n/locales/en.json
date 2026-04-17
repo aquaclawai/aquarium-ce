@@ -2458,11 +2458,17 @@
       "priority": "Priority",
       "status": "Status",
       "dueDate": "Due",
+      "noDescription": "No description",
       "actions": {
         "edit": "Edit",
         "assignAgent": "Assign agent",
         "changeStatus": "Change status",
         "delete": "Delete issue"
+      },
+      "confirmDelete": {
+        "title": "Delete this issue?",
+        "body": "This cannot be undone. All comments and task history will be removed.",
+        "confirm": "Delete"
       },
       "comments": {
         "header": "Comments",

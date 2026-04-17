@@ -320,7 +320,10 @@ export type WsEventType =
   | 'task:dispatched'
   | 'task:failed'
   | 'task:message'
-  | 'task:started';
+  | 'task:started'
+  | 'comment:posted'
+  | 'comment:updated'
+  | 'comment:deleted';
 
 export interface WsMessage {
   type: WsEventType;
