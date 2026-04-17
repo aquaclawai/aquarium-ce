@@ -343,12 +343,12 @@ Plans:
 3. Daemon polling at 1 req/sec for 5 minutes against `/api/daemon/runtimes/:id/tasks/claim` is never blocked by the global 300-req/15-min rate limiter
 4. Revoked daemon tokens return 401 on the next request within 1 second (no caching leak)
 5. Daemon token creation returns the plaintext token exactly once; subsequent list endpoints show only the last-used timestamp and hashed prefix
-**Plans:** 3/4 plans complete
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 19-01-PLAN.md — requireDaemonAuth middleware + daemon-token-store service + AUTH1 patch in requireAuth (DAEMON-07, DAEMON-09)
 - [x] 19-02-PLAN.md — 9 daemon REST endpoints + rate-limit topology (skip + per-token bucket) (DAEMON-01..06, DAEMON-08)
-- [ ] 19-03-PLAN.md — 3 user-facing token-management endpoints (plaintext-once contract) (DAEMON-10)
+- [x] 19-03-PLAN.md — 3 user-facing token-management endpoints (plaintext-once contract) (DAEMON-10)
 - [x] 19-04-PLAN.md — Playwright E2E spec covering SC-1..SC-5 + full-story happy path
 
 
@@ -384,6 +384,14 @@ Plans:
 3. Cancelling a running task propagates SIGTERM → SIGKILL (10 s grace) and leaves no zombie child processes (verified by `pgrep` after cancel)
 4. Unhandled promise rejection in the daemon marks the in-flight task as failed, writes `~/.aquarium/daemon.crash.log`, and exits cleanly (not a process crash that leaves state in limbo)
 5. Unit tests under `apps/server/tests/unit/` using `node --test` cover: NDJSON parsing of a sample Claude stream transcript, kill-escalation timing, bounded semaphore acquire/release, token hashing + timing-safe equality
+
+**Plans:** 4 plans
+
+Plans:
+- [ ] 21-01-PLAN.md — Shared types + primitives (Semaphore + kill-escalation + parseNdjson) + Wave 0 scaffolding (fixtures, test:unit script, e2e stub)
+- [ ] 21-02-PLAN.md — CLI commander dispatch + daemon config (0o600 enforcement) + detectClaude + DaemonHttpClient (execa + commander deps added)
+- [ ] 21-03-PLAN.md — Claude backend (spawn + control_request + audit) + StreamBatcher + cancel-poller + poll-loop + heartbeat + crash-handler + main.ts orchestrator
+- [ ] 21-04-PLAN.md — Integration spec: full claim→stream→complete + cancel-zombie-free + crash-log via spawned daemon + fake-claude stub (CI-skipped, autonomous:false)
 
 ### Phase 22: Remaining Agent Backends
 **Goal:** Codex, OpenClaw, OpenCode, and Hermes backends implement the same stream interface as Phase 21's Claude backend so users with any of these CLIs installed get the same task-delegation experience with no code-path divergence.
@@ -468,9 +476,9 @@ Plans:
 | 16. Runtime Registry + Bridge | v1.4 | 4/4 | Complete    | 2026-04-16 |
 | 17. Agent/Issue/Comment Services | v1.4 | 5/5 | Complete    | 2026-04-16 |
 | 18. Task Queue & Dispatch | v1.4 | 4/4 | Complete    | 2026-04-16 |
-| 19. Daemon REST API & Auth | v1.4 | 3/4 | Complete    | 2026-04-16 |
+| 19. Daemon REST API & Auth | v1.4 | 4/4 | Complete   | 2026-04-17 |
 | 20. Hosted-Instance Driver | v1.4 | 3/3 | Complete    | 2026-04-17 |
-| 21. Daemon CLI + claude-code | v1.4 | 0/? | Not started | - |
+| 21. Daemon CLI + claude-code | v1.4 | 0/4 | Not started | - |
 | 22. Remaining Agent Backends | v1.4 | 0/? | Not started | - |
 | 23. Issue Board UI (Kanban) | v1.4 | 0/? | Not started | - |
 | 24. Issue Detail + Streaming | v1.4 | 0/? | Not started | - |
