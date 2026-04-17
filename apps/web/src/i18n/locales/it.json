@@ -2395,7 +2395,7 @@
         "hideCompleted": "Nascondi completati"
       },
       "columns": {
-        "backlog": "Backlog",
+        "backlog": "Arretrati",
         "todo": "Da fare",
         "in_progress": "In corso",
         "done": "Completato",
@@ -2411,7 +2411,7 @@
         "none": "Nessuna"
       },
       "empty": {
-        "heading": "Ancora nessun ticket",
+        "heading": "Nessun ticket ancora",
         "body": "Crea il tuo primo ticket per iniziare ad assegnare lavoro agli agenti.",
         "cta": "Nuovo ticket"
       },
@@ -2421,13 +2421,13 @@
       "clearFilters": "Cancella filtri",
       "reorderFailed": "Impossibile spostare il ticket — riprova",
       "statusChangeFailed": "Impossibile aggiornare lo stato — riprova",
-      "reorderConflict": "Un'altra sessione ha spostato questo ticket — aggiornamento",
+      "reorderConflict": "Un'altra sessione ha spostato questo ticket — aggiornamento in corso",
       "offline": "Riconnessione in corso…",
       "loadFailed": "Impossibile caricare i ticket.",
       "a11y": {
-        "picked": "Ticket \"{{title}}\" preso",
+        "picked": "Ticket \"{{title}}\" selezionato",
         "movedWithin": "Ticket \"{{title}}\" spostato alla posizione {{pos}} di {{total}} in {{column}}",
-        "movedAcross": "Ticket \"{{title}}\" spostato nella colonna {{column}}, posizione {{pos}} di {{total}}",
+        "movedAcross": "Ticket \"{{title}}\" spostato alla colonna {{column}}, posizione {{pos}} di {{total}}",
         "dropped": "\"{{title}}\" rilasciato in {{column}}",
         "cancelled": "Spostamento annullato. \"{{title}}\" tornato alla posizione originale"
       },
