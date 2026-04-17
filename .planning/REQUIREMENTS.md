@@ -135,8 +135,8 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 - [ ] **CLI-05**: Any unhandled rejection / exception in the daemon marks in-flight tasks failed, writes `~/.aquarium/daemon.crash.log`, and exits cleanly
 - [ ] **CLI-06**: Server-side task cancellation is detected within 5 s via a polling cancel loop and propagates via AbortSignal to the child process
 - [ ] **BACKEND-01**: `claude-code` backend spawns the CLI with `--output-format stream-json` and parses NDJSON into unified `AgentMessage{text|thinking|tool_use|tool_result|error}` events
-- [ ] **BACKEND-02**: `codex` backend spawns `codex app-server --listen stdio://` and consumes JSON-RPC events through the same unified `AgentMessage` interface
-- [ ] **BACKEND-03**: `openclaw`, `opencode`, `hermes` backends each implement the same `Backend` interface with provider-specific stream parsing
+- [x] **BACKEND-02**: `codex` backend spawns `codex app-server --listen stdio://` and consumes JSON-RPC events through the same unified `AgentMessage` interface
+- [x] **BACKEND-03**: `openclaw`, `opencode`, `hermes` backends each implement the same `Backend` interface with provider-specific stream parsing
 - [ ] **BACKEND-04**: Child processes are killed via SIGTERM → SIGKILL escalation (10 s grace) with process-group kill to prevent zombies
 - [ ] **BACKEND-05**: The daemon-side spawn prepends its own binary directory to PATH so the child CLI always resolves `aquarium`
 - [ ] **BACKEND-06**: Stream-json parsers use `node:readline` (`crlfDelay: Infinity`, `setEncoding('utf8')`) with a 60 s inactivity-kill watchdog

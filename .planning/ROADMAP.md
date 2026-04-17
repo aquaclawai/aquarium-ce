@@ -405,13 +405,13 @@ Plans:
 3. Switching an agent's runtime from a Claude daemon to a Codex daemon produces no changes to `task_message` schema or UI rendering (verified by manual E2E)
 4. All backends honour the cancel contract: SIGTERM triggers `state='cancelled'` within 10 s or escalates to SIGKILL
 
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
-- [ ] 22-01-PLAN.md — Backend interface extraction + buildChildEnv (PM7) + detectBackends registry + claude refactor + Wave 0 fixtures/fake-binaries (BACKEND-02 + BACKEND-03 foundation)
-- [ ] 22-02-PLAN.md — Codex backend: JSON-RPC handshake + approval response + turn/interrupt cancel + 9 unit tests (BACKEND-02)
-- [ ] 22-03-PLAN.md — OpenCode + OpenClaw backends: NDJSON mappers + detect + 13 unit tests (BACKEND-03 part 1)
-- [ ] 22-04-PLAN.md — Hermes stub + main.ts dispatch rewrite + config per-backend allow-lists + 3 new @integration scenarios (BACKEND-03 part 2)
+- [x] 22-01-PLAN.md — Backend interface extraction + buildChildEnv (PM7) + detectBackends registry + claude refactor + Wave 0 fixtures/fake-binaries (BACKEND-02 + BACKEND-03 foundation)
+- [x] 22-02-PLAN.md — Codex backend: JSON-RPC handshake + approval response + turn/interrupt cancel + 9 unit tests (BACKEND-02)
+- [x] 22-03-PLAN.md — OpenCode + OpenClaw backends: NDJSON mappers + detect + 13 unit tests (BACKEND-03 part 1)
+- [x] 22-04-PLAN.md — Hermes stub + main.ts dispatch rewrite + config per-backend allow-lists + 3 new @integration scenarios (BACKEND-03 part 2)
 
 ### Phase 23: Issue Board UI (Kanban)
 **Goal:** Users see all issues in a kanban board with one column per status, smooth drag-and-drop reordering via @dnd-kit, keyboard accessibility, and WebSocket reconciliation with concurrent edits from other sessions.
@@ -487,7 +487,7 @@ Plans:
 | 19. Daemon REST API & Auth | v1.4 | 4/4 | Complete   | 2026-04-17 |
 | 20. Hosted-Instance Driver | v1.4 | 3/3 | Complete    | 2026-04-17 |
 | 21. Daemon CLI + claude-code | v1.4 | 0/4 | Not started | - |
-| 22. Remaining Agent Backends | v1.4 | 0/4 | Not started | - |
+| 22. Remaining Agent Backends | v1.4 | 4/4 | Complete    | 2026-04-17 |
 | 23. Issue Board UI (Kanban) | v1.4 | 0/? | Not started | - |
 | 24. Issue Detail + Streaming | v1.4 | 0/? | Not started | - |
 | 25. Management UIs | v1.4 | 0/? | Not started | - |
