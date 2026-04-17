@@ -19,6 +19,7 @@ import { runDailySnapshots } from './services/snapshot-store.js';
 import { reconcileFromInstances as runtimeBridgeReconcile } from './task-dispatch/runtime-bridge.js';
 import { startRuntimeOfflineSweeper } from './task-dispatch/offline-sweeper.js';
 import { startTaskReaper } from './task-dispatch/task-reaper.js';
+import { startTaskMessageBatcher } from './task-dispatch/task-message-batcher.js';
 import { failOrphanedHostedTasks } from './task-dispatch/hosted-orphan-sweep.js';
 import { startHostedTaskWorker } from './task-dispatch/hosted-task-worker.js';
 import {
@@ -344,6 +345,15 @@ export async function startServer(server: HttpServer, options: StartServerOption
     // Must start BEFORE server.listen so a stale task from a previous server crash
     // is already being reaped when the first daemon registers.
     startTaskReaper();
+
+    // Step 9c.1: task_messages batcher — 500 ms tick that flushes the
+    // in-memory buffer populated by the daemon /tasks/:id/messages endpoint
+    // to the `task_messages` table. Without this, the batcher's internal
+    // Map grows unbounded and no messages are ever persisted. Discovered as
+    // a pre-existing gap during Phase 21-04 integration testing (Rule 3
+    // blocker — SC-2 asserts ≥ 3 task_messages rows, which is only possible
+    // once this ticker runs).
+    startTaskMessageBatcher();
 
     // Step 9d: hosted-task worker — 2s tick that dispatches queued tasks for
     // online hosted_instance runtimes via gatewayCall('chat.send', ...)

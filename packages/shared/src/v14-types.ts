@@ -193,7 +193,14 @@ export interface DaemonTokenCreatedResponse {
 // ── Daemon REST wire types (Phase 19) ───────────────────────────────────────
 
 export interface DaemonRegisterRequest {
-  workspaceId: string;
+  /**
+   * Optional — server infers the daemon's workspace from the bearer token
+   * (Phase 19 daemon-auth middleware attaches `req.daemonAuth.workspaceId`).
+   * If supplied, the /register route's Q1 defence-in-depth guard rejects on
+   * mismatch. Daemons SHOULD omit this field unless they've been issued a
+   * cross-workspace credential (v1.5+ — not in CE).
+   */
+  workspaceId?: string;
   daemonId: string;
   deviceName: string;
   cliVersion: string;

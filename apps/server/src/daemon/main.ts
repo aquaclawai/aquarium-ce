@@ -56,7 +56,7 @@ import {
   type InFlightRecord,
 } from './crash-handler.js';
 import type { DaemonStartOpts } from '../cli.js';
-import type { ClaimedTask, Runtime } from '@aquarium/shared';
+import type { ClaimedTask, DaemonRegisterRequest, Runtime } from '@aquarium/shared';
 
 interface InFlight extends InFlightRecord {
   abortAc: AbortController;
@@ -104,8 +104,15 @@ export async function startDaemon(opts: DaemonStartOpts): Promise<void> {
   });
 
   // 4. Register with server.
-  const registerBody = {
-    workspaceId: '',
+  //
+  // workspaceId is server-inferred from the bearer token (req.daemonAuth
+  // workspaceId in the /register route — Phase 19 auth middleware). When
+  // the daemon supplies a string value, the server's Q1 defence-in-depth
+  // guard compares against the token's workspace and 400s on mismatch, so
+  // we deliberately OMIT workspaceId from the body. The Phase 21-04
+  // deviation updates `DaemonRegisterRequest` to make `workspaceId`
+  // optional so this is type-safe without casts.
+  const registerBody: DaemonRegisterRequest = {
     daemonId,
     deviceName: config.deviceName,
     cliVersion: readPackageVersion(),
@@ -121,8 +128,6 @@ export async function startDaemon(opts: DaemonStartOpts): Promise<void> {
   };
   const { runtimes } = await http.register(registerBody);
   logSafe(`[daemon] registered ${runtimes.length} runtime(s)`);
-
-  maybeTestCrashAt('after-register');
 
   // 5. In-flight tracking for crash handler + graceful shutdown.
   const inFlight = new Map<string, InFlight>();
@@ -151,6 +156,11 @@ export async function startDaemon(opts: DaemonStartOpts): Promise<void> {
       try { unlinkSync(pidFile); } catch { /* ignore */ }
     },
   });
+
+  // Plan 21-04 test hook: deliberately fires AFTER registerProcessHandlers
+  // so the resulting unhandledRejection reaches handleFatal (which writes
+  // daemon.crash.log). See `maybeTestCrashAt` header for semantics.
+  maybeTestCrashAt('after-register');
 
   if (!claude || runtimes.length === 0) {
     logSafe('[daemon] no runtimes registered; idling (heartbeats continue so server keeps daemon "online")');
@@ -268,18 +278,33 @@ function readPackageVersion(): string {
  *
  * Reads `process.env.AQUARIUM_DAEMON_TEST_CRASH_AT` — the ONE sanctioned
  * `process.env` access outside `config.ts` in the whole daemon module tree.
- * Documented in 21-03 SUMMARY under "Deviations". Accepts:
- *   • 'after-register' — throws right after http.register resolves
+ * Accepts:
+ *   • 'after-register' — throws right after registerProcessHandlers wires up
  *   • 'before-poll'    — throws before startPollLoop is called
  *   • 'mid-task'       — throws inside the first runTask before the backend runs
  *
- * Any other value (or undefined) is a no-op. This keeps production runs
- * free of non-standard behavior while giving 21-04 a deterministic way to
- * exercise the `handleFatal` → `failTask` → `process.exit(1)` flow.
+ * The throw is scheduled via `queueMicrotask` so it escapes the awaited
+ * `startDaemon` promise chain and reaches the process-level
+ * `unhandledRejection` handler (wired by `registerProcessHandlers`).
+ * That handler calls `handleFatal` → `appendFileSync(daemon.crash.log)` →
+ * `process.exit(1)`, which is the flow Plan 21-04's SC-4 asserts.
+ *
+ * Plan 21-04 deviation (Rule 1 — Bug): the original 21-03 implementation
+ * threw synchronously inside `startDaemon`; the throw was caught by
+ * cli.ts's `.parseAsync().catch()`, never reaching `unhandledRejection`
+ * and therefore never writing `daemon.crash.log`. The 21-04 integration
+ * spec requires the crash log to exist, so this function now uses
+ * `queueMicrotask` to route the throw around `startDaemon`'s awaited
+ * callers. Production is unaffected — the hook is only active when the
+ * env var is explicitly set to a recognised marker.
+ *
+ * Any other value (or undefined) is a no-op.
  */
 function maybeTestCrashAt(marker: 'after-register' | 'before-poll' | 'mid-task'): void {
   if (process.env.AQUARIUM_DAEMON_TEST_CRASH_AT === marker) {
-    throw new Error(`AQUARIUM_DAEMON_TEST_CRASH_AT=${marker} — synthetic crash`);
+    queueMicrotask(() => {
+      throw new Error(`AQUARIUM_DAEMON_TEST_CRASH_AT=${marker} — synthetic crash`);
+    });
   }
 }
 

@@ -27,6 +27,7 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "NODE_OPTIONS=--no-experimental-require-module tsx --test 'tests/unit/**/*.test.ts'",
     "test:unit:watch": "NODE_OPTIONS=--no-experimental-require-module tsx --test --watch 'tests/unit/**/*.test.ts'",
+    "test:integration": "cd ../.. && CI=false npx playwright test tests/e2e/daemon-integration.spec.ts --grep @integration --project chromium",
     "migrate": "NODE_OPTIONS=--no-experimental-require-module tsx src/db/run-migrations.ts",
     "migrate:make": "knex migrate:make --knexfile src/db/knexfile.ts",
     "prepublishOnly": "npm run build -w @aquarium/shared && npm run build:ce -w @aquarium/web && npm run build && shx mkdir -p dist/web-dist && shx cp -r ../web/dist/* dist/web-dist/ && shx mkdir -p dist/node_modules/@aquarium/shared && shx cp ../../packages/shared/package.json dist/node_modules/@aquarium/shared/ && shx cp -r ../../packages/shared/dist dist/node_modules/@aquarium/shared/"

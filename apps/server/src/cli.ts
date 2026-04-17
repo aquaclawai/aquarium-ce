@@ -66,6 +66,22 @@ export function buildProgram(handlers?: CliHandlers): Command {
   const program = new Command();
   program.name('aquarium').version(readVersion());
 
+  // Scope root-program options to the root command only. Without this,
+  // commander v14 lets global options like `--data-dir` be consumed at the
+  // parent level even when they appear AFTER a subcommand (e.g.
+  // `aquarium daemon start --data-dir /tmp`), which clobbered the daemon
+  // subcommand's own `--data-dir` flag. Per
+  // https://github.com/tj/commander.js/blob/HEAD/docs/options-in-subcommands.md,
+  // `enablePositionalOptions()` on the parent + the child's own matching
+  // `option()` definitions let each subcommand own its flag space.
+  //
+  // Plan 21-04 deviation (Rule 1 — Bug): before this fix, `--data-dir` was
+  // silently consumed by the root, landing as undefined in DaemonStartOpts
+  // and letting loadDaemonConfig fall through to `~/.aquarium` (breaking
+  // the SC-4 integration-test assertion that crash logs land in the
+  // test's tmpdir).
+  program.enablePositionalOptions();
+
   program
     .option('--port <p>', 'server port', '3001')
     .option('--data-dir <path>', 'data directory')
