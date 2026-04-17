@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -13,9 +13,14 @@ import type { UpdateIssuePatch } from '../components/issues/detail/IssueActionSi
 import { TaskPanel } from '../components/issues/detail/TaskPanel';
 import { ReconnectBanner } from '../components/issues/detail/ReconnectBanner';
 import { useTaskStream } from '../components/issues/detail/useTaskStream';
+import {
+  ChatComposer,
+  type ChatSubmitArgs,
+  type ChatSubmitResult,
+} from '../components/issues/detail/ChatComposer';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import type { Issue, IssueStatus } from '@aquarium/shared';
+import type { AgentTask, Comment, Issue, IssueStatus } from '@aquarium/shared';
 
 /**
  * Route component for /issues/:id. Wires useIssueDetail → IssueHeader +
@@ -32,10 +37,22 @@ export function IssueDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { issue, comments, latestTask, loading, error, refetch } = useIssueDetail(id ?? '');
+  const { issue, comments, latestTask, overrideLatestTask, loading, error, refetch } =
+    useIssueDetail(id ?? '');
   // Lifted from TaskPanel so the page-level ReconnectBanner and TaskPanel both
   // read the same stream state (single source of truth). Phase 24-03 §D.
   const stream = useTaskStream({ taskId: latestTask?.id ?? null });
+
+  // Phase 24-05 / CHAT-01: anchor chat submissions to the most-recent user
+  // comment. 17-04 treats triggerCommentId as the anchor signal (the server
+  // still writes the NEWLY-created comment's id as the task's
+  // trigger_comment_id — see createUserComment line 149). On the first chat
+  // turn there is no prior user comment; passing null still enqueues a task
+  // because the server keys on "triggerCommentId is truthy" to decide.
+  const lastUserCommentId = useMemo(() => {
+    const userComments = comments.filter((c) => c.authorType === 'user');
+    return userComments.length > 0 ? userComments[userComments.length - 1].id : null;
+  }, [comments]);
 
   // Set document.title while this page is mounted; restore on unmount.
   useEffect(() => {
@@ -121,6 +138,29 @@ export function IssueDetailPage() {
     // Wave 3 wires the inline-edit flow; Wave 1 leaves it as a no-op.
   }, []);
 
+  // Phase 24-05 / CHAT-01 — ChatComposer submit handler.
+  //   1. POST the user comment with triggerCommentId (anchor signal per 17-04).
+  //   2. Server returns { comment, enqueuedTask }.
+  //   3. overrideLatestTask gives TaskPanel an optimistic hand-off — the
+  //      stream starts immediately without waiting for the task:dispatched WS.
+  //   4. refetch() keeps the local comments list consistent even in the rare
+  //      case where comment:posted is dropped (defence-in-depth).
+  const handleChatSubmit = useCallback(
+    async (args: ChatSubmitArgs): Promise<ChatSubmitResult> => {
+      if (!id) throw new Error('no issue id');
+      const data = await api.post<{ comment: Comment; enqueuedTask: AgentTask | null }>(
+        `/issues/${id}/comments`,
+        { content: args.content, triggerCommentId: args.triggerCommentId },
+      );
+      if (data.enqueuedTask) {
+        overrideLatestTask(data.enqueuedTask);
+      }
+      refetch();
+      return { comment: data.comment, enqueuedTask: data.enqueuedTask };
+    },
+    [id, refetch, overrideLatestTask],
+  );
+
   if (loading && !issue) {
     return (
       <div className="p-6 max-w-[1200px] mx-auto space-y-4" data-testid="issue-detail-loading">
@@ -187,7 +227,11 @@ export function IssueDetailPage() {
             loadingIds={new Set()}
           />
           <TaskPanel issueId={id ?? ''} latestTask={latestTask} stream={stream} />
-          {/* Wave 5 inserts the chat composer at the bottom */}
+          <ChatComposer
+            issue={issue}
+            lastUserCommentId={lastUserCommentId}
+            onSubmit={handleChatSubmit}
+          />
         </div>
         <IssueActionSidebar issue={issue} onPatch={handleIssuePatch} />
       </div>
