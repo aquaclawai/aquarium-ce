@@ -17,8 +17,14 @@ import {
 } from '../services/task-queue-store.js';
 import {
   appendTaskMessage,
+  flushTaskMessages,
   type PendingTaskMessage,
 } from '../task-dispatch/task-message-batcher.js';
+import {
+  listTaskMessagesOfKind,
+  truncateForStorage,
+} from '../services/task-message-store.js';
+import { createAgentComment } from '../services/comment-store.js';
 import { broadcast } from '../ws/index.js';
 import { db } from '../db/index.js';
 import type {
@@ -335,10 +341,85 @@ router.post('/tasks/:id/messages', async (req, res) => {
 });
 
 // ── POST /tasks/:id/complete — DAEMON-05d ─────────────────────────────────
+// Phase 24-05 (CHAT-01): on successful completion the route reconstructs the
+// agent's final text via `listTaskMessagesOfKind(taskId, 'text')` — the SAME
+// uniform DB-select fallback the hosted-worker uses. The request body is
+// `{ result?: unknown }` — no text field exists on this request body; the
+// final agent text is NEVER taken from the request (T-24-05-04 mitigation).
 router.post('/tasks/:id/complete', async (req, res) => {
   try {
     const body = req.body as { result?: unknown } | undefined;
-    const result = await completeTask(req.params.id, body?.result);
+    const taskId = req.params.id;
+
+    // Workspace-scoped lookup for triggerCommentId + routing fields. Cross-workspace
+    // task ids → 404 (AUTH4 IDOR guard; matches /messages + /status pattern).
+    const taskRow = await db('agent_task_queue')
+      .where({ id: taskId, workspace_id: req.daemonAuth!.workspaceId })
+      .first('id', 'workspace_id', 'issue_id', 'agent_id', 'trigger_comment_id');
+    if (!taskRow) {
+      res.status(404).json({ ok: false, error: 'task not found' } satisfies ApiResponse);
+      return;
+    }
+
+    // Flush any pending buffered task_messages for this task so the DB-select
+    // fallback below sees the complete set of 'text' rows (same guarantee the
+    // hosted worker gives via its pre-completion flush).
+    await flushTaskMessages(taskId);
+
+    const result = await completeTask(taskId, body?.result);
+
+    // CHAT-01 threaded-reply post. Only when:
+    //   (a) the task transitioned to 'completed' (not cancelled / idempotent-discarded), AND
+    //   (b) the task has a trigger_comment_id (i.e. it was created in response
+    //       to a user chat message via POST /api/issues/:id/comments).
+    if (
+      !result.discarded
+      && result.status === 'completed'
+      && taskRow.trigger_comment_id
+    ) {
+      let agentComment = null;
+      try {
+        // UNCONDITIONAL DB-SELECT — reconstruct final text from ALL 'text' kind
+        // rows for this task. Same uniform helper used by the hosted worker.
+        const textRows = await listTaskMessagesOfKind(db, taskId, 'text');
+        const concatenated = textRows
+          .map((r) => r.content ?? '')
+          .filter((s) => s.length > 0)
+          .join('\n\n')
+          .trim();
+        if (concatenated) {
+          const truncation = truncateForStorage({
+            content: concatenated,
+            input: undefined,
+            output: undefined,
+          });
+          const agentCommentContent = truncation.truncatedContent ?? concatenated;
+          agentComment = await createAgentComment({
+            workspaceId: taskRow.workspace_id as string,
+            issueId: taskRow.issue_id as string,
+            authorAgentId: taskRow.agent_id as string,
+            content: agentCommentContent,
+            parentId: taskRow.trigger_comment_id as string,
+          });
+        }
+      } catch (commentErr) {
+        // Never let the agent-reply post-step mask the successful completion.
+        console.warn(
+          `[daemon:/complete] createAgentComment failed for task ${taskId}:`,
+          commentErr instanceof Error ? commentErr.message : String(commentErr),
+        );
+      }
+      if (agentComment) {
+        // Post-commit broadcast (SQ5 pattern — completeTask + createAgentComment
+        // both own their own transactions and are committed by now).
+        broadcast(taskRow.workspace_id as string, {
+          type: 'comment:posted',
+          issueId: taskRow.issue_id as string,
+          payload: agentComment,
+        });
+      }
+    }
+
     // ALWAYS 200 — { discarded: true } is not an error (TASK-06 idempotency).
     res.json({ ok: true, data: result } satisfies ApiResponse<TerminalResult>);
   } catch (err: unknown) {

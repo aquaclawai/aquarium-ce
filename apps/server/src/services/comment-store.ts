@@ -164,6 +164,84 @@ export async function createUserComment(
   return db.transaction(run);
 }
 
+export interface CreateAgentCommentArgs {
+  workspaceId: string;
+  issueId: string;
+  authorAgentId: string;
+  content: string;
+  parentId?: string | null;
+  metadata?: Record<string, unknown>;
+  trx?: Knex | Knex.Transaction;
+}
+
+/**
+ * Post an agent-authored comment (CHAT-01, Phase 24-05).
+ *
+ * Mirrors `createUserComment` / `createSystemComment` patterns:
+ *   • Hard-codes author_type='agent' + author_agent_id=<arg> + author_user_id=null
+ *     — enforces the XOR invariant from migration 006 at the service layer.
+ *   • Workspace-scoped issue guard (T-17-04-03 IDOR): if the issue does not
+ *     belong to args.workspaceId, throws before the INSERT.
+ *   • Parent-comment guard (T-24-05-02): parent must exist, be on the same
+ *     issue, AND be a user comment (mirrors createUserComment's guard — agent
+ *     replies thread under user prompts, NEVER under system status_change rows).
+ *   • NOT exposed to route handlers. Called from Phase 24-05 completion paths
+ *     only (hosted-task-worker + daemon POST /tasks/:id/complete) so clients
+ *     cannot forge agent comments (T-24-05-01).
+ *
+ * Atomicity: accepts a trx/knex override; when supplied, the caller's
+ * transaction owns the INSERT — the hosted-worker + daemon routes wrap the
+ * completeTask flip + the text reconstruction + this INSERT in one tx so a
+ * crash never leaves a "completed task without the final agent reply".
+ */
+export async function createAgentComment(args: CreateAgentCommentArgs): Promise<Comment> {
+  const adapter = getAdapter();
+  if (!args.content || args.content.trim().length === 0) {
+    throw new Error('content is required');
+  }
+
+  const run = async (runner: Knex | Knex.Transaction): Promise<Comment> => {
+    // Workspace-scoped issue guard (T-17-04-03 mitigation).
+    const issue = await runner('issues')
+      .where({ id: args.issueId, workspace_id: args.workspaceId })
+      .first('id');
+    if (!issue) throw new Error('issue not found in workspace');
+
+    // Parent validation (T-24-05-02): must exist on the same issue AND be a
+    // user comment. Agents never thread replies under system status_change
+    // rows — that's bookkeeping, not conversation.
+    if (args.parentId) {
+      const parent = await runner('comments')
+        .where({ id: args.parentId, issue_id: args.issueId })
+        .first('id', 'author_type');
+      if (!parent) throw new Error('parent comment not found in this issue');
+      if ((parent.author_type as string) !== 'user') {
+        throw new Error('parent comment must be a user comment');
+      }
+    }
+
+    const id = randomUUID();
+    await runner('comments').insert({
+      id,
+      issue_id: args.issueId,
+      author_type: 'agent',
+      author_user_id: null,
+      author_agent_id: args.authorAgentId,
+      content: args.content,
+      type: 'comment',
+      parent_id: args.parentId ?? null,
+      metadata: adapter.jsonValue(args.metadata ?? {}),
+      created_at: db.fn.now(),
+      updated_at: db.fn.now(),
+    });
+    const row = await runner('comments').where({ id }).first();
+    return toComment(row as Record<string, unknown>);
+  };
+
+  if (args.trx) return run(args.trx);
+  return db.transaction(run);
+}
+
 export interface CreateSystemCommentArgs {
   workspaceId: string;
   issueId: string;

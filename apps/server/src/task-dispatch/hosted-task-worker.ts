@@ -16,8 +16,14 @@ import {
   registerChatStreamListener,
   type ChatStreamPayload,
 } from '../services/gateway-event-relay.js';
-import { appendTaskMessage, type PendingTaskMessage } from './task-message-batcher.js';
-import type { ClaimedTask } from '@aquarium/shared';
+import { appendTaskMessage, flushTaskMessages, type PendingTaskMessage } from './task-message-batcher.js';
+import {
+  listTaskMessagesOfKind,
+  truncateForStorage,
+} from '../services/task-message-store.js';
+import { createAgentComment } from '../services/comment-store.js';
+import { broadcast } from '../ws/index.js';
+import type { ClaimedTask, Comment } from '@aquarium/shared';
 
 /**
  * Hosted-task worker — dispatches queued hosted_instance tasks to the
@@ -530,9 +536,70 @@ async function dispatchHostedTask(
       deps.appendTaskMessage(task.id, m);
     }
 
+    // Flush any buffered streaming messages BEFORE the DB-select fallback so
+    // `listTaskMessagesOfKind` sees the complete set of text rows (24-05 CHAT-01
+    // uniform reconstruction — the DB is the single source of truth for final
+    // agent text; this is the same path the daemon /complete route uses).
+    await flushTaskMessages(task.id);
+
     // completeTask handles PM6 — returns {discarded:true, status:'cancelled'}
     // if the user cancelled between final and here. Idempotent.
-    await completeTask(task.id, { sessionKey, messageId: result.messageId }, kx);
+    const completionResult = await completeTask(
+      task.id,
+      { sessionKey, messageId: result.messageId },
+      kx,
+    );
+
+    // CHAT-01 threaded-reply post (24-05 Task 1). If the task was triggered by
+    // a user comment AND the task reached 'completed' (not cancelled/failed),
+    // reconstruct the final agent text via the uniform DB-select fallback and
+    // create a threaded agent comment with parent_id = triggerCommentId.
+    // The SAME helper is used by the daemon /complete route — keeps the
+    // completion contract uniform across runtime kinds.
+    if (!completionResult.discarded && task.triggerCommentId) {
+      let agentComment: Comment | null = null;
+      try {
+        const textRows = await listTaskMessagesOfKind(kx, task.id, 'text');
+        const concatenated = textRows
+          .map((r) => r.content ?? '')
+          .filter((s) => s.length > 0)
+          .join('\n\n')
+          .trim();
+        if (concatenated) {
+          const truncation = truncateForStorage({
+            content: concatenated,
+            input: undefined,
+            output: undefined,
+          });
+          const agentCommentContent = truncation.truncatedContent ?? concatenated;
+          agentComment = await createAgentComment({
+            workspaceId: task.workspaceId,
+            issueId: task.issueId,
+            authorAgentId: task.agentId,
+            content: agentCommentContent,
+            parentId: task.triggerCommentId,
+            trx: kx,
+          });
+        }
+      } catch (commentErr) {
+        // Never let the agent-reply post-step mask the successful completion.
+        // Log + swallow — the task is already marked completed at this point.
+        console.warn(
+          `[hosted-task-worker] createAgentComment failed for task ${task.id}:`,
+          commentErr instanceof Error ? commentErr.message : String(commentErr),
+        );
+      }
+      if (agentComment) {
+        // Broadcast AFTER the completion + insert complete (SQ5 post-commit
+        // pattern — completeTask already committed, createAgentComment above
+        // uses the same kx; no outer transaction to wait on).
+        broadcast(task.workspaceId, {
+          type: 'comment:posted',
+          issueId: task.issueId,
+          payload: agentComment,
+        });
+      }
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (abort.signal.aborted) {
