@@ -2392,10 +2392,10 @@
         "create": "Nouveau ticket",
         "filter": "Filtrer",
         "sort": "Trier",
-        "hideCompleted": "Masquer les terminés"
+        "hideCompleted": "Masquer terminés"
       },
       "columns": {
-        "backlog": "Backlog",
+        "backlog": "En attente",
         "todo": "À faire",
         "in_progress": "En cours",
         "done": "Terminé",
@@ -2405,13 +2405,13 @@
       "columnCount": "{{count}}",
       "priority": {
         "urgent": "Urgent",
-        "high": "Haute",
+        "high": "Élevée",
         "medium": "Moyenne",
-        "low": "Basse",
+        "low": "Faible",
         "none": "Aucune"
       },
       "empty": {
-        "heading": "Aucun ticket pour le moment",
+        "heading": "Aucun ticket pour l'instant",
         "body": "Créez votre premier ticket pour commencer à assigner du travail aux agents.",
         "cta": "Nouveau ticket"
       },
@@ -2425,11 +2425,11 @@
       "offline": "Reconnexion…",
       "loadFailed": "Impossible de charger les tickets.",
       "a11y": {
-        "picked": "Ticket \"{{title}}\" saisi",
+        "picked": "Ticket \"{{title}}\" sélectionné",
         "movedWithin": "Ticket \"{{title}}\" déplacé à la position {{pos}} sur {{total}} dans {{column}}",
         "movedAcross": "Ticket \"{{title}}\" déplacé vers la colonne {{column}}, position {{pos}} sur {{total}}",
         "dropped": "\"{{title}}\" déposé dans {{column}}",
-        "cancelled": "Déplacement annulé. \"{{title}}\" est revenu à sa position d'origine"
+        "cancelled": "Déplacement annulé. \"{{title}}\" est retourné à sa position d'origine"
       },
       "tooltip": {
         "dragHint": "Glisser ou appuyer sur Espace pour déplacer",

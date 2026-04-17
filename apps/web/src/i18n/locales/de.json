@@ -2392,10 +2392,10 @@
         "create": "Neues Ticket",
         "filter": "Filtern",
         "sort": "Sortieren",
-        "hideCompleted": "Abgeschlossene ausblenden"
+        "hideCompleted": "Erledigte ausblenden"
       },
       "columns": {
-        "backlog": "Backlog",
+        "backlog": "Rückstand",
         "todo": "Zu erledigen",
         "in_progress": "In Bearbeitung",
         "done": "Erledigt",
@@ -2412,13 +2412,13 @@
       },
       "empty": {
         "heading": "Noch keine Tickets",
-        "body": "Erstellen Sie Ihr erstes Ticket, um Agenten Arbeit zuzuweisen.",
+        "body": "Erstellen Sie Ihr erstes Ticket, um Arbeit an Agenten zuzuweisen.",
         "cta": "Neues Ticket"
       },
       "emptyColumn": "Keine Tickets",
       "dropHere": "Hier ablegen, um zu verschieben",
       "noMatches": "Keine Tickets entsprechen Ihren Filtern",
-      "clearFilters": "Filter löschen",
+      "clearFilters": "Filter zurücksetzen",
       "reorderFailed": "Ticket konnte nicht verschoben werden — bitte erneut versuchen",
       "statusChangeFailed": "Status konnte nicht aktualisiert werden — bitte erneut versuchen",
       "reorderConflict": "Eine andere Sitzung hat dieses Ticket verschoben — wird aktualisiert",
@@ -2426,13 +2426,13 @@
       "loadFailed": "Tickets konnten nicht geladen werden.",
       "a11y": {
         "picked": "Ticket \"{{title}}\" aufgenommen",
-        "movedWithin": "Ticket \"{{title}}\" zu Position {{pos}} von {{total}} in {{column}} verschoben",
-        "movedAcross": "Ticket \"{{title}}\" in Spalte {{column}}, Position {{pos}} von {{total}} verschoben",
+        "movedWithin": "Ticket \"{{title}}\" verschoben zu Position {{pos}} von {{total}} in {{column}}",
+        "movedAcross": "Ticket \"{{title}}\" verschoben zur Spalte {{column}}, Position {{pos}} von {{total}}",
         "dropped": "\"{{title}}\" in {{column}} abgelegt",
-        "cancelled": "Verschieben abgebrochen. \"{{title}}\" an ursprüngliche Position zurückgesetzt"
+        "cancelled": "Verschieben abgebrochen. \"{{title}}\" in ursprüngliche Position zurückgesetzt"
       },
       "tooltip": {
-        "dragHint": "Ziehen oder Leertaste drücken, um zu verschieben",
+        "dragHint": "Ziehen oder Leertaste zum Verschieben drücken",
         "keyboardHint": "Leertaste zum Aufnehmen · ↑↓ zum Verschieben · ← → zum Spaltenwechsel · Leertaste zum Ablegen · Esc zum Abbrechen"
       }
     }
