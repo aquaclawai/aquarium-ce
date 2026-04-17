@@ -78,38 +78,28 @@ describe('cli.ts commander dispatch (CLI-02)', () => {
     assert.deepEqual(called.args, ['tok-123']);
   });
 
-  test('--help for daemon start emits help text mentioning core flags', async () => {
+  test('daemon start help output mentions core flags (--server / --token / --device-name)', () => {
     const program = buildProgram({
       daemonStart: () => {
         throw new Error('should not run');
       },
     });
-    program.exitOverride();
-    let help = '';
-    program.configureOutput({
-      writeOut: (s) => {
-        help += s;
-      },
-      writeErr: (s) => {
-        help += s;
-      },
-    });
-    try {
-      await program.parseAsync(['node', 'aquarium', 'daemon', 'start', '--help']);
-    } catch (err) {
-      // commander throws a CommanderError with code commander.helpDisplayed on --help
-      assert.match((err as { code?: string }).code ?? '', /help/i);
-    }
-    assert.match(help, /--server/);
-    assert.match(help, /--token/);
-    assert.match(help, /--device-name/);
+    // Find the daemon start subcommand and ask it for its help text directly.
+    // This avoids triggering commander's --help exit path which can disrupt node:test.
+    const daemon = program.commands.find((c) => c.name() === 'daemon');
+    assert.ok(daemon, 'daemon command registered');
+    const start = daemon!.commands.find((c) => c.name() === 'start');
+    assert.ok(start, 'daemon start subcommand registered');
+    const helpText = start!.helpInformation();
+    assert.match(helpText, /--server/);
+    assert.match(helpText, /--token/);
+    assert.match(helpText, /--device-name/);
   });
 
   test('importing cli.ts does NOT transitively load index.ce.js or server-core.js', async () => {
     // Hash the source to prove no static import of these modules exists.
     const { readFileSync } = await import('node:fs');
     const body = readFileSync(new URL('../../src/cli.ts', import.meta.url), 'utf8');
-    // Only the runDefaultServer branch may import index.ce; daemon branch never.
     const idxImports = body.match(/from\s+['"]\.\/index\.ce/g) ?? [];
     const srvImports = body.match(/from\s+['"]\.\/server-core/g) ?? [];
     const dbImports = body.match(/from\s+['"]\.\/db\/index/g) ?? [];
