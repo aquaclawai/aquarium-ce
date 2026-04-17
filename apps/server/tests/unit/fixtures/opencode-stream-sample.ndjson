@@ -1,0 +1,6 @@
+{"type":"step_start","timestamp":1776422715000,"sessionID":"ses_test","part":{"id":"step_1","sessionID":"ses_test","messageID":"msg_1","type":"step-start"}}
+{"type":"text","timestamp":1776422715100,"sessionID":"ses_test","part":{"id":"p_1","type":"text","text":"I will read /tmp/x.txt","time":{"start":1776422715100,"end":1776422715110}}}
+{"type":"tool_use","timestamp":1776422715200,"sessionID":"ses_test","part":{"callID":"call_1","tool":"read","state":{"status":"completed","input":{"path":"/tmp/x.txt"},"output":"hello","title":"read /tmp/x.txt","time":{"start":1776422715200,"end":1776422715220}}}}
+{"type":"text","timestamp":1776422715300,"sessionID":"ses_test","part":{"id":"p_2","type":"text","text":"Done.","time":{"start":1776422715300,"end":1776422715310}}}
+{"type":"step_finish","timestamp":1776422715400,"sessionID":"ses_test","part":{"reason":"stop","cost":0.001,"tokens":{"input":10,"output":5}}}
+{"type":"text","part":{
