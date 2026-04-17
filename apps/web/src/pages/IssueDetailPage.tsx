@@ -10,6 +10,7 @@ import { IssueDescription } from '../components/issues/detail/IssueDescription';
 import { CommentsTimeline } from '../components/issues/detail/CommentsTimeline';
 import { IssueActionSidebar } from '../components/issues/detail/IssueActionSidebar';
 import type { UpdateIssuePatch } from '../components/issues/detail/IssueActionSidebar';
+import { TaskPanel } from '../components/issues/detail/TaskPanel';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import type { Issue, IssueStatus } from '@aquarium/shared';
@@ -29,7 +30,7 @@ export function IssueDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { issue, comments, loading, error, refetch } = useIssueDetail(id ?? '');
+  const { issue, comments, latestTask, loading, error, refetch } = useIssueDetail(id ?? '');
 
   // Set document.title while this page is mounted; restore on unmount.
   useEffect(() => {
@@ -175,7 +176,7 @@ export function IssueDetailPage() {
             onDelete={handleCommentDelete}
             loadingIds={new Set()}
           />
-          {/* Wave 2 inserts the task panel here */}
+          <TaskPanel issueId={id ?? ''} latestTask={latestTask} />
           {/* Wave 5 inserts the chat composer at the bottom */}
         </div>
         <IssueActionSidebar issue={issue} onPatch={handleIssuePatch} />

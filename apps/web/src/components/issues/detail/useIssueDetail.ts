@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWebSocket } from '../../../context/WebSocketContext';
 import { api } from '../../../api';
-import type { Comment, Issue, WsMessage } from '@aquarium/shared';
+import type { AgentTask, Comment, Issue, WsMessage } from '@aquarium/shared';
 
 /**
  * useIssueDetail(issueId) — single source of truth for the detail page.
@@ -20,9 +20,31 @@ import type { Comment, Issue, WsMessage } from '@aquarium/shared';
 interface UseIssueDetailReturn {
   issue: Issue | null;
   comments: Comment[];
+  /**
+   * Phase 24-02: most-recent task attached to this issue. Hydrated on mount
+   * via GET /api/issues/:id/tasks and updated through `task:*` WS events.
+   * Null when the issue has no tasks yet.
+   */
+  latestTask: AgentTask | null;
+  /**
+   * Phase 24-02: optimistic setter used by Wave 5's ChatComposer to swap in a
+   * fresh task before the server's dispatch WS lands. Called with the task
+   * returned by POST /api/issues/:id/comments — stops the UI flicker.
+   */
+  overrideLatestTask: (task: AgentTask) => void;
   loading: boolean;
   error: string | null;
   refetch: () => void;
+}
+
+function isAgentTask(payload: unknown): payload is AgentTask {
+  return (
+    typeof payload === 'object'
+    && payload !== null
+    && typeof (payload as { id?: unknown }).id === 'string'
+    && typeof (payload as { issueId?: unknown }).issueId === 'string'
+    && typeof (payload as { status?: unknown }).status === 'string'
+  );
 }
 
 function isFullIssue(payload: unknown): payload is Issue {
@@ -50,6 +72,13 @@ export function useIssueDetail(issueId: string): UseIssueDetailReturn {
   const { subscribe, unsubscribe, addHandler, removeHandler } = useWebSocket();
   const [issue, setIssue] = useState<Issue | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
+  // Phase 24-02: seeded from GET /issues/:id/tasks on mount. Updated through
+  // task:* WS events (TaskPanel subscribes for the live stream, the hook just
+  // tracks which task is current).
+  const [latestTask, setLatestTask] = useState<AgentTask | null>(null);
+  const overrideLatestTask = useCallback((task: AgentTask) => {
+    setLatestTask(task);
+  }, []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,11 +104,21 @@ export function useIssueDetail(issueId: string): UseIssueDetailReturn {
     Promise.all([
       api.get<Issue>(`/issues/${issueId}`),
       api.get<Comment[]>(`/issues/${issueId}/comments`),
+      // Phase 24-02: /issues/:id/tasks returns { tasks: AgentTask[] } ordered
+      // DESC by created_at. Shape differs from the other two fetches —
+      // hence the wrapper type. We soft-fail this one (catch inside) so an
+      // issue still renders if the tasks route is flaky; the TaskPanel
+      // shows its idle state until the next WS event updates it.
+      api
+        .get<{ tasks: AgentTask[] }>(`/issues/${issueId}/tasks`)
+        .then((res) => res.tasks)
+        .catch(() => [] as AgentTask[]),
     ])
-      .then(([fetchedIssue, fetchedComments]) => {
+      .then(([fetchedIssue, fetchedComments, fetchedTasks]) => {
         if (cancelled) return;
         setIssue(fetchedIssue);
         setComments(fetchedComments);
+        setLatestTask(fetchedTasks.length > 0 ? fetchedTasks[0] : null);
         setError(null);
       })
       .catch((err: unknown) => {
@@ -136,12 +175,27 @@ export function useIssueDetail(issueId: string): UseIssueDetailReturn {
       setComments(prev => prev.filter(c => c.id !== deletedId));
     };
 
+    // Phase 24-02: task lifecycle reconciliation. dispatched / started /
+    // completed / failed / cancelled all carry an AgentTask payload; we
+    // refresh latestTask when the event's issueId matches ours. task:message
+    // is handled per-panel by useTaskStream — not here.
+    const onTaskLifecycle = (message: WsMessage) => {
+      if (message.issueId !== issueIdRef.current) return;
+      if (!isAgentTask(message.payload)) return;
+      setLatestTask(message.payload);
+    };
+
     subscribe('AQ');
     addHandler('issue:updated', onIssueUpdated);
     addHandler('issue:deleted', onIssueDeleted);
     addHandler('comment:posted', onCommentPosted);
     addHandler('comment:updated', onCommentUpdated);
     addHandler('comment:deleted', onCommentDeleted);
+    addHandler('task:dispatched', onTaskLifecycle);
+    addHandler('task:started', onTaskLifecycle);
+    addHandler('task:completed', onTaskLifecycle);
+    addHandler('task:failed', onTaskLifecycle);
+    addHandler('task:cancelled', onTaskLifecycle);
 
     return () => {
       removeHandler('issue:updated', onIssueUpdated);
@@ -149,9 +203,14 @@ export function useIssueDetail(issueId: string): UseIssueDetailReturn {
       removeHandler('comment:posted', onCommentPosted);
       removeHandler('comment:updated', onCommentUpdated);
       removeHandler('comment:deleted', onCommentDeleted);
+      removeHandler('task:dispatched', onTaskLifecycle);
+      removeHandler('task:started', onTaskLifecycle);
+      removeHandler('task:completed', onTaskLifecycle);
+      removeHandler('task:failed', onTaskLifecycle);
+      removeHandler('task:cancelled', onTaskLifecycle);
       unsubscribe('AQ');
     };
   }, [issueId, subscribe, unsubscribe, addHandler, removeHandler]);
 
-  return { issue, comments, loading, error, refetch };
+  return { issue, comments, latestTask, overrideLatestTask, loading, error, refetch };
 }
