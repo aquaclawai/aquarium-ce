@@ -290,6 +290,11 @@ describe('mapCodexNotificationToAgentMessage (BACKEND-02)', () => {
   });
 });
 
+// Audit thinking content shapes emitted by runCodexTask on codex approval
+// decisions (T-22-05). Verified at runtime against the regex assertions below:
+//   allow path → content matches: [auto-approve] codex tool=<name>
+//   deny path  → content matches: [deny] codex tool=<name>
+
 // ── runCodexTask end-to-end with scripted mock child ───────────────────────
 
 describe('runCodexTask (BACKEND-02 — end-to-end)', () => {
