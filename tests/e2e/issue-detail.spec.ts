@@ -568,8 +568,118 @@ test.describe.serial('Phase 24 — Issue Detail + Task Message Streaming', () =>
     }
   });
 
-  test.skip('truncation marker', async () => {
-    // plan 24-04: truncated messages show explicit marker + "Show full" affordance
+  test('truncation marker', async ({ page, request }) => {
+    // Plan 24-04 / UI-07 / UX6. Seeds a task_message with 20 KB content +
+    // metadata.truncated, plus an overflow row holding the uncapped text.
+    // Asserts:
+    //   • TaskMessageItem row flags truncated (data-task-message-truncated="true")
+    //   • TruncationMarker renders (data-truncated="true" + data-original-bytes)
+    //   • Click "Show full" fetches GET /api/tasks/:id/messages/:seq/full
+    //   • Full content replaces body; button flips to Collapse
+    //   • Collapse reverts to the truncated body
+
+    const existingRes = await request.get(`${API}/issues`);
+    if (existingRes.ok()) {
+      const existingBody = (await existingRes.json()) as { ok: boolean; data: { id: string }[] };
+      if (existingBody.ok) {
+        for (const row of existingBody.data) {
+          await request.delete(`${API}/issues/${row.id}`);
+        }
+      }
+    }
+
+    const seedRes = await request.post(`${API}/issues`, {
+      data: { title: 'Phase 24-04 truncation marker', status: 'todo' },
+    });
+    expect(seedRes.status()).toBe(201);
+    const seedBody = (await seedRes.json()) as { ok: boolean; data: { id: string } };
+    expect(seedBody.ok).toBe(true);
+    const issueId = seedBody.data.id;
+
+    const runtimeId = `rt-24-04-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const agentId = `ag-24-04-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const taskId = `task-24-04-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const msgId = `m-24-04-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+    const truncatedText = 'A'.repeat(16_384);
+    const fullText = truncatedText + 'B'.repeat(20_480 - 16_384);
+    const originalBytes = 20_480;
+
+    writeDb((db) => {
+      db.prepare(
+        `INSERT INTO runtimes (id, workspace_id, name, kind, provider, status,
+                               daemon_id, instance_id, metadata,
+                               created_at, updated_at)
+         VALUES (?, 'AQ', ?, 'local_daemon', 'claude', 'online',
+                 ?, NULL, '{}',
+                 datetime('now'), datetime('now'))`,
+      ).run(runtimeId, `phase24-04-rt-${runtimeId}`, `daemon-${runtimeId}`);
+      db.prepare(
+        `INSERT INTO agents (id, workspace_id, runtime_id, name, instructions,
+                             custom_env, custom_args, max_concurrent_tasks,
+                             visibility, status, created_at, updated_at)
+         VALUES (?, 'AQ', ?, ?, 'truncation marker test',
+                 '{}', '[]', 6,
+                 'workspace', 'idle', datetime('now'), datetime('now'))`,
+      ).run(agentId, runtimeId, `phase24-04-agent-${agentId}`);
+      db.prepare(
+        `INSERT INTO agent_task_queue
+           (id, workspace_id, issue_id, agent_id, runtime_id,
+            trigger_comment_id, status, priority,
+            metadata, created_at, updated_at)
+         VALUES (?, 'AQ', ?, ?, ?,
+                 NULL, 'running', 0,
+                 '{}', datetime('now', '-5 seconds'), datetime('now'))`,
+      ).run(taskId, issueId, agentId, runtimeId);
+
+      // Truncated row (16 KB) + overflow row (uncapped 20 KB).
+      db.prepare(
+        `INSERT INTO task_messages
+           (id, task_id, seq, type, tool, content, input, output, metadata, created_at)
+         VALUES (?, ?, 1, 'text', NULL, ?, NULL, NULL, ?, datetime('now'))`,
+      ).run(
+        msgId,
+        taskId,
+        truncatedText,
+        JSON.stringify({ truncated: true, originalBytes }),
+      );
+      db.prepare(
+        `INSERT INTO task_message_overflow
+           (task_id, seq, content, input_json, output, original_bytes, created_at)
+         VALUES (?, 1, ?, NULL, NULL, ?, datetime('now'))`,
+      ).run(taskId, fullText, originalBytes);
+    });
+
+    await page.goto(`http://localhost:5173/issues/${issueId}`);
+    await expect(page.getByTestId('issue-detail')).toBeVisible();
+    await expect(page.locator(`[data-task-panel="${taskId}"]`)).toBeVisible();
+
+    // Truncated row marker on the message container + the explicit marker.
+    await expect(
+      page.locator('[data-task-message-seq="1"][data-task-message-truncated="true"]'),
+    ).toBeVisible();
+    await expect(
+      page.locator(`[data-truncated="true"][data-original-bytes="${originalBytes}"]`),
+    ).toBeVisible();
+
+    // Click "Show full" — resolves the full content via /messages/1/full.
+    await page.locator('[data-action="show-full"][data-seq="1"]').click();
+
+    // Full content now contains the 'B' tail that the truncated payload lacks.
+    // Guard: locate a unique sub-slice of the 'B' run to confirm expansion.
+    await expect(page.locator('[data-task-message-seq="1"]')).toContainText('B'.repeat(40));
+
+    // Button flips to Collapse.
+    const collapseButton = page.locator('[data-task-message-seq="1"]').getByRole('button', {
+      name: /Collapse/i,
+    });
+    await expect(collapseButton).toBeVisible();
+
+    // Collapse reverts — Show-full button reappears.
+    await collapseButton.click();
+    await expect(
+      page.locator('[data-action="show-full"][data-seq="1"]'),
+    ).toBeVisible();
   });
 
   test.skip('chat on issue', async () => {
