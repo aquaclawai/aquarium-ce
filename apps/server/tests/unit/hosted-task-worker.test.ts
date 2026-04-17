@@ -535,16 +535,19 @@ test('Test 8 (HOSTED-05): no WARN when agent has empty customEnv/customArgs and 
 
     startHostedTaskWorker(ctx.db);
     try {
-      // Wait until the worker has dispatched (task claimed/started) so the WARN site has been crossed.
+      // Wait until the task is claimed (moves out of 'queued') so we know the
+      // worker's dispatch path ran far enough past the WARN site.
       await waitUntil(
-        async () => gw.calls.some((c) => c.method === 'chat.send'),
-        { message: 'chat.send should be invoked so we know dispatch ran past the WARN site' },
+        async () => {
+          const row = await ctx.db('agent_task_queue').where({ id: task }).first('status');
+          return row?.status !== 'queued';
+        },
+        { message: 'task should be claimed so WARN site is crossed' },
       );
     } finally {
       await stopHostedTaskWorker();
     }
 
-    void task;
     // No message should cite the ignored-fields WARN.
     const offending = warnSpy.messages.find((m) => m.includes('ignoring'));
     assert.equal(offending, undefined, 'no ignored-fields WARN for clean agent/task');
