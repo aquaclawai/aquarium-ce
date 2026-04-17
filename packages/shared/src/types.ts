@@ -315,7 +315,12 @@ export type WsEventType =
   | 'issue:updated'
   | 'issue:deleted'
   | 'issue:reordered'
-  | 'task:cancelled';
+  | 'task:cancelled'
+  | 'task:completed'
+  | 'task:dispatched'
+  | 'task:failed'
+  | 'task:message'
+  | 'task:started';
 
 export interface WsMessage {
   type: WsEventType;

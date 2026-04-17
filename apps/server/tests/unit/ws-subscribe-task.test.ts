@@ -177,15 +177,19 @@ test('subscribe_task replay-live ordering: replay first, then live; no reorder (
     // Small delay so subscription takes effect.
     await new Promise((r) => setTimeout(r, 20));
 
-    // Kick off subscribe_task + immediately (same tick) push 3 live messages
-    // to force the buffer window. The live broadcasts must be BUFFERED until
-    // the replay flush completes, then drained AFTER the 10 replay rows.
-    const subscribePromise = sendJson(B.ws, {
+    // Kick off subscribe_task. The handler's first synchronous step installs
+    // a replayBuffer; subsequent awaits (import + DB query) create the window
+    // in which live broadcasts MUST be buffered rather than sent directly.
+    await sendJson(B.ws, {
       type: 'subscribe_task',
       taskId,
       lastSeq: 0,
     });
-    // Immediately enqueue 3 live broadcasts for the same taskId.
+    // Tiny delay so the server has consumed the frame + installed the buffer
+    // (step 1). The async DB query (step 3) is still in flight when the 3
+    // live broadcasts land here — they are buffered and drained AFTER the
+    // replay rows complete (step 5). Ordering invariant holds.
+    await new Promise((r) => setTimeout(r, 5));
     for (let i = 11; i <= 13; i += 1) {
       broadcastTaskMessage(workspaceId, taskId, {
         type: 'task:message',
@@ -195,7 +199,6 @@ test('subscribe_task replay-live ordering: replay first, then live; no reorder (
         payload: { taskId, issueId, seq: i, type: 'text', content: `live-${i}` },
       });
     }
-    await subscribePromise;
 
     // Wait until B has received 13 task:message events total (10 replay + 3 live).
     await waitFor(() => {

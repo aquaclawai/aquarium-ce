@@ -27,7 +27,7 @@ import { randomUUID } from 'node:crypto';
 import type { Knex } from 'knex';
 import { db as defaultDb } from '../db/index.js';
 import { getAdapter } from '../db/adapter.js';
-import { broadcast } from '../ws/index.js';
+import { broadcastTaskMessage } from '../ws/index.js';
 import { withImmediateTx } from '../services/task-queue-store.js';
 import { truncateForStorage } from '../services/task-message-store.js';
 import type { TaskMessageType } from '@aquarium/shared';
@@ -289,11 +289,17 @@ async function flushOne(taskId: string): Promise<void> {
     });
 
     // Broadcast AFTER commit — never inside the transaction (PITFALLS §SQ5).
+    // Phase 24-00: route via broadcastTaskMessage so per-client replay state
+    // (pause_stream + subscribe_task buffer window) is honoured. Workspace
+    // subscribers that never sent subscribe_task are intentionally skipped —
+    // Phase 23's board reconciler consumes task:cancelled only (grep-verified
+    // no `task:message` handlers exist in apps/web/src/**).
     for (const b of toBroadcast) {
-      broadcast(b.workspaceId, {
+      broadcastTaskMessage(b.workspaceId, taskId, {
         type: 'task:message',
         taskId,
         issueId: b.issueId,
+        seq: b.seq,
         payload: {
           taskId,
           issueId: b.issueId,
