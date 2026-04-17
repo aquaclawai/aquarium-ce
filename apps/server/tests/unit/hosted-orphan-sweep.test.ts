@@ -15,6 +15,8 @@ import {
   failOrphanedHostedTasks,
   __setBroadcastForTests__,
   __resetBroadcastForTests__,
+  __setBetweenSelectAndUpdateHookForTests__,
+  __resetBetweenSelectAndUpdateHookForTests__,
 } from '../../src/task-dispatch/hosted-orphan-sweep.js';
 
 /**
@@ -228,9 +230,12 @@ test('Test 3: broadcasts fire per SELECTed row — ST6 benign over-broadcast at 
     });
 
     // Simulate the ST6 race: a concurrent legitimate writer flips t3 to
-    // 'completed' between the SELECT and the UPDATE. The UPDATE guard
-    // (whereIn status, dispatched|running) must skip t3.
-    await ctx.db('agent_task_queue').where({ id: t3 }).update({ status: 'completed' });
+    // 'completed' AFTER the SELECT but BEFORE the UPDATE. The test hook runs
+    // between the two statements so the SELECT sees 3 rows but the UPDATE
+    // guard (whereIn status, dispatched|running) skips t3.
+    __setBetweenSelectAndUpdateHookForTests__(async (kx) => {
+      await kx('agent_task_queue').where({ id: t3 }).update({ status: 'completed' });
+    });
 
     const result = await failOrphanedHostedTasks(ctx.db);
 
@@ -266,6 +271,7 @@ test('Test 3: broadcasts fire per SELECTed row — ST6 benign over-broadcast at 
     }
   } finally {
     __resetBroadcastForTests__();
+    __resetBetweenSelectAndUpdateHookForTests__();
     await teardownTestDb(ctx);
   }
 });
