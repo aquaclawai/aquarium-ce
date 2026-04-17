@@ -14,7 +14,7 @@ import {
 import { api } from '../../../api';
 import { TaskMessageList } from './TaskMessageList';
 import { TaskStateBadge } from './TaskStateBadge';
-import { useTaskStream } from './useTaskStream';
+import type { UseTaskStreamReturn } from './useTaskStream';
 import type { AgentTask } from '@aquarium/shared';
 
 /**
@@ -38,16 +38,17 @@ import type { AgentTask } from '@aquarium/shared';
 interface TaskPanelProps {
   issueId: string;
   latestTask: AgentTask | null;
+  // Phase 24-03 refactor: the caller (IssueDetailPage) owns the hook call so
+  // the page-level ReconnectBanner can read the same stream.isReplaying
+  // signal without a second hook instance. TaskPanel becomes a pure view
+  // over (latestTask, stream).
+  stream: UseTaskStreamReturn;
 }
 
-export function TaskPanel({ issueId, latestTask }: TaskPanelProps) {
+export function TaskPanel({ issueId, latestTask, stream }: TaskPanelProps) {
   const { t } = useTranslation();
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
-
-  // The hook tolerates a null taskId and returns an empty stream — no
-  // conditional Hook call needed. `useTaskStream` itself respects the null.
-  const stream = useTaskStream({ taskId: latestTask?.id ?? null });
 
   const state = latestTask?.status ?? 'idle';
   // Cancel is only meaningful while the task can still be aborted.

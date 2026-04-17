@@ -11,6 +11,8 @@ import { CommentsTimeline } from '../components/issues/detail/CommentsTimeline';
 import { IssueActionSidebar } from '../components/issues/detail/IssueActionSidebar';
 import type { UpdateIssuePatch } from '../components/issues/detail/IssueActionSidebar';
 import { TaskPanel } from '../components/issues/detail/TaskPanel';
+import { ReconnectBanner } from '../components/issues/detail/ReconnectBanner';
+import { useTaskStream } from '../components/issues/detail/useTaskStream';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import type { Issue, IssueStatus } from '@aquarium/shared';
@@ -31,6 +33,9 @@ export function IssueDetailPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { issue, comments, latestTask, loading, error, refetch } = useIssueDetail(id ?? '');
+  // Lifted from TaskPanel so the page-level ReconnectBanner and TaskPanel both
+  // read the same stream state (single source of truth). Phase 24-03 §D.
+  const stream = useTaskStream({ taskId: latestTask?.id ?? null });
 
   // Set document.title while this page is mounted; restore on unmount.
   useEffect(() => {
@@ -158,6 +163,11 @@ export function IssueDetailPage() {
       </div>
       {/* sr-only live region host for Wave 2-3 announcements */}
       <div role="status" aria-live="polite" className="visually-hidden" />
+      {/* Phase 24-03: ReconnectBanner surfaces WS reconnect + replay state. */}
+      <ReconnectBanner
+        isReconnecting={stream.isReconnecting}
+        isReplaying={stream.isReplaying}
+      />
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
         <div className="space-y-6">
           <IssueHeader
@@ -176,7 +186,7 @@ export function IssueDetailPage() {
             onDelete={handleCommentDelete}
             loadingIds={new Set()}
           />
-          <TaskPanel issueId={id ?? ''} latestTask={latestTask} />
+          <TaskPanel issueId={id ?? ''} latestTask={latestTask} stream={stream} />
           {/* Wave 5 inserts the chat composer at the bottom */}
         </div>
         <IssueActionSidebar issue={issue} onPatch={handleIssuePatch} />

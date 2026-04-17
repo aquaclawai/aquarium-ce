@@ -44,11 +44,18 @@ export interface UseTaskStreamReturn {
   renderedMessages: TaskMessage[];
   isPaused: boolean;
   isReplaying: boolean;
+  /**
+   * True while the WebSocket connection is down. Computed from
+   * `useWebSocket().isConnected === false`. Wave 3 ReconnectBanner renders
+   * while `isReconnecting || isReplaying`.
+   */
+  isReconnecting: boolean;
   lastSeq: number;
 }
 
 export function useTaskStream({ taskId }: { taskId: string | null }): UseTaskStreamReturn {
   const {
+    isConnected,
     requestTaskReplay,
     pauseTaskStream,
     resumeTaskStream,
@@ -73,6 +80,11 @@ export function useTaskStream({ taskId }: { taskId: string | null }): UseTaskStr
   // client already has (ST3 HARD invariant + server-side memory pressure).
   const lastSeqRef = useRef(0);
   const quietTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // wasConnectedRef tracks the previous value of `isConnected` across the
+  // reconnect effect's renders. We only fire the resubscribe on a FALSE → TRUE
+  // transition — the initial true (boot) is handled by the boot effect so a
+  // naive truthy check would double-subscribe on mount.
+  const wasConnectedRef = useRef(isConnected);
 
   const scheduleReplayingSettle = useCallback(() => {
     if (quietTimerRef.current) clearTimeout(quietTimerRef.current);
@@ -96,7 +108,18 @@ export function useTaskStream({ taskId }: { taskId: string | null }): UseTaskStr
 
       lastSeqRef.current = payload.seq;
       startTransition(() => {
-        setMessages((prev) => [...prev, payload]);
+        setMessages((prev) => {
+          const next = [...prev, payload];
+          // Defence-in-depth (ST2 HARD): the server's buffer-replay-live
+          // sequence already delivers seq ASC, so the hot path is in-order
+          // and this branch returns immediately. A sort only runs on the
+          // rare race where a live broadcast squeaks in before the server's
+          // replay drain completes — belt + braces so the DOM never renders
+          // out-of-order rows even if the server-side invariant regressed.
+          const n = next.length;
+          if (n < 2 || next[n - 1].seq > next[n - 2].seq) return next;
+          return next.slice().sort((a, b) => a.seq - b.seq);
+        });
       });
       scheduleReplayingSettle();
     },
@@ -170,11 +193,40 @@ export function useTaskStream({ taskId }: { taskId: string | null }): UseTaskStr
     return () => document.removeEventListener('visibilitychange', onVisibilityChange);
   }, [taskId, pauseTaskStream, resumeTaskStream, scheduleReplayingSettle]);
 
+  // Reconnect handler — the core of the ST2 end-to-end contract.
+  //
+  // When the socket drops (WS `onclose` in WebSocketContext), `isConnected`
+  // flips false. After the 3 s reconnect timer fires and the new socket
+  // completes the auth handshake, `isConnected` flips back to true. At that
+  // moment we must re-send `subscribe_task(taskId, lastSeqRef.current)` so
+  // the server's buffer-replay-live sequence (Wave 0) closes any gap.
+  //
+  // We guard on the false → true transition explicitly via `wasConnectedRef`
+  // — the boot path already sends the initial subscribe_task through the
+  // REST-seed effect, so a naive `if (isConnected)` effect would double-fire
+  // on mount. The ref is written immediately so the next render's compare is
+  // correct; the 500 ms quiet timer paints the ReconnectBanner long enough
+  // for the user to see "replaying" feedback even on near-instant replays.
+  useEffect(() => {
+    if (!taskId) return;
+    const wasConnected = wasConnectedRef.current;
+    wasConnectedRef.current = isConnected;
+    if (!wasConnected && isConnected) {
+      setIsReplaying(true);
+      requestTaskReplay(taskId, lastSeqRef.current);
+      scheduleReplayingSettle();
+    }
+  }, [taskId, isConnected, requestTaskReplay, scheduleReplayingSettle]);
+
   return {
     messages,
     renderedMessages,
     isPaused,
     isReplaying,
+    // isReconnecting is a pure derived view of the WebSocketContext state —
+    // not a hook-owned flag. Putting it on the return means the ReconnectBanner
+    // can read a single stream object rather than juggling useWebSocket().
+    isReconnecting: !isConnected,
     lastSeq: lastSeqRef.current,
   };
 }

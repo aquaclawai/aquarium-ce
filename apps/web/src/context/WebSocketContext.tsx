@@ -115,6 +115,19 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     };
 
     wsRef.current = ws;
+
+    // Phase 24-03 (UI-06 / ST2): test-only hook that force-closes the current
+    // WS socket from browser context. Gated by Vite's static `import.meta.env`
+    // flags — DEV builds expose it (local iteration) and test builds expose it
+    // (Playwright `tests/e2e/issue-detail.spec.ts` reconnect-replay scenarios).
+    // Production CE bundles are built with MODE=production + DEV=false, so the
+    // entire block is statically eliminated by Vite's dead-code pass. Verified
+    // at build time: `grep -r __aquariumForceWsClose apps/web/dist/` → 0 hits.
+    if (import.meta.env.DEV || import.meta.env.MODE === 'test') {
+      (window as unknown as { __aquariumForceWsClose?: () => void }).__aquariumForceWsClose = () => {
+        try { ws.close(); } catch { /* already closed — noop */ }
+      };
+    }
   }, [user, getToken]);
 
   useEffect(() => {
