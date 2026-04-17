@@ -1128,6 +1128,16 @@
         "gateway": "Ensure the instance is running and try again.",
         "unknown": "Try again or contact support if the issue persists."
       }
+    },
+    "composer": {
+      "srHeader": "Chat with the assigned agent",
+      "placeholder": "Type a message… (⌘⏎ to send)",
+      "send": "Send",
+      "sending": "Sending…",
+      "noAssignee": "Assign an agent to this issue before chatting",
+      "sendFailed": "Couldn't send — please try again",
+      "chars": "{{count}} / {{max}}",
+      "hint": "Enter for newline · ⌘⏎ to send"
     }
   },
   "agentUI": {
@@ -2434,6 +2444,111 @@
       "tooltip": {
         "dragHint": "Arrastra o presiona Espacio para mover",
         "keyboardHint": "Espacio para agarrar · ↑↓ para mover · ← → para cambiar de columna · Espacio para soltar · Esc para cancelar"
+      }
+    },
+    "detail": {
+      "back": "Back to Issues",
+      "titleSuffix": "Issue #{{issueNumber}} · {{workspaceName}}",
+      "notFound": "Issue not found",
+      "loadFailed": "Couldn't load this issue",
+      "issueNumber": "#{{number}}",
+      "postedMeta": "Created {{relativeTime}} by {{author}}",
+      "assignee": "Assignee",
+      "unassigned": "Unassigned",
+      "priority": "Priority",
+      "status": "Status",
+      "dueDate": "Due",
+      "actions": {
+        "edit": "Edit",
+        "assignAgent": "Assign agent",
+        "changeStatus": "Change status",
+        "delete": "Delete issue"
+      },
+      "comments": {
+        "header": "Comments",
+        "count": "{{count}}",
+        "empty": {
+          "heading": "No comments yet",
+          "body": "Ask the assigned agent a question or leave a note to start the conversation."
+        },
+        "author": {
+          "user": "{{displayName}}",
+          "agent": "{{agentName}} · agent",
+          "system": "System"
+        },
+        "postedAt": "{{relativeTime}}",
+        "reply": "Reply",
+        "edit": "Edit",
+        "delete": "Delete",
+        "cancelReply": "Cancel",
+        "replyPlaceholder": "Reply to {{authorName}}…",
+        "showMore": "Show {{count}} more replies",
+        "system": {
+          "statusChange": "Status changed from {{from}} to {{to}}"
+        },
+        "postFailed": "Couldn't post comment — please try again",
+        "confirmDelete": {
+          "title": "Delete this comment?",
+          "body": "This cannot be undone.",
+          "confirm": "Delete"
+        }
+      },
+      "task": {
+        "header": "Active task",
+        "idle": "No active task",
+        "idleBody": "Assign this issue to an agent or chat below to start a task.",
+        "state": {
+          "queued": "Queued",
+          "dispatched": "Dispatched",
+          "running": "Running",
+          "completed": "Completed",
+          "failed": "Failed",
+          "cancelled": "Cancelled"
+        },
+        "startedAt": "Started {{relativeTime}}",
+        "completedAt": "Completed {{relativeTime}}",
+        "cancel": "Cancel task",
+        "cancelConfirm": {
+          "title": "Cancel this task?",
+          "body": "The agent will stop as soon as possible. Partial results are preserved.",
+          "confirm": "Cancel task"
+        },
+        "cancelFailed": "Couldn't cancel — please try again",
+        "historyHeader": "Task history",
+        "historyEmpty": "No prior tasks",
+        "stream": {
+          "waiting": "Waiting for the agent to respond…",
+          "stalled": "No activity for {{seconds}}s"
+        },
+        "kind": {
+          "text": "reply",
+          "thinking": "thinking",
+          "tool_use": "{{toolName}}",
+          "tool_result": "{{toolName}} result",
+          "error": "error"
+        },
+        "seqMeta": "seq {{seq}} · {{relativeTime}}",
+        "truncated": "⋯ truncated (showing {{shown}} of {{total}} bytes)",
+        "showFull": "Show full",
+        "showFullLoading": "Loading…",
+        "showFullFailed": "Couldn't load the full message",
+        "collapse": "Collapse",
+        "toolInputLabel": "Input",
+        "toolOutputLabel": "Output"
+      },
+      "ws": {
+        "reconnecting": "Reconnecting — replaying missed messages…",
+        "replayDone": "Caught up",
+        "paused": "Paused while in background",
+        "resumed": "Resumed"
+      },
+      "a11y": {
+        "newMessages": "{{count}} new agent messages",
+        "taskCompleted": "Task completed",
+        "taskFailed": "Task failed",
+        "taskCancelled": "Task cancelled",
+        "replaying": "Reconnecting and replaying missed messages",
+        "replayDone": "Caught up with agent"
       }
     }
   }
