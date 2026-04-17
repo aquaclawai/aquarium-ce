@@ -153,8 +153,116 @@ test.describe.serial('Phase 23 — Issue Board UI (Kanban)', () => {
     ).toHaveCount(1);
   });
 
-  test('mouse drag', () => {
-    test.skip(true, 'wired in 23-02');
+  test('mouse drag', async ({ page, request }) => {
+    // Scenario 23-02-01: mouse drag from Todo to In Progress. Verifies:
+    //   - PATCH /api/issues/:id { status } fires exactly once (cross-column)
+    //   - POST /api/issues/:id/reorder { beforeId, afterId } fires exactly once
+    //   - UI reflects authoritative position after drop
+    // Pre-clean to keep counts deterministic.
+    const existingRes = await request.get(`${API}/issues`);
+    if (existingRes.ok()) {
+      const existingBody = (await existingRes.json()) as { ok: boolean; data: { id: string }[] };
+      if (existingBody.ok) {
+        for (const row of existingBody.data) {
+          await request.delete(`${API}/issues/${row.id}`);
+        }
+      }
+    }
+
+    // Seed one Todo issue; we'll drag it to In Progress.
+    const seedRes = await request.post(`${API}/issues`, {
+      data: { title: 'Drag me to In Progress', status: 'todo' },
+    });
+    expect(seedRes.status()).toBe(201);
+    const seedBody = (await seedRes.json()) as { ok: boolean; data: { id: string; status: string } };
+    expect(seedBody.ok).toBe(true);
+    const draggedId = seedBody.data.id;
+
+    // Capture network calls for the dragged issue.
+    const patchCalls: { method: string; url: string; postData: unknown }[] = [];
+    const reorderCalls: { method: string; url: string; postData: unknown }[] = [];
+    page.on('request', req => {
+      const url = req.url();
+      if (url.includes(`/api/issues/${draggedId}/reorder`)) {
+        let postData: unknown = null;
+        try { postData = req.postDataJSON(); } catch { /* ignore */ }
+        reorderCalls.push({ method: req.method(), url, postData });
+        return;
+      }
+      if (url.includes(`/api/issues/${draggedId}`) && req.method() === 'PATCH') {
+        let postData: unknown = null;
+        try { postData = req.postDataJSON(); } catch { /* ignore */ }
+        patchCalls.push({ method: req.method(), url, postData });
+      }
+    });
+
+    await page.goto('http://localhost:5173/issues');
+    await expect(page.getByTestId('issues-board')).toBeVisible();
+
+    // Let the WS subscribe settle before the drag.
+    await page.waitForTimeout(3000);
+
+    const sourceCard = page.locator(`[data-issue-card="${draggedId}"]`);
+    await expect(sourceCard).toHaveCount(1);
+
+    // Source card must currently live in the `todo` column.
+    await expect(
+      page.locator(`[data-issue-column="todo"] [data-issue-card="${draggedId}"]`),
+    ).toHaveCount(1);
+
+    // Manual mouse drag: press down on the source card, move >5 px
+    // (PointerSensor activation), then move over the in_progress column drop
+    // zone, then release. @dnd-kit's PointerSensor reads document-level
+    // pointermove events so driving page.mouse directly is sufficient.
+    const sourceBox = await sourceCard.boundingBox();
+    expect(sourceBox).not.toBeNull();
+    const targetColumn = page.locator('[data-issue-column="in_progress"]');
+    await expect(targetColumn).toHaveCount(1);
+    const targetBox = await targetColumn.boundingBox();
+    expect(targetBox).not.toBeNull();
+
+    await page.mouse.move(sourceBox!.x + sourceBox!.width / 2, sourceBox!.y + sourceBox!.height / 2);
+    await page.mouse.down();
+    // Move >5 px to cross the activation threshold.
+    await page.mouse.move(
+      sourceBox!.x + sourceBox!.width / 2 + 10,
+      sourceBox!.y + sourceBox!.height / 2 + 10,
+      { steps: 5 },
+    );
+    // Move over the target column center.
+    await page.mouse.move(
+      targetBox!.x + targetBox!.width / 2,
+      targetBox!.y + targetBox!.height / 2,
+      { steps: 10 },
+    );
+    await page.mouse.up();
+
+    // Wait for the POST /reorder round-trip + state application.
+    await page.waitForTimeout(1500);
+
+    // Verify the card now lives under the in_progress column.
+    await expect(
+      page.locator(`[data-issue-column="in_progress"] [data-issue-card="${draggedId}"]`),
+    ).toHaveCount(1);
+
+    // Exactly one PATCH (cross-column) and exactly one POST /reorder.
+    expect(patchCalls.length, `PATCH calls: ${JSON.stringify(patchCalls)}`).toBe(1);
+    expect(reorderCalls.length, `reorder calls: ${JSON.stringify(reorderCalls)}`).toBe(1);
+
+    // PATCH body shape must contain status: 'in_progress'.
+    expect(patchCalls[0].postData).toMatchObject({ status: 'in_progress' });
+    // POST /reorder body shape must contain beforeId + afterId keys (values
+    // may be null when the target column is empty).
+    const reorderBody = reorderCalls[0].postData as { beforeId?: unknown; afterId?: unknown };
+    expect(reorderBody).toHaveProperty('beforeId');
+    expect(reorderBody).toHaveProperty('afterId');
+
+    // Server-side verification: DB now holds status='in_progress'.
+    const finalRes = await request.get(`${API}/issues/${draggedId}`);
+    expect(finalRes.ok()).toBeTruthy();
+    const finalBody = (await finalRes.json()) as { ok: boolean; data: { status: string; position: number | null } };
+    expect(finalBody.ok).toBe(true);
+    expect(finalBody.data.status).toBe('in_progress');
   });
 
   test('concurrent reorder', () => {

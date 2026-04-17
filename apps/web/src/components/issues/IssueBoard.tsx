@@ -1,6 +1,18 @@
 import { useRef } from 'react';
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCorners,
+} from '@dnd-kit/core';
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { IssueColumn } from './IssueColumn';
+import { IssueCardOverlay } from './IssueCardOverlay';
 import { useBoardReconciler } from './useBoardReconciler';
+import { useIssueBoard } from './useIssueBoard';
 import type { Issue, IssueStatus } from '@aquarium/shared';
 
 interface IssueBoardProps {
@@ -22,29 +34,80 @@ const STATUSES: readonly IssueStatus[] = [
   'cancelled',
 ] as const;
 
+/**
+ * IssueBoard — top-level DndContext that wires sensors, collision detection,
+ * and the four drag handlers from useIssueBoard. Also hosts the DragOverlay
+ * portal so the dragged preview renders above everything else (z-index
+ * ladder from 23-UI-SPEC §Z-Index Ladder: `--z-drag-overlay: 5000`).
+ *
+ * UX1 HARD invariant (23-UI-SPEC §WebSocket Reconciliation Contract): while
+ * activeIdRef is non-null, useBoardReconciler queues incoming issue:* events
+ * rather than applying them to local state. See useIssueBoard.handleDragEnd
+ * for the strict ordering of clears + flush.
+ */
 export function IssueBoard({ issues, setIssues }: IssueBoardProps) {
-  // Plan 02 writes to activeIdRef on drag start / clears on drag end.
-  // Plan 01 keeps it null — useBoardReconciler's queue path is never hit.
+  // Refs shared between the reconciler (writer: activeIdRef read;
+  // lastLocalMutationRef read) and useIssueBoard (writer: both).
   const activeIdRef = useRef<string | null>(null);
+  const lastLocalMutationRef = useRef<{ issueId: string; position: number } | null>(null);
 
-  // flushPendingRemoteEvents is returned for plan 02 to call on drag end.
-  // Plan 01 leaves it unused — the reconciler always flushes immediately.
-  useBoardReconciler({ setIssues, activeIdRef });
+  const { flushPendingRemoteEvents } = useBoardReconciler({
+    setIssues,
+    activeIdRef,
+    lastLocalMutationRef,
+  });
+
+  const {
+    activeId,
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+    handleDragCancel,
+  } = useIssueBoard({
+    issues,
+    setIssues,
+    activeIdRef,
+    flushPendingRemoteEvents,
+    lastLocalMutationRef,
+  });
+
+  // Sensors per 23-UI-SPEC §Interaction Contract §Sensors. 5 px activation
+  // prevents accidental drags on plain clicks; KeyboardSensor with
+  // sortableKeyboardCoordinates gives free keyboard DnD — plan 23-04 wires
+  // the @dnd-kit/accessibility announcer.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const activeIssue = activeId ? issues.find(i => i.id === activeId) ?? null : null;
 
   return (
-    <div className="flex gap-4 overflow-x-auto pr-6">
-      {STATUSES.map(status => {
-        const columnItems = issues.filter(i => i.status === status);
-        return (
-          <IssueColumn
-            key={status}
-            status={status}
-            items={columnItems}
-            isActiveDropTarget={false}
-            activeId={null}
-          />
-        );
-      })}
-    </div>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
+      <div className="flex gap-4 overflow-x-auto pr-6">
+        {STATUSES.map(status => {
+          const columnItems = issues.filter(i => i.status === status);
+          return (
+            <IssueColumn
+              key={status}
+              status={status}
+              items={columnItems}
+              isActiveDropTarget={false}
+              activeId={activeId}
+            />
+          );
+        })}
+      </div>
+      <DragOverlay style={{ zIndex: 'var(--z-drag-overlay)' as unknown as number }}>
+        {activeIssue ? <IssueCardOverlay issue={activeIssue} /> : null}
+      </DragOverlay>
+    </DndContext>
   );
 }

@@ -1,5 +1,7 @@
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { Issue, IssuePriority } from '@aquarium/shared';
@@ -23,12 +25,44 @@ function priorityVariant(priority: IssuePriority): BadgeVariant {
 
 function IssueCardImpl({ issue }: IssueCardProps) {
   const { t } = useTranslation();
-  // Security (T-23-01-01 mitigate): React auto-escapes string children —
-  // issue.title and issue.description are rendered as plain text. No raw
+
+  // Plan 23-02: useSortable wires drag listeners + transform onto the card
+  // root. `data.status` is consumed by useIssueBoard.resolveTargetStatus to
+  // resolve cross-column drops when `over` is a card (vs a column sentinel).
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: issue.id,
+    data: { status: issue.status },
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,  // ghosted original slot while overlay floats
+  };
+
+  // Security (T-23-01-01 / T-23-02-05 mitigate): React auto-escapes string
+  // children — issue.title + issue.description render as plain text. No raw
   // HTML injection paths in this file. UX6 markdown rendering is Phase 24.
+  //
+  // Memo comparator (below) keys on id + updatedAt + position + status +
+  // isDraggingOverlay. It does NOT key on `isDragging` — but that's OK: the
+  // useSortable hook mutates the React tree internally when isDragging flips,
+  // forcing a re-render regardless of the memo comparator.
   return (
     <Card
+      ref={setNodeRef}
       data-issue-card={issue.id}
+      data-updated-at={issue.updatedAt}
+      {...attributes}
+      {...listeners}
+      style={style}
       className="p-3 min-h-[72px] gap-2 flex flex-col cursor-grab"
     >
       <div className="flex items-start justify-between gap-2">
