@@ -102,6 +102,10 @@ test('listMessagesAfterSeq hasMore=true when count >= REPLAY_ROW_CAP (ST2 REST p
         issueId,
       });
     }
+    // Appending > BUFFER_SOFT_CAP triggers a fire-and-forget early flush;
+    // wait for it to settle before draining residual (mirrors the
+    // overflow-early-flush test in task-message-batcher.test.ts).
+    await new Promise((r) => setTimeout(r, 50));
     await flushTaskMessages(taskId);
 
     const first = await listMessagesAfterSeq(ctx.db, taskId, 0);
@@ -151,6 +155,8 @@ test('listRecentMessagesAfterSeq returns the 500 most-recent rows + olderOmitted
         issueId,
       });
     }
+    // Early-flush settle + residual drain pattern (see 18-02 batcher test).
+    await new Promise((r) => setTimeout(r, 50));
     await flushTaskMessages(taskId);
 
     const result = await listRecentMessagesAfterSeq(ctx.db, taskId, 0, 500);

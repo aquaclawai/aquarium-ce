@@ -29,6 +29,7 @@ import { db as defaultDb } from '../db/index.js';
 import { getAdapter } from '../db/adapter.js';
 import { broadcast } from '../ws/index.js';
 import { withImmediateTx } from '../services/task-queue-store.js';
+import { truncateForStorage } from '../services/task-message-store.js';
 import type { TaskMessageType } from '@aquarium/shared';
 
 const BATCH_INTERVAL_MS = 500;
@@ -198,33 +199,93 @@ async function flushOne(taskId: string): Promise<void> {
         .max({ m: 'seq' })
         .first()) as { m: number | null } | undefined;
       let next = Number(row?.m ?? 0);
+      // Phase 24-00 UX6: overflow writes land in the same transaction as
+      // the task_messages INSERT so a row never exists in one table without
+      // the other.
+      const overflowInserts: Array<{
+        task_id: string;
+        seq: number;
+        content: string | null;
+        input_json: string | null;
+        output: string | null;
+        original_bytes: number;
+        created_at: string;
+      }> = [];
+      const nowIso = new Date().toISOString();
       const inserts = batch.map((m) => {
         next += 1;
+        const trunc = truncateForStorage({
+          content: m.content ?? null,
+          input: m.input,
+          output: m.output,
+        });
+        const metadata: Record<string, unknown> = { ...(m.metadata ?? {}) };
+        if (trunc.didTruncate) {
+          metadata.truncated = true;
+          metadata.originalBytes = trunc.originalBytes;
+        }
+        // `truncatedInput` is the JSON-string form when truncation happened
+        // and the original object otherwise — adapter.jsonValue handles both.
+        const storedInputRaw = trunc.truncatedInput;
+        // When input was truncated, the serialized JSON has already been
+        // cropped to LIMIT bytes; store it as TEXT directly rather than
+        // re-encoding via adapter.jsonValue (which would wrap it in quotes).
+        const didTruncateInput =
+          trunc.didTruncate && trunc.overflow?.input_json !== null && trunc.overflow?.input_json !== undefined;
+        const storedInput =
+          storedInputRaw === undefined || storedInputRaw === null
+            ? null
+            : didTruncateInput
+              ? (storedInputRaw as string)
+              : adapter.jsonValue(storedInputRaw);
+        const storedOutput =
+          trunc.truncatedOutput === null || trunc.truncatedOutput === undefined
+            ? null
+            : trunc.truncatedOutput;
+
         toBroadcast.push({
           workspaceId: m.workspaceId,
           issueId: m.issueId,
           seq: next,
           type: m.type,
           tool: m.tool ?? null,
-          content: m.content ?? null,
-          input: m.input ?? null,
-          output: m.output ?? null,
+          content: trunc.truncatedContent,
+          // Broadcast carries the truncated form so WS wire size stays bounded
+          // (UX6). The UI's TruncationMarker calls GET /full for uncapped.
+          input: storedInputRaw ?? null,
+          output: trunc.truncatedOutput,
         });
+
+        if (trunc.didTruncate && trunc.overflow) {
+          overflowInserts.push({
+            task_id: taskId,
+            seq: next,
+            content: trunc.overflow.content,
+            input_json: trunc.overflow.input_json,
+            output: trunc.overflow.output,
+            original_bytes: trunc.originalBytes,
+            created_at: nowIso,
+          });
+        }
+
         return {
           id: randomUUID(),
           task_id: taskId,
           seq: next,
           type: m.type,
           tool: m.tool ?? null,
-          content: m.content ?? null,
-          input: m.input === undefined || m.input === null ? null : adapter.jsonValue(m.input),
-          output: m.output === undefined || m.output === null ? null : adapter.jsonValue(m.output),
-          metadata: adapter.jsonValue(m.metadata ?? {}),
-          created_at: new Date().toISOString(),
+          content: trunc.truncatedContent,
+          input: storedInput,
+          output: storedOutput,
+          metadata: adapter.jsonValue(metadata),
+          created_at: nowIso,
         };
       });
       // Single bulk INSERT keeps the write-lock window minimal (SQ5 10ms budget).
       await trx('task_messages').insert(inserts);
+      if (overflowInserts.length > 0) {
+        await trx('task_message_overflow').insert(overflowInserts);
+      }
     });
 
     // Broadcast AFTER commit — never inside the transaction (PITFALLS §SQ5).

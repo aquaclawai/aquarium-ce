@@ -59,6 +59,7 @@ import runtimeRoutes from './routes/runtimes.js';
 import agentRoutes from './routes/agents.js';
 import issueRoutes from './routes/issues.js';
 import commentRoutes, { issueCommentRouter } from './routes/comments.js';
+import tasksRouter from './routes/tasks.js';
 import daemonRoutes from './routes/daemon.js';
 import daemonTokenRoutes from './routes/daemon-tokens.js';
 import { attachWebSocketProxy } from './routes/instance-proxy.js';
@@ -175,6 +176,8 @@ export function createApp(options: CreateAppOptions = {}): { app: express.Applic
   app.use('/api/issues', issueRoutes);
   app.use('/api/issues/:issueId/comments', issueCommentRouter);
   app.use('/api/comments', commentRoutes);
+  // Phase 24-00: task replay + cancel surface (GET /:id/messages, /:seq/full, POST /:id/cancel)
+  app.use('/api/tasks', tasksRouter);
   // Phase 19: daemon REST surface — authenticated with `adt_*` bearer only
   // (requireDaemonAuth is mounted inside the router). `/api/daemon/*` is
   // exempt from the two global `/api/` rate limiters above; its own
