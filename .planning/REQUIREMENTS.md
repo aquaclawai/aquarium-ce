@@ -147,11 +147,11 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 - [x] **UI-01**: User sees a kanban Issues page with one column per status, drag-and-drop reordering via @dnd-kit, and keyboard-accessible drag
 - [x] **UI-02**: Optimistic local reorder reconciles with WebSocket reorder events from other sessions without corrupting drag state
 - [x] **UI-03**: Issue board virtualises when > 100 issues are loaded to keep drag FPS smooth
-- [ ] **UI-04**: User sees an Issue Detail page with title, description, comments timeline, active task progress, and action sidebar
-- [ ] **UI-05**: Task message stream renders live `tool_use / tool_result / text / thinking` messages from WebSocket `subscribe_task`
-- [ ] **UI-06**: WebSocket reconnect replays `task_messages` from `lastSeq` so users never see a gap on reconnect
-- [ ] **UI-07**: Agent-authored content is never rendered via `dangerouslySetInnerHTML`; task output is truncated to 16 KB server-side
-- [ ] **UI-08**: All new UI strings are translated across 6 locales (en, zh, fr, de, es, it) — enforced in CI before release
+- [x] **UI-04**: User sees an Issue Detail page with title, description, comments timeline, active task progress, and action sidebar
+- [x] **UI-05**: Task message stream renders live `tool_use / tool_result / text / thinking` messages from WebSocket `subscribe_task`
+- [x] **UI-06**: WebSocket reconnect replays `task_messages` from `lastSeq` so users never see a gap on reconnect
+- [x] **UI-07**: Agent-authored content is never rendered via `dangerouslySetInnerHTML`; task output is truncated to 16 KB server-side
+- [x] **UI-08**: All new UI strings are translated across 6 locales (en, zh, fr, de, es, it) — enforced in CI before release
 
 ### Management UI
 
@@ -161,7 +161,7 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 
 ### Chat on Issue (Differentiator)
 
-- [ ] **CHAT-01**: User can chat with an agent directly on an issue — each message creates a task, response streams back as task messages, and chat history threads via `trigger_comment_id`
+- [x] **CHAT-01**: User can chat with an agent directly on an issue — each message creates a task, response streams back as task messages, and chat history threads via `trigger_comment_id`
 
 ### Integration & Release
 
