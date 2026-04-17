@@ -15,6 +15,12 @@ interface WebSocketContextType {
   unsubscribeChatSession: (instanceId: string, sessionKey: string) => void;
   addHandler: (type: WsEventType, handler: MessageHandler) => void;
   removeHandler: (type: WsEventType, handler: MessageHandler) => void;
+  // Phase 24-02: task stream replay / pause / resume trio. Distinct from
+  // `subscribe` (topic-set semantics) — these are one-shot WS requests that
+  // trigger the server's buffer-replay-live ordering (Wave 0 ST2 invariant).
+  requestTaskReplay: (taskId: string, lastSeq: number) => void;
+  pauseTaskStream: (taskId: string) => void;
+  resumeTaskStream: (taskId: string, lastSeq: number) => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
@@ -27,6 +33,10 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const subscriptionsRef = useRef<Set<string>>(new Set());
   const groupChatSubscriptionsRef = useRef<Set<string>>(new Set());
   const chatSessionSubscriptionsRef = useRef<Set<string>>(new Set());
+  // Phase 24-02: pending task replay requests. Buffered pre-auth so that a
+  // subscribe_task fired by `useTaskStream` before the socket finishes the
+  // auth handshake still flushes the moment the server accepts us.
+  const pendingTaskReplayRef = useRef<Map<string, number>>(new Map());
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const authenticatedRef = useRef(false);
   const connectRef = useRef(() => {});
@@ -65,6 +75,13 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             const [instanceId, sessionKey] = compositeKey.split(':');
             ws.send(JSON.stringify({ type: 'subscribe_chat_session', instanceId, sessionKey }));
           });
+          // Phase 24-02: flush any task-replay requests queued pre-auth. Each
+          // map entry carries the *latest* watermark requested for that taskId;
+          // subscribe_task is idempotent on the server so re-fires are safe.
+          pendingTaskReplayRef.current.forEach((lastSeq, taskId) => {
+            ws.send(JSON.stringify({ type: 'subscribe_task', taskId, lastSeq }));
+          });
+          pendingTaskReplayRef.current.clear();
           return;
         }
 
@@ -165,6 +182,47 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Phase 24-02: task-stream replay / pause / resume trio.
+  //
+  //   requestTaskReplay — asks the server to replay everything after `lastSeq`
+  //   and then switch to live mode for this task. Queued pre-auth so
+  //   useTaskStream can fire the request during its initial mount effect
+  //   without waiting on the socket. Idempotent by taskId — a second call
+  //   simply overwrites the queued watermark.
+  //
+  //   pauseTaskStream — polite request to stop pushing task:message events for
+  //   this task. Server drops live broadcasts on the floor until the next
+  //   subscribe_task resubscribes (Wave 0 contract). No-op when disconnected:
+  //   if the socket is down the server sees no subscription at all.
+  //
+  //   resumeTaskStream — symmetric with requestTaskReplay; re-issues
+  //   subscribe_task with the client's current watermark so the server
+  //   replay-buffer-live sequence fills whatever gap accrued during the pause
+  //   or disconnect. CRITICAL: callers MUST pass the CURRENT lastSeq, not 0,
+  //   otherwise the server re-replays history the client already has.
+  const requestTaskReplay = useCallback((taskId: string, lastSeq: number) => {
+    pendingTaskReplayRef.current.set(taskId, lastSeq);
+    if (wsRef.current?.readyState === WebSocket.OPEN && authenticatedRef.current) {
+      wsRef.current.send(JSON.stringify({ type: 'subscribe_task', taskId, lastSeq }));
+    }
+  }, []);
+
+  const pauseTaskStream = useCallback((taskId: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN && authenticatedRef.current) {
+      wsRef.current.send(JSON.stringify({ type: 'pause_stream', taskId }));
+    }
+  }, []);
+
+  const resumeTaskStream = useCallback((taskId: string, lastSeq: number) => {
+    // Queue + send — same shape as requestTaskReplay. A resume happens after
+    // the socket may have reconnected while the tab was hidden, so the
+    // pre-auth queue is the right home for the request too.
+    pendingTaskReplayRef.current.set(taskId, lastSeq);
+    if (wsRef.current?.readyState === WebSocket.OPEN && authenticatedRef.current) {
+      wsRef.current.send(JSON.stringify({ type: 'subscribe_task', taskId, lastSeq }));
+    }
+  }, []);
+
   const addHandler = useCallback((type: WsEventType, handler: MessageHandler) => {
     if (!handlersRef.current.has(type)) {
       handlersRef.current.set(type, new Set());
@@ -177,7 +235,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <WebSocketContext.Provider value={{ isConnected, subscribe, unsubscribe, subscribeGroupChat, unsubscribeGroupChat, subscribeChatSession, unsubscribeChatSession, addHandler, removeHandler }}>
+    <WebSocketContext.Provider value={{ isConnected, subscribe, unsubscribe, subscribeGroupChat, unsubscribeGroupChat, subscribeChatSession, unsubscribeChatSession, addHandler, removeHandler, requestTaskReplay, pauseTaskStream, resumeTaskStream }}>
       {children}
     </WebSocketContext.Provider>
   );
