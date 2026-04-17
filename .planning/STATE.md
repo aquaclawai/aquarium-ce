@@ -4,14 +4,14 @@ milestone: v1.4
 milestone_name: Task Delegation Platform
 status: executing
 stopped_at: Completed 14-01-PLAN.md
-last_updated: "2026-04-17T08:33:07.417Z"
-last_activity: 2026-04-17 -- Phase 21 planning complete
+last_updated: "2026-04-17T11:25:14.506Z"
+last_activity: 2026-04-17 -- Phase 22 execution started
 progress:
   total_phases: 18
-  completed_phases: 6
-  total_plans: 30
-  completed_plans: 26
-  percent: 87
+  completed_phases: 7
+  total_plans: 34
+  completed_plans: 30
+  percent: 88
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-16)
 
 **Core value:** Aquarium is the control plane where users delegate work to AI agents — whether platform-hosted Docker instances or user-managed CLIs (Claude Code, Codex, Hermes) reached through a local daemon.
-**Current focus:** Phase 20 — Hosted-Instance Driver
+**Current focus:** Phase 22 — Remaining Agent Backends
 
 ## Current Position
 
-Phase: 21
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-17 -- Phase 21 planning complete
+Phase: 22 (Remaining Agent Backends) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 22
+Last activity: 2026-04-17 -- Phase 22 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
