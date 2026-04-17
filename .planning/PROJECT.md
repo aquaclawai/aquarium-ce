@@ -99,4 +99,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-17 after Phase 20 (Hosted-Instance Driver) completion*
+*Last updated: 2026-04-17 after Phase 22 (Remaining Agent Backends) completion — Codex / OpenCode / OpenClaw / Hermes backends now plug into the shared `Backend` interface; daemon dispatches by `backendByRuntimeId` map; 304/304 unit tests green*
