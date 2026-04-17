@@ -5,10 +5,10 @@ import type { Issue, IssuePriority } from '@aquarium/shared';
 
 /**
  * Stateless drag overlay preview rendered inside @dnd-kit's <DragOverlay>.
- * Intentionally does NOT call useSortable — it is a preview layer, not a
- * sortable item. Visual treatment per 23-UI-SPEC §Color reserved usage #2-3:
- * brand-accent ring + subtle shadow glow to distinguish the floating preview
- * from the ghosted original card in its slot.
+ * Intentionally does NOT register a sortable hook — it is a preview layer,
+ * not a sortable item. Visual treatment per 23-UI-SPEC §Color reserved
+ * usage #2-3: brand-accent ring + subtle shadow glow to distinguish the
+ * floating preview from the ghosted original card in its slot.
  */
 
 interface IssueCardOverlayProps {
