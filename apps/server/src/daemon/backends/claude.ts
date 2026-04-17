@@ -31,12 +31,18 @@
  *     Parser, §Common Pitfalls PM1/PM3/PM4/PM7.
  */
 
-import path from 'node:path';
 import type { Readable, Writable } from 'node:stream';
 import { execa, type ResultPromise, type Subprocess } from 'execa';
 import { parseNdjson } from '../ndjson-parser.js';
 import type { AgentMessage, ClaimedTask } from '@aquarium/shared';
 import type { PendingTaskMessageWire } from '../http-client.js';
+import type { Backend, BackendRunDeps, BackendRunResult } from '../backend.js';
+import { detectClaude } from '../detect.js';
+import { buildChildEnv, sanitizeCustomEnv } from './env.js';
+
+// Re-export `sanitizeCustomEnv` so existing tests / consumers importing it
+// from `./backends/claude.js` continue to work (back-compat contract).
+export { sanitizeCustomEnv };
 
 export interface ClaudeStreamMessage {
   type: 'system' | 'assistant' | 'user' | 'result' | 'log' | 'control_request';
@@ -167,19 +173,8 @@ export function toPendingTaskMessage(
   }
 }
 
-/**
- * PM7 — strip PATH / AQUARIUM_* from agent custom_env before handing to child.
- * Prevents user-shadowed credentials from leaking into the spawned claude.
- */
-export function sanitizeCustomEnv(customEnv: Record<string, string>): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(customEnv)) {
-    if (k === 'PATH' || k === 'Path') continue;
-    if (k.startsWith('AQUARIUM_')) continue;
-    out[k] = v;
-  }
-  return out;
-}
+// `sanitizeCustomEnv` is now owned by `./env.ts` (single source of truth).
+// It is re-exported at the top of this file to preserve back-compat.
 
 export interface SpawnClaudeOpts {
   prompt: string;
@@ -201,15 +196,11 @@ export interface SpawnClaudeOpts {
  */
 export function spawnClaude(opts: SpawnClaudeOpts): Subprocess {
   const spawnFn = opts._execa ?? execa;
-  const daemonBinDir = path.dirname(process.execPath);
-  const env: Record<string, string | undefined> = {
-    ...process.env,
-    PATH: daemonBinDir + path.delimiter + (process.env.PATH ?? ''),
-    ...sanitizeCustomEnv(opts.customEnv),
-  };
-  // PM7 — token must NEVER leak into child env:
-  delete env.AQUARIUM_DAEMON_TOKEN;
-  delete env.AQUARIUM_TOKEN;
+  // PM3 + PM7 — single source of truth for the child-env shape lives in
+  // `./env.ts`. `buildChildEnv` prepends the daemon-binary dir to PATH,
+  // sanitises customEnv (strips PATH + AQUARIUM_* prefix), and hard-deletes
+  // AQUARIUM_DAEMON_TOKEN + AQUARIUM_TOKEN after merge.
+  const env = buildChildEnv({ customEnv: opts.customEnv });
 
   return spawnFn(
     opts.claudePath,
@@ -348,9 +339,31 @@ function buildPrompt(task: ClaimedTask): string {
   return pieces.join('\n').trim();
 }
 
-export const claudeBackend = {
-  runClaudeTask,
-  spawnClaude,
-  buildControlResponse,
-  mapClaudeMessageToAgentMessage,
+// ── Phase 22 `Backend` interface conformance ──
+//
+// Adapts `runClaudeTask` (Phase 21 shape) into the `Backend.run` contract
+// without breaking any existing consumer. The rest of this file's exports
+// (`runClaudeTask`, `spawnClaude`, `buildControlResponse`,
+// `mapClaudeMessageToAgentMessage`, `toPendingTaskMessage`,
+// `sanitizeCustomEnv`) are preserved verbatim.
+
+async function runClaudeAsBackend(deps: BackendRunDeps): Promise<BackendRunResult> {
+  return runClaudeTask({
+    task: deps.task,
+    claudePath: deps.binaryPath,
+    config: {
+      backends: { claude: { allow: deps.config.backend.allow ?? ['*'] } },
+      gracefulKillMs: deps.config.gracefulKillMs,
+      inactivityKillMs: deps.config.inactivityKillMs,
+    },
+    onAgentMessage: deps.onAgentMessage,
+    abortSignal: deps.abortSignal,
+    _spawn: deps._spawn as typeof spawnClaude | undefined,
+  });
+}
+
+export const claudeBackend: Backend = {
+  provider: 'claude',
+  detect: async () => detectClaude(),
+  run: runClaudeAsBackend,
 };
