@@ -2,7 +2,7 @@
 phase: 23
 slug: issue-board-ui-kanban
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-04-17
 ---
@@ -46,9 +46,9 @@ created: 2026-04-17
 | 23-00-02 | 00 | 0 | UX5 | — | i18n parity script catches missing keys across 6 locales | script | `node apps/web/scripts/check-i18n-parity.mjs` exits 0 | ❌ Wave 0 | ⬜ pending |
 | 23-00-03 | 00 | 0 | A1 (research) | — | WS broadcasts reach authenticated client without explicit subscribe | inline | Read `apps/server/src/ws/index.ts` — document behaviour | ❌ Wave 0 | ⬜ pending |
 | 23-01-01 | 01 | 1 | UI-01 | — | IssueBoard renders read-only column-per-status view | e2e | `npx playwright test tests/e2e/issues-board.spec.ts -g "renders columns"` | ❌ Wave 0 | ⬜ pending |
-| 23-01-02 | 01 | 1 | UI-01 | — | Mouse drag moves card Todo → In Progress, server receives `POST /reorder` | e2e | `npx playwright test tests/e2e/issues-board.spec.ts -g "mouse drag"` | ❌ Wave 0 | ⬜ pending |
-| 23-02-01 | 02 | 2 | UI-02 (UX1 HARD) | — | Second session's `issue:reordered` during active drag deferred until drop | e2e | `npx playwright test tests/e2e/issues-board.spec.ts -g "concurrent reorder"` | ❌ Wave 0 | ⬜ pending |
-| 23-02-02 | 02 | 2 | UI-02 | — | Own-echo `issue:reordered` doesn't cause double-apply | e2e | same file, `-g "own echo"` | ❌ Wave 0 | ⬜ pending |
+| 23-02-01-mouse-drag | 02 | 2 | UI-01 | — | Mouse drag moves card Todo → In Progress, server receives `POST /reorder` | e2e | `npx playwright test tests/e2e/issues-board.spec.ts -g "mouse drag"` | ❌ Wave 0 | ⬜ pending |
+| 23-02-02-concurrent-reorder | 02 | 2 | UI-02 (UX1 HARD) | — | Second session's `issue:reordered` during active drag deferred until drop | e2e | `npx playwright test tests/e2e/issues-board.spec.ts -g "concurrent reorder"` | ❌ Wave 0 | ⬜ pending |
+| 23-02-03-own-echo | 02 | 2 | UI-02 | — | Own-echo `issue:reordered` doesn't cause double-apply | e2e | same file, `-g "own echo"` | ❌ Wave 0 | ⬜ pending |
 | 23-03-01 | 03 | 3 | UI-03 (UX4) | — | 200 issues seeded; virtualizer renders ≤ 20 cards in DOM | e2e | `-g "virtualization"` — assert `document.querySelectorAll('[data-issue-card]').length <= 25` | ❌ Wave 0 | ⬜ pending |
 | 23-03-02 | 03 | 3 | UI-03 (UX4) | — | During drag, overscan bumps to items.length; dragged card never unmounts | e2e | `-g "virtualization drag"` — assert dragged card persists across scroll | ❌ Wave 0 | ⬜ pending |
 | 23-04-01 | 04 | 4 | UI-01 (UX2 a11y) | — | Keyboard drag: Tab → Space → ArrowRight → Space moves card between columns | e2e | `-g "keyboard drag"` | ❌ Wave 0 | ⬜ pending |
@@ -85,11 +85,11 @@ created: 2026-04-17
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references (deps, scripts, CI, fixtures, component scaffold)
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 90 s full suite
-- [ ] `nyquist_compliant: true` set in frontmatter after planner confirms
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (deps, scripts, CI, fixtures, component scaffold)
+- [x] No watch-mode flags
+- [x] Feedback latency < 90 s full suite
+- [x] `nyquist_compliant: true` set in frontmatter after planner confirms
 
-**Approval:** pending
+**Approval:** planner-confirmed 2026-04-17 (Phase 23 revision iteration 2) — plans satisfy Nyquist sampling after Blocker 4 row reassignment (mouse-drag scenario traces to plan 02 wave 2, not plan 01 wave 1).
