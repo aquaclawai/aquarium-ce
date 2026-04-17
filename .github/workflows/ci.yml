@@ -22,3 +22,25 @@ jobs:
         run: npm run lint -w @aquarium/web
       - name: Check i18n parity
         run: npm run check:i18n -w @aquarium/web
+      - name: Check no dangerouslySetInnerHTML in issue detail
+        run: |
+          # UI-07 / UX6 invariant: agent-authored content in the issue detail
+          # subtree never reaches the DOM via innerHTML. SafeMarkdown (wrapping
+          # rehype-sanitize) is the only rendering entry point; any direct
+          # dangerouslySetInnerHTML is a regression that CI fails on.
+          if grep -rn "dangerouslySetInnerHTML" apps/web/src/components/issues/detail/ apps/web/src/pages/IssueDetailPage.tsx; then
+            echo "::error::UX6 violation: dangerouslySetInnerHTML found in issue detail components"
+            exit 1
+          fi
+          echo "OK: no dangerouslySetInnerHTML in apps/web/src/components/issues/detail/ or IssueDetailPage.tsx"
+      - name: Check ReactMarkdown usage goes through SafeMarkdown
+        run: |
+          # UX6 invariant: every ReactMarkdown usage in the detail subtree
+          # must come from the SafeMarkdown wrapper. Only markdown.tsx is
+          # allowed to import react-markdown directly.
+          HITS=$(grep -rln "from 'react-markdown'" apps/web/src/components/issues/detail/ | grep -v "markdown.tsx" || true)
+          if [ -n "$HITS" ]; then
+            echo "::error::UX6 violation: react-markdown imported outside markdown.tsx: $HITS"
+            exit 1
+          fi
+          echo "OK: all ReactMarkdown usage in detail/ goes through SafeMarkdown"
