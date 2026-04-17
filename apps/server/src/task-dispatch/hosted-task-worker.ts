@@ -40,9 +40,10 @@ import type { ClaimedTask } from '@aquarium/shared';
  *     SKIPS the runtime (no claimTask, no failTask, task row unchanged).
  *
  * Invariants:
- *   - ST5 — worker NEVER writes instances.status, NEVER imports
- *     instance-manager.ts, NEVER calls updateStatus. Only reads the
- *     instances table via JOIN in the tick SQL.
+ *   - ST5 — worker NEVER writes instances.status, NEVER imports the
+ *     instance-lifecycle module, and NEVER calls status-updating
+ *     helpers. Only reads the instances table via JOIN in the tick SQL.
+ *     (See acceptance-criteria greps in 20-02-PLAN.md for the HARD invariant.)
  *   - PM6 — cancel is detected via TWO paths:
  *       * REACTIVE: a per-in-flight-task setInterval polls isTaskCancelled
  *         every CANCEL_POLL_MS (2s). Fires chat.abort independent of
@@ -127,7 +128,7 @@ export function __resetHostedWorkerState__(): void {
     clearInterval(tickHandle);
     tickHandle = null;
   }
-  // Clear any lingering in-flight cancel watchers (test hygiene).
+  // Clear lingering in-flight cancel watchers (test hygiene).
   for (const entry of inFlight.values()) {
     if (entry.cancelWatcher) clearInterval(entry.cancelWatcher);
     try {
@@ -326,23 +327,282 @@ async function tick(kx: Knex): Promise<void> {
   }
 }
 
-// ── Dispatch skeleton (Task 2 fills body) ───────────────────────────────────
+// ── Dispatch body (Task 2) ──────────────────────────────────────────────────
 
 /**
- * Dispatch a single claimed task. Task 1 skeleton only warns about
- * ignored fields and returns. Task 2 wires the full chat.send + stream
- * + REACTIVE cancel watcher + completion body.
+ * Return a Promise that rejects when the given AbortSignal is aborted.
+ * Used to race against gatewayCall / waitForChatCompletion so graceful
+ * shutdown or REACTIVE cancel unblocks the dispatch even when the
+ * underlying Promise does not observe the AbortController directly.
+ * Returns `Promise<never>` so it is a no-op on the success branch of
+ * `Promise.race` when the primary Promise resolves first.
+ */
+function abortSignalToRejection(signal: AbortSignal): Promise<never> {
+  if (signal.aborted) return Promise.reject(new Error('aborted'));
+  return new Promise<never>((_, reject) => {
+    const onAbort = (): void => {
+      signal.removeEventListener('abort', onAbort);
+      reject(new Error('aborted'));
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+
+/**
+ * Dispatch a single claimed task through the gateway.
+ *
+ * Call order:
+ *   1. warnIgnoredFields (HOSTED-05)
+ *   2. pre-flight isTaskCancelled (X5 — skip chat.send if cancelled between
+ *      enqueue and claim)
+ *   3. startTask (dispatched -> running; bail on {started:false})
+ *   4. Build sessionKey `task:<task.id>`; create AbortController + dedupe set
+ *   5. Register REACTIVE cancel watcher (setInterval polling isTaskCancelled
+ *      every CANCEL_POLL_MS — PM6 primary)
+ *   6. Subscribe stream listener (registerChatStreamListener) BEFORE chat.send
+ *      so no frames are missed (20-RESEARCH §Pitfall 2); listener also polls
+ *      isTaskCancelled opportunistically (PM6 secondary)
+ *   7. Register waitForChatCompletion BEFORE chat.send (same reason — gateway
+ *      may emit final before chat.send resolves on fast backends)
+ *   8. gatewayCall('chat.send', {sessionKey, message, idempotencyKey:task.id},
+ *      30_000) — HOSTED-02 30s RPC-accept
+ *   9. Await completion — 120s via CHAT_WAIT_TIMEOUT_MS (HOSTED-02 end-to-end)
+ *  10. Replay final-frame parts through mapper with signature-dedupe so the
+ *      terminal frame does not duplicate streaming rows
+ *  11. completeTask (idempotent for already-cancelled)
+ *  12. On error: failTask UNLESS abort.signal.aborted (cancel path already set
+ *      the row to 'cancelled' — don't overwrite the clean state)
+ *  13. finally: unsubscribe + cancelChatCompletion + clearInterval(cancelWatcher)
+ *      + inFlight.delete(task.id) — single cleanup path (PM6 handleCancel does
+ *      NOT delete/clearInterval; this block owns both)
  */
 async function dispatchHostedTask(
   task: ClaimedTask,
   instanceId: string,
-  _kx: Knex,
+  kx: Knex,
 ): Promise<void> {
   warnIgnoredFields(task);
-  // Task 2 adds the chat.send + streaming + lifecycle block here.
-  // Task 1 intentionally leaves this as a stub so the tick loop + mapper
-  // can be tested without mocking the whole gateway surface.
-  void instanceId;
+
+  // X5 pre-flight: user may have cancelled between enqueue and our claim.
+  if (await isTaskCancelled(task.id, kx)) {
+    console.log(
+      `[hosted-task-worker] task ${task.id} cancelled before dispatch — skipping chat.send`,
+    );
+    return;
+  }
+
+  // Transition dispatched -> running. startTask guards against the race where
+  // the row moved to cancelled/failed between claim and here.
+  const startedResult = await startTask(task.id, kx);
+  if (!startedResult.started) {
+    console.log(
+      `[hosted-task-worker] task ${task.id} not in dispatched state (now ${startedResult.status}) — skipping`,
+    );
+    return;
+  }
+
+  const sessionKey = `task:${task.id}`;
+  const abort = new AbortController();
+  // Dedupe set for final-frame duplicates. Signature keys on
+  // `${type}:${content}:${JSON.stringify(input)}:${JSON.stringify(output)}`
+  // so the mapper never emits two identical task_message rows.
+  const seenSignatures = new Set<string>();
+
+  const ctx: HostedDispatchContext = {
+    taskId: task.id,
+    workspaceId: task.workspaceId,
+    issueId: task.issueId,
+  };
+
+  // ── PM6 REACTIVE cancel watcher ─────────────────────────────────────────
+  // Why a setInterval (not a broadcast subscription): ws/index.ts exposes
+  // `broadcast()` but NO subscribe/onTaskCancelled hook, and task-queue-store
+  // has no event bus. A 2s poll per in-flight task is lightweight (bounded by
+  // max_concurrent_tasks × |online hosted runtimes|) and guarantees cancel is
+  // detected within CANCEL_POLL_MS REGARDLESS of whether the gateway is still
+  // emitting frames. If the gateway stops streaming after cancel (typical),
+  // the opportunistic poll in the stream listener never fires — only this
+  // reactive watcher breaks the 120s waitForChatCompletion block.
+  const cancelWatcher: ReturnType<typeof setInterval> = setInterval(() => {
+    void isTaskCancelled(task.id, kx)
+      .then((cancelled) => {
+        if (cancelled) handleCancel(task.id);
+      })
+      .catch((err) => {
+        // Swallow errors — reactive poll MUST NOT crash the dispatch.
+        console.warn(
+          `[hosted-task-worker] cancel poll failed for task ${task.id}:`,
+          err instanceof Error ? err.message : String(err),
+        );
+      });
+  }, CANCEL_POLL_MS);
+
+  // Subscribe BEFORE chat.send so no frames are missed (§Pitfall 2).
+  const unsubscribe = deps.registerChatStreamListener(
+    instanceId,
+    sessionKey,
+    (payload) => {
+      // Capture runId for chat.abort (§Cancel/Abort — gateway uses runId to
+      // correlate abort with the in-flight run when present).
+      if (payload.runId) {
+        const entry = inFlight.get(task.id);
+        if (entry && !entry.runId) entry.runId = payload.runId;
+      }
+      // OPPORTUNISTIC cancel poll — fires faster when frames are arriving.
+      void isTaskCancelled(task.id, kx).then((cancelled) => {
+        if (cancelled) handleCancel(task.id);
+      });
+
+      const msgs = translatePartsToMessages(payload, ctx);
+      for (const m of msgs) {
+        const sig = `${m.type}:${m.content ?? ''}:${JSON.stringify(m.input ?? null)}:${JSON.stringify(m.output ?? null)}`;
+        if (seenSignatures.has(sig)) continue;
+        seenSignatures.add(sig);
+        deps.appendTaskMessage(task.id, m);
+      }
+    },
+  );
+
+  inFlight.set(task.id, {
+    abort,
+    sessionKey,
+    instanceId,
+    unsubscribe,
+    cancelWatcher,
+    startedAt: Date.now(),
+  });
+
+  // Waiter BEFORE chat.send — avoid missing the final frame on a fast gateway.
+  const completion = deps.waitForChatCompletion(
+    instanceId,
+    sessionKey,
+    CHAT_WAIT_TIMEOUT_MS,
+  );
+  // Swallow the rejection here; handled by the try/catch below. Without this
+  // an unhandled rejection fires if we error before awaiting completion.
+  completion.catch(() => {
+    /* handled below */
+  });
+
+  try {
+    const prompt = buildPromptFromTask(task);
+
+    // HOSTED-02: 30s RPC-accept timeout (the gateway's GroupChatRPCClient
+    // uses the same value). idempotencyKey is the task.id (stable UUID) so
+    // the gateway dedupes a retry from the same task — never randomUUID.
+    // Race against the AbortController so graceful stop / cancel unblocks us
+    // even when the underlying gatewayCall Promise does not observe the
+    // signal directly (the RPC client has no AbortController wiring today).
+    await Promise.race([
+      deps.gatewayCall(
+        instanceId,
+        'chat.send',
+        {
+          sessionKey,
+          message: prompt,
+          idempotencyKey: task.id,
+        },
+        CHAT_SEND_TIMEOUT_MS,
+      ),
+      abortSignalToRejection(abort.signal),
+    ]);
+
+    const result = await Promise.race([completion, abortSignalToRejection(abort.signal)]);
+
+    // One last pass for the final frame (catches parts only present in the
+    // 'final' payload). The dedupe set suppresses duplicates of the streaming
+    // deltas already written.
+    const finalParts = translatePartsToMessages(
+      {
+        sessionKey,
+        state: 'final',
+        content: result.content,
+        messageId: result.messageId,
+        role: result.role,
+      },
+      ctx,
+    );
+    for (const m of finalParts) {
+      const sig = `${m.type}:${m.content ?? ''}:${JSON.stringify(m.input ?? null)}:${JSON.stringify(m.output ?? null)}`;
+      if (seenSignatures.has(sig)) continue;
+      seenSignatures.add(sig);
+      deps.appendTaskMessage(task.id, m);
+    }
+
+    // completeTask handles PM6 — returns {discarded:true, status:'cancelled'}
+    // if the user cancelled between final and here. Idempotent.
+    await completeTask(task.id, { sessionKey, messageId: result.messageId }, kx);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (abort.signal.aborted) {
+      // Cancel path already flipped the task row to 'cancelled' via cancelTask.
+      // Do NOT call failTask — it would return {discarded:true} but the error
+      // message 'hosted-dispatch-error: Chat completion cancelled' would
+      // pollute the run log.
+      return;
+    }
+    // failTask is idempotent for already-terminal states.
+    await failTask(task.id, `hosted-dispatch-error: ${msg}`, kx);
+  } finally {
+    try {
+      unsubscribe();
+    } catch {
+      // swallow — unsubscribe is best-effort
+    }
+    deps.cancelChatCompletion(instanceId, sessionKey);
+    clearInterval(cancelWatcher);
+    inFlight.delete(task.id);
+  }
+}
+
+/**
+ * Canonical prompt assembly from a claimed task. Text concatenation is
+ * deterministic — no per-agent templating is needed for Phase 20.
+ */
+function buildPromptFromTask(task: ClaimedTask): string {
+  const parts: string[] = [];
+  if (task.agent.instructions) parts.push(task.agent.instructions);
+  parts.push(`Issue #${task.issue.issueNumber}: ${task.issue.title}`);
+  if (task.issue.description) parts.push(task.issue.description);
+  if (task.triggerCommentContent) parts.push(`User: ${task.triggerCommentContent}`);
+  return parts.join('\n\n');
+}
+
+/**
+ * React to a cancel signal. Idempotent — if the task is not in-flight
+ * (already completed, or cancel arrived after finally{} cleanup), this
+ * is a no-op (X6).
+ *
+ * Invoked from TWO paths:
+ *   1. REACTIVE — the per-task CANCEL_POLL_MS setInterval (primary;
+ *      stream-independent).
+ *   2. OPPORTUNISTIC — the stream-listener's isTaskCancelled poll
+ *      (secondary; fires faster when frames arrive but silent when the
+ *      gateway stops streaming).
+ *
+ * handleCancel does NOT delete inFlight or clearInterval — the finally
+ * block in dispatchHostedTask owns cleanup on a single code path.
+ */
+function handleCancel(taskId: string): void {
+  const entry = inFlight.get(taskId);
+  if (!entry) return;
+  if (entry.abort.signal.aborted) return; // Already processed — idempotent no-op.
+  entry.abort.abort();
+  // Best-effort gateway abort — web UI (ChatTab.tsx:565) ignores failures.
+  const abortParams: Record<string, unknown> = { sessionKey: entry.sessionKey };
+  if (entry.runId) abortParams.runId = entry.runId;
+  deps
+    .gatewayCall(entry.instanceId, 'chat.abort', abortParams, CHAT_ABORT_TIMEOUT_MS)
+    .catch((err) => {
+      console.warn(
+        '[hosted-task-worker] chat.abort failed:',
+        err instanceof Error ? err.message : String(err),
+      );
+    });
+  // Also cancel the in-flight waitForChatCompletion so the dispatch unwinds
+  // promptly (the relay rejects the Promise with 'Chat completion cancelled').
+  deps.cancelChatCompletion(entry.instanceId, entry.sessionKey);
 }
 
 // ── Lifecycle ───────────────────────────────────────────────────────────────
@@ -381,13 +641,42 @@ export function startHostedTaskWorker(dbOverride?: Knex): void {
 }
 
 /**
- * Stop the hosted-task worker tick AND await any in-flight dispatches so
+ * Stop the hosted-task worker tick AND await in-flight dispatches so
  * graceful shutdown does not leave orphan chat.send RPCs on the wire.
+ *
+ * For each in-flight task the graceful-stop path:
+ *   - Aborts the AbortController so the dispatch's catch(abort.signal.aborted)
+ *     branch skips the failTask call on unwind.
+ *   - Calls deps.cancelChatCompletion to reject the waitForChatCompletion
+ *     Promise, breaking the 120s wait.
+ *   - Clears the REACTIVE cancel watcher so no further DB polls fire after
+ *     shutdown.
+ * The per-task finally{} block in dispatchHostedTask performs the final
+ * unsubscribe + inFlight.delete — so the graceful-stop helper does NOT
+ * touch those (single cleanup path invariant).
+ *
+ * Idempotent — safe to call multiple times; no-op if already stopped.
  */
 export async function stopHostedTaskWorker(): Promise<void> {
   if (tickHandle) {
     clearInterval(tickHandle);
     tickHandle = null;
+  }
+  // Abort in-flight dispatches so chat.send / waitForChatCompletion unblocks.
+  // Do this BEFORE awaiting dispatchPromises — otherwise a test that blocks
+  // chat.send forever would hang stopHostedTaskWorker.
+  for (const entry of inFlight.values()) {
+    if (entry.abort.signal.aborted) continue;
+    entry.abort.abort();
+    try {
+      deps.cancelChatCompletion(entry.instanceId, entry.sessionKey);
+    } catch {
+      // swallow — best-effort
+    }
+    if (entry.cancelWatcher) {
+      clearInterval(entry.cancelWatcher);
+      entry.cancelWatcher = null;
+    }
   }
   // Snapshot + wait. Dispatch catch-all ensures none of these ever reject.
   const pending = [...dispatchPromises];
