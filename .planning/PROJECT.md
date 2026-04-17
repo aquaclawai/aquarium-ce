@@ -99,4 +99,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-17 after Phase 22 (Remaining Agent Backends) completion — Codex / OpenCode / OpenClaw / Hermes backends now plug into the shared `Backend` interface; daemon dispatches by `backendByRuntimeId` map; 304/304 unit tests green*
+*Last updated: 2026-04-17 after Phase 23 (Issue Board UI — Kanban) completion — users now see issues in a 6-column kanban board at `/issues` with @dnd-kit mouse + keyboard drag, @tanstack/react-virtual above 100 items, UX1 HARD WS-deferral state machine, `@dnd-kit/accessibility` live-region announcer across 6 locales; 8/8 Playwright scenarios green, i18n parity enforced in CI*
