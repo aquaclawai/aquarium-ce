@@ -69,6 +69,14 @@ const FAKE_CLAUDE_JS = resolvePath(
   WORKTREE_ROOT,
   'apps/server/tests/unit/fixtures/fake-claude.js',
 );
+const FAKE_CODEX_JS = resolvePath(
+  WORKTREE_ROOT,
+  'apps/server/tests/unit/fixtures/fake-codex.js',
+);
+const FAKE_OPENCODE_JS = resolvePath(
+  WORKTREE_ROOT,
+  'apps/server/tests/unit/fixtures/fake-opencode.js',
+);
 
 interface DaemonHandle {
   proc: ChildProcess;
@@ -80,22 +88,39 @@ interface DaemonHandle {
 // ── helpers ────────────────────────────────────────────────────────────────
 
 /**
- * Write a shell wrapper at <fakeBinDir>/claude that execs
- * `node fake-claude.js "$@"`. The daemon's `detectClaude()` uses PATH + PATHEXT
- * to resolve `claude` — by prepending `fakeBinDir` to PATH we hijack resolution
- * without mutating the real system. Honours per-scenario extra args (e.g.
- * `--hang` for SC-3).
+ * Write a shell wrapper at <fakeBinDir>/<binName> that execs
+ * `node <fixtureJs> "$@"`. The daemon's `detectBackends()` uses PATH +
+ * PATHEXT to resolve each provider binary — prepending `fakeBinDir` to PATH
+ * hijacks resolution without mutating the real system. Honours per-scenario
+ * extra args (e.g. `--hang` for the cross-backend cancel scenario).
+ *
+ * Generalised from 21-04's installFakeClaude so Plan 22-04 can provision
+ * claude / codex / opencode / openclaw fakes with a uniform API.
  */
-function installFakeClaude(fakeBinDir: string, extraArgs: string[] = []): string {
-  const wrapperPath = join(fakeBinDir, 'claude');
+function installFakeBackend(
+  fakeBinDir: string,
+  binName: 'claude' | 'codex' | 'opencode' | 'openclaw',
+  fixtureJs: string,
+  extraArgs: string[] = [],
+): string {
+  const wrapperPath = join(fakeBinDir, binName);
   const extra = extraArgs.map((a) => `"${a}"`).join(' ');
   writeFileSync(
     wrapperPath,
-    `#!/usr/bin/env sh\nexec node "${FAKE_CLAUDE_JS}" ${extra} "$@"\n`,
+    `#!/usr/bin/env sh\nexec node "${fixtureJs}" ${extra} "$@"\n`,
     { mode: 0o755 },
   );
   chmodSync(wrapperPath, 0o755);
   return wrapperPath;
+}
+
+/**
+ * Back-compat shim — 21-04's original helper signature. The 3 existing claude
+ * scenarios in this file continue to call this; it delegates to
+ * `installFakeBackend` under the hood.
+ */
+function installFakeClaude(fakeBinDir: string, extraArgs: string[] = []): string {
+  return installFakeBackend(fakeBinDir, 'claude', FAKE_CLAUDE_JS, extraArgs);
 }
 
 /**
@@ -187,6 +212,7 @@ async function waitForRuntime(
   request: APIRequestContext,
   minCreatedAt: number,
   timeoutMs: number,
+  providerFilter?: string,
 ): Promise<DaemonRuntimeRow[]> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -202,7 +228,8 @@ async function waitForRuntime(
             r.kind === 'local_daemon' &&
             r.status === 'online' &&
             typeof r.lastHeartbeatAt === 'string' &&
-            Date.parse(r.lastHeartbeatAt) >= minCreatedAt,
+            Date.parse(r.lastHeartbeatAt) >= minCreatedAt &&
+            (!providerFilter || r.provider === providerFilter),
         );
         if (online.length >= 1) {
           online.sort((a, b) =>
@@ -214,7 +241,11 @@ async function waitForRuntime(
     }
     await new Promise((r) => setTimeout(r, 250));
   }
-  throw new Error(`timeout waiting for online local_daemon runtime after ${timeoutMs}ms`);
+  throw new Error(
+    `timeout waiting for online local_daemon runtime${
+      providerFilter ? ` (provider=${providerFilter})` : ''
+    } after ${timeoutMs}ms`,
+  );
 }
 
 /**
@@ -355,8 +386,12 @@ async function seedAgentAndIssue(
  * SC-3 below).
  */
 function pgrepFakeClaude(): string[] {
+  return pgrepByPattern('fake-claude');
+}
+
+function pgrepByPattern(pattern: string): string[] {
   try {
-    const out = execSync('pgrep -f fake-claude', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    const out = execSync(`pgrep -f ${pattern}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
     return out.trim().split(/\s+/).filter((s) => s.length > 0);
   } catch {
     // exit 1 = no matches
@@ -646,6 +681,243 @@ test.describe('@integration daemon full cycle (21-04)', () => {
     // Calling this endpoint proves the server is still healthy post-crash.
     const rtRes = await request.get(`${API_BASE}/runtimes`);
     expect(rtRes.status()).toBe(200);
+  });
+});
+
+// ── Phase 22 Plan 04 — cross-backend integration scenarios ────────────────
+//
+// Three new @integration scenarios exercise the main.ts dispatch rewrite
+// (Plan 22-04): detectBackends fills ALL 5 provider slots, the server's
+// /register response is walked name-first (T-22-18), and backendByRuntimeId
+// routes each claim to the correct Backend. The fake-codex and fake-opencode
+// fixtures shipped by Plan 22-01 provide the scripted child-process
+// behaviour so these scenarios do not require real codex/opencode CLIs.
+//
+// Openclaw is DEFERRED — openclaw's live NDJSON wire shape (Assumption A3)
+// was not captured in Plan 22-03, so an integration scenario built on the
+// hand-authored Shape-A fixture would either reinforce the assumption
+// falsely or fail unhelpfully. Manual verification step is flagged in the
+// 22-04 SUMMARY.
+
+test.describe('@integration cross-backend (22-04)', () => {
+  const testRunTag = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+  let sharedTmpRoot = '';
+
+  test.beforeAll(async ({ request }) => {
+    sharedTmpRoot = mkdtempSync(join(tmpdir(), 'aq-daemon-it-22-04-shared-'));
+    await signUpAndSignIn(request, {
+      email: `daemon-it-22-04-${testRunTag}@e2e.test`,
+      password: 'DaemonIT123!',
+      displayName: 'Daemon IT 22-04 User',
+    });
+    if (!existsSync(CLI_DIST)) {
+      throw new Error(
+        `dist/cli.js not found at ${CLI_DIST}. Run: npm run build -w @aquaclawai/aquarium`,
+      );
+    }
+    if (!existsSync(FAKE_CODEX_JS)) {
+      throw new Error(`fake-codex.js not found at ${FAKE_CODEX_JS}`);
+    }
+    if (!existsSync(FAKE_OPENCODE_JS)) {
+      throw new Error(`fake-opencode.js not found at ${FAKE_OPENCODE_JS}`);
+    }
+  });
+
+  test.afterAll(() => {
+    if (sharedTmpRoot && existsSync(sharedTmpRoot)) {
+      try { rmSync(sharedTmpRoot, { recursive: true, force: true }); } catch { /* ignore */ }
+    }
+  });
+
+  let daemonHandle: DaemonHandle | null = null;
+  let tmpDir = '';
+
+  test.afterEach(async () => {
+    await killDaemon(daemonHandle);
+    daemonHandle = null;
+    if (tmpDir && existsSync(tmpDir)) {
+      try { rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ }
+    }
+    tmpDir = '';
+  });
+
+  test('22-04 SC-1: codex happy path — fake-codex app-server completes a task', async ({ request }) => {
+    test.setTimeout(90_000);
+
+    tmpDir = mkdtempSync(join(tmpdir(), 'aq-daemon-it-22-04-codex-'));
+    const fakeBinDir = join(tmpDir, 'bin');
+    mkdirSync(fakeBinDir, { recursive: true });
+    installFakeBackend(fakeBinDir, 'codex', FAKE_CODEX_JS);
+
+    const { plaintext } = await mintDaemonToken(request, `it-22-04-codex-${testRunTag}`);
+    const configPath = join(tmpDir, 'daemon.json');
+    writeFileSync(
+      configPath,
+      JSON.stringify({ server: SERVER_BASE, token: plaintext }, null, 2) + '\n',
+      { mode: 0o600 },
+    );
+    if (process.platform !== 'win32') chmodSync(configPath, 0o600);
+
+    const spawnedAt = Date.now();
+    daemonHandle = spawnDaemon({ dataDir: tmpDir, configPath, fakeBinDir });
+
+    // Filter on provider=codex so a stale claude row from a prior test run
+    // doesn't bind to this scenario.
+    const onlineDaemons = await waitForRuntime(request, spawnedAt, 15_000, 'codex');
+    expect(onlineDaemons.length).toBeGreaterThanOrEqual(1);
+    const rt = onlineDaemons[0];
+    expect(rt.provider).toBe('codex');
+    expect(rt.status).toBe('online');
+    expect(rt.name).toMatch(/-codex$/);
+
+    const { issueId } = await seedAgentAndIssue(request, rt.id, 'it-22-04-codex');
+
+    const serverDbPath =
+      process.env.AQ_SERVER_DB_PATH ?? join(process.env.HOME ?? '', '.aquarium', 'aquarium.db');
+    if (!existsSync(serverDbPath)) {
+      throw new Error(
+        `server DB not found at ${serverDbPath}. Set AQ_SERVER_DB_PATH or ensure \`npm run dev\` is running.`,
+      );
+    }
+
+    const finalStatus = await waitForTaskStatus(serverDbPath, issueId, ['completed'], 30_000);
+    expect(finalStatus).toBe('completed');
+
+    // codex fixture emits text + commandExecution (mapped to tool_use +
+    // tool_result) + turn/completed — at least 2 task_messages rows.
+    const msgDeadline = Date.now() + 5_000;
+    let msgCount = 0;
+    while (Date.now() < msgDeadline) {
+      msgCount = countTaskMessagesForIssue(serverDbPath, issueId);
+      if (msgCount >= 2) break;
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    expect(msgCount).toBeGreaterThanOrEqual(2);
+  });
+
+  test('22-04 SC-2: opencode happy path — fake-opencode run --format json completes', async ({ request }) => {
+    test.setTimeout(90_000);
+
+    tmpDir = mkdtempSync(join(tmpdir(), 'aq-daemon-it-22-04-opencode-'));
+    const fakeBinDir = join(tmpDir, 'bin');
+    mkdirSync(fakeBinDir, { recursive: true });
+    installFakeBackend(fakeBinDir, 'opencode', FAKE_OPENCODE_JS);
+
+    const { plaintext } = await mintDaemonToken(request, `it-22-04-opencode-${testRunTag}`);
+    const configPath = join(tmpDir, 'daemon.json');
+    writeFileSync(
+      configPath,
+      JSON.stringify({ server: SERVER_BASE, token: plaintext }, null, 2) + '\n',
+      { mode: 0o600 },
+    );
+    if (process.platform !== 'win32') chmodSync(configPath, 0o600);
+
+    const spawnedAt = Date.now();
+    daemonHandle = spawnDaemon({ dataDir: tmpDir, configPath, fakeBinDir });
+
+    const onlineDaemons = await waitForRuntime(request, spawnedAt, 15_000, 'opencode');
+    expect(onlineDaemons.length).toBeGreaterThanOrEqual(1);
+    const rt = onlineDaemons[0];
+    expect(rt.provider).toBe('opencode');
+    expect(rt.status).toBe('online');
+    expect(rt.name).toMatch(/-opencode$/);
+
+    const { issueId } = await seedAgentAndIssue(request, rt.id, 'it-22-04-opencode');
+
+    const serverDbPath =
+      process.env.AQ_SERVER_DB_PATH ?? join(process.env.HOME ?? '', '.aquarium', 'aquarium.db');
+    if (!existsSync(serverDbPath)) {
+      throw new Error(
+        `server DB not found at ${serverDbPath}. Set AQ_SERVER_DB_PATH or ensure \`npm run dev\` is running.`,
+      );
+    }
+
+    const finalStatus = await waitForTaskStatus(serverDbPath, issueId, ['completed'], 30_000);
+    expect(finalStatus).toBe('completed');
+
+    // opencode fixture emits step_start + text + tool_use (→ tool_use +
+    // tool_result) + step_finish — at least 2 task_messages rows.
+    const msgDeadline = Date.now() + 5_000;
+    let msgCount = 0;
+    while (Date.now() < msgDeadline) {
+      msgCount = countTaskMessagesForIssue(serverDbPath, issueId);
+      if (msgCount >= 2) break;
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    expect(msgCount).toBeGreaterThanOrEqual(2);
+  });
+
+  test('22-04 SC-3: cancel propagates across backend — opencode --hang SIGTERMs cleanly (cross-backend)', async ({ request }) => {
+    test.skip(
+      process.platform === 'win32',
+      'pgrep is POSIX-only; Windows zombie-check deferred',
+    );
+    test.setTimeout(60_000);
+
+    tmpDir = mkdtempSync(join(tmpdir(), 'aq-daemon-it-22-04-cancel-'));
+    const fakeBinDir = join(tmpDir, 'bin');
+    mkdirSync(fakeBinDir, { recursive: true });
+    installFakeBackend(fakeBinDir, 'opencode', FAKE_OPENCODE_JS, ['--hang']);
+
+    const { plaintext } = await mintDaemonToken(request, `it-22-04-cancel-${testRunTag}`);
+    const configPath = join(tmpDir, 'daemon.json');
+    writeFileSync(
+      configPath,
+      JSON.stringify({ server: SERVER_BASE, token: plaintext }, null, 2) + '\n',
+      { mode: 0o600 },
+    );
+    if (process.platform !== 'win32') chmodSync(configPath, 0o600);
+
+    const spawnedAt = Date.now();
+    daemonHandle = spawnDaemon({ dataDir: tmpDir, configPath, fakeBinDir });
+
+    const onlineDaemons = await waitForRuntime(request, spawnedAt, 15_000, 'opencode');
+    expect(onlineDaemons.length).toBeGreaterThanOrEqual(1);
+    const rt = onlineDaemons[0];
+
+    const { issueId } = await seedAgentAndIssue(request, rt.id, 'it-22-04-cancel');
+
+    const serverDbPath =
+      process.env.AQ_SERVER_DB_PATH ?? join(process.env.HOME ?? '', '.aquarium', 'aquarium.db');
+
+    await waitForTaskStatus(serverDbPath, issueId, ['running'], 20_000);
+
+    let preCancelPids: string[] = [];
+    const preDeadline = Date.now() + 5_000;
+    while (Date.now() < preDeadline) {
+      preCancelPids = pgrepByPattern('fake-opencode');
+      if (preCancelPids.length > 0) break;
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    expect(preCancelPids.length).toBeGreaterThan(0);
+
+    const cancelRes = await request.patch(`${API_BASE}/issues/${issueId}`, {
+      data: { status: 'cancelled' },
+    });
+    expect(cancelRes.status()).toBe(200);
+
+    // Same budget as 21-04 SC-3: daemon cancel-poller is 5 s; allow 8 s for
+    // the SIGTERM to reap every fake-opencode child.
+    const zombieDeadline = Date.now() + 8_000;
+    let postCancelPids: string[] = [];
+    while (Date.now() < zombieDeadline) {
+      postCancelPids = pgrepByPattern('fake-opencode');
+      if (postCancelPids.length === 0) break;
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    expect(
+      postCancelPids,
+      `expected NO fake-opencode processes after cancel, found: ${JSON.stringify(postCancelPids)}`,
+    ).toEqual([]);
+
+    const finalStatus = await waitForTaskStatus(
+      serverDbPath,
+      issueId,
+      ['cancelled', 'failed'],
+      10_000,
+    );
+    expect(['cancelled', 'failed']).toContain(finalStatus);
   });
 });
 
