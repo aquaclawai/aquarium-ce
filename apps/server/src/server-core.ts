@@ -19,6 +19,8 @@ import { runDailySnapshots } from './services/snapshot-store.js';
 import { reconcileFromInstances as runtimeBridgeReconcile } from './task-dispatch/runtime-bridge.js';
 import { startRuntimeOfflineSweeper } from './task-dispatch/offline-sweeper.js';
 import { startTaskReaper } from './task-dispatch/task-reaper.js';
+import { failOrphanedHostedTasks } from './task-dispatch/hosted-orphan-sweep.js';
+import { startHostedTaskWorker } from './task-dispatch/hosted-task-worker.js';
 import {
   dynamicCors,
   dynamicGeneralLimiter,
@@ -317,17 +319,49 @@ export async function startServer(server: HttpServer, options: StartServerOption
       });
     }, 10_000);
 
+    // Step 9b: hosted-orphan sweep — fails all hosted_instance tasks in
+    // dispatched/running state with reason 'hosted-orphan-on-boot'. Must run
+    // BEFORE startTaskReaper (Step 9c) so hosted orphans don't get the
+    // generic "Reaper: dispatched > 5 min without start" error after the
+    // 5-min threshold elapses (HOSTED-04 + 20-RESEARCH §Boot Orphan Cleanup).
+    // Inner try/catch: a failed sweep must NOT block server.listen; the
+    // task-reaper will eventually catch any missed rows with the generic
+    // error as a fallback.
+    try {
+      const { failed } = await failOrphanedHostedTasks();
+      if (failed > 0) {
+        console.log(`[startup] failed ${failed} hosted-orphan task(s) on boot`);
+      }
+    } catch (err) {
+      console.warn(
+        '[startup] hosted-orphan sweep failed:',
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+
     // Step 9c: task reaper — fails tasks stuck in dispatched > 5 min or running > 2.5 h
     // (cleans up after daemon crashes between claim and start, or mid-task deadlocks).
     // Must start BEFORE server.listen so a stale task from a previous server crash
     // is already being reaped when the first daemon registers.
-    // Phase 20 will later slot in Step 9b (fail-in-flight hosted tasks on boot) and
-    // Step 9d (hosted worker loop); the 9a/9c/9e ordering here is the Phase 18 cut.
     startTaskReaper();
+
+    // Step 9d: hosted-task worker — 2s tick that dispatches queued tasks for
+    // online hosted_instance runtimes via gatewayCall('chat.send', ...)
+    // (HOSTED-01/02/03). Must start AFTER startTaskReaper (Step 9c) so by
+    // the time the first tick fires, the DB is clean (Step 9b fails boot
+    // orphans; Step 9c's initial sweep reaps any residual daemon staleness).
+    startHostedTaskWorker();
 
     // Step 9e: offline sweeper — flips daemon runtimes whose last_heartbeat_at
     // is > 90s old to status='offline'. Does NOT touch hosted_instance rows (ST1).
     startRuntimeOfflineSweeper();
+
+    // Boot-order recap after Phase 20:
+    //   9a runtimeBridgeReconcile    — mirrors instances → runtimes.hosted_instance
+    //   9b failOrphanedHostedTasks   — Phase 20: HOSTED-04 boot cleanup
+    //   9c startTaskReaper           — Phase 18 generic stale-task reaper
+    //   9d startHostedTaskWorker     — Phase 20: HOSTED-01..03,05,06 dispatch
+    //   9e startRuntimeOfflineSweeper — Phase 16: daemon heartbeat → offline
 
     setInterval(async () => {
       console.log('[Scheduler] Running daily snapshots...');
