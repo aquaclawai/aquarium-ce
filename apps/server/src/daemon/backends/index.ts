@@ -15,14 +15,15 @@
 import type { Backend } from '../backend.js';
 import { claudeBackend } from './claude.js';
 import { codexBackend } from './codex.js';
-// Plans 22-03, 22-04 will append: opencodeBackend, openclawBackend,
-// hermesBackend.
+import { opencodeBackend } from './opencode.js';
+import { openclawBackend } from './openclaw.js';
+// Plan 22-04 will append: hermesBackend.
 
 export const ALL_BACKENDS: Backend[] = [
   claudeBackend,
   codexBackend,
-  // opencodeBackend  — added by Plan 22-03
-  // openclawBackend  — added by Plan 22-03
+  opencodeBackend,
+  openclawBackend,
   // hermesBackend    — added by Plan 22-04
 ];
 
