@@ -1130,14 +1130,14 @@
       }
     },
     "composer": {
-      "srHeader": "Chat with the assigned agent",
-      "placeholder": "Type a message… (⌘⏎ to send)",
-      "send": "Send",
-      "sending": "Sending…",
-      "noAssignee": "Assign an agent to this issue before chatting",
-      "sendFailed": "Couldn't send — please try again",
+      "srHeader": "Discuter avec l'agent assigné",
+      "placeholder": "Tapez un message… (⌘⏎ pour envoyer)",
+      "send": "Envoyer",
+      "sending": "Envoi…",
+      "noAssignee": "Assignez un agent à ce ticket avant de démarrer la discussion",
+      "sendFailed": "Échec de l'envoi — veuillez réessayer",
       "chars": "{{count}} / {{max}}",
-      "hint": "Enter for newline · ⌘⏎ to send"
+      "hint": "Entrée pour retour à la ligne · ⌘⏎ pour envoyer"
     }
   },
   "agentUI": {
@@ -2447,114 +2447,114 @@
       }
     },
     "detail": {
-      "back": "Back to Issues",
-      "titleSuffix": "Issue #{{issueNumber}} · {{workspaceName}}",
-      "notFound": "Issue not found",
-      "loadFailed": "Couldn't load this issue",
+      "back": "Retour aux tickets",
+      "titleSuffix": "Ticket #{{issueNumber}} · {{workspaceName}}",
+      "notFound": "Ticket introuvable",
+      "loadFailed": "Impossible de charger ce ticket",
       "issueNumber": "#{{number}}",
-      "postedMeta": "Created {{relativeTime}} by {{author}}",
-      "assignee": "Assignee",
-      "unassigned": "Unassigned",
-      "priority": "Priority",
-      "status": "Status",
-      "dueDate": "Due",
-      "noDescription": "No description",
+      "postedMeta": "Créé {{relativeTime}} par {{author}}",
+      "assignee": "Assigné à",
+      "unassigned": "Non assigné",
+      "priority": "Priorité",
+      "status": "Statut",
+      "dueDate": "Échéance",
+      "noDescription": "Aucune description",
       "actions": {
-        "edit": "Edit",
-        "assignAgent": "Assign agent",
-        "changeStatus": "Change status",
-        "delete": "Delete issue"
+        "edit": "Modifier",
+        "assignAgent": "Assigner un agent",
+        "changeStatus": "Changer le statut",
+        "delete": "Supprimer le ticket"
       },
       "confirmDelete": {
-        "title": "Delete this issue?",
-        "body": "This cannot be undone. All comments and task history will be removed.",
-        "confirm": "Delete"
+        "title": "Supprimer ce ticket ?",
+        "body": "Cette action est irréversible. Tous les commentaires et l'historique des tâches seront supprimés.",
+        "confirm": "Supprimer"
       },
       "comments": {
-        "header": "Comments",
+        "header": "Commentaires",
         "count": "{{count}}",
         "empty": {
-          "heading": "No comments yet",
-          "body": "Ask the assigned agent a question or leave a note to start the conversation."
+          "heading": "Aucun commentaire",
+          "body": "Posez une question à l'agent assigné ou laissez une note pour lancer la conversation."
         },
         "author": {
           "user": "{{displayName}}",
           "agent": "{{agentName}} · agent",
-          "system": "System"
+          "system": "Système"
         },
         "postedAt": "{{relativeTime}}",
-        "reply": "Reply",
-        "edit": "Edit",
-        "delete": "Delete",
-        "cancelReply": "Cancel",
-        "replyPlaceholder": "Reply to {{authorName}}…",
-        "showMore": "Show {{count}} more replies",
+        "reply": "Répondre",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "cancelReply": "Annuler",
+        "replyPlaceholder": "Répondre à {{authorName}}…",
+        "showMore": "Afficher {{count}} réponses supplémentaires",
         "system": {
-          "statusChange": "Status changed from {{from}} to {{to}}"
+          "statusChange": "Statut passé de {{from}} à {{to}}"
         },
-        "postFailed": "Couldn't post comment — please try again",
+        "postFailed": "Échec de la publication du commentaire — veuillez réessayer",
         "confirmDelete": {
-          "title": "Delete this comment?",
-          "body": "This cannot be undone.",
-          "confirm": "Delete"
+          "title": "Supprimer ce commentaire ?",
+          "body": "Cette action est irréversible.",
+          "confirm": "Supprimer"
         }
       },
       "task": {
-        "header": "Active task",
-        "idle": "No active task",
-        "idleBody": "Assign this issue to an agent or chat below to start a task.",
+        "header": "Tâche active",
+        "idle": "Aucune tâche active",
+        "idleBody": "Assignez ce ticket à un agent ou lancez une discussion ci-dessous pour démarrer une tâche.",
         "state": {
-          "queued": "Queued",
-          "dispatched": "Dispatched",
-          "running": "Running",
-          "completed": "Completed",
-          "failed": "Failed",
-          "cancelled": "Cancelled"
+          "queued": "En file d'attente",
+          "dispatched": "Envoyée",
+          "running": "En cours",
+          "completed": "Terminée",
+          "failed": "Échec",
+          "cancelled": "Annulée"
         },
-        "startedAt": "Started {{relativeTime}}",
-        "completedAt": "Completed {{relativeTime}}",
-        "cancel": "Cancel task",
+        "startedAt": "Démarrée {{relativeTime}}",
+        "completedAt": "Terminée {{relativeTime}}",
+        "cancel": "Annuler la tâche",
         "cancelConfirm": {
-          "title": "Cancel this task?",
-          "body": "The agent will stop as soon as possible. Partial results are preserved.",
-          "confirm": "Cancel task"
+          "title": "Annuler cette tâche ?",
+          "body": "L'agent s'arrêtera dès que possible. Les résultats partiels sont conservés.",
+          "confirm": "Annuler la tâche"
         },
-        "cancelFailed": "Couldn't cancel — please try again",
-        "historyHeader": "Task history",
-        "historyEmpty": "No prior tasks",
+        "cancelFailed": "Échec de l'annulation — veuillez réessayer",
+        "historyHeader": "Historique des tâches",
+        "historyEmpty": "Aucune tâche antérieure",
         "stream": {
-          "waiting": "Waiting for the agent to respond…",
-          "stalled": "No activity for {{seconds}}s"
+          "waiting": "En attente de la réponse de l'agent…",
+          "stalled": "Aucune activité depuis {{seconds}} s"
         },
         "kind": {
-          "text": "reply",
-          "thinking": "thinking",
+          "text": "réponse",
+          "thinking": "réflexion",
           "tool_use": "{{toolName}}",
-          "tool_result": "{{toolName}} result",
-          "error": "error"
+          "tool_result": "Résultat {{toolName}}",
+          "error": "erreur"
         },
         "seqMeta": "seq {{seq}} · {{relativeTime}}",
-        "truncated": "⋯ truncated (showing {{shown}} of {{total}} bytes)",
-        "showFull": "Show full",
-        "showFullLoading": "Loading…",
-        "showFullFailed": "Couldn't load the full message",
-        "collapse": "Collapse",
-        "toolInputLabel": "Input",
-        "toolOutputLabel": "Output"
+        "truncated": "⋯ tronqué (affichage de {{shown}} sur {{total}} octets)",
+        "showFull": "Afficher tout",
+        "showFullLoading": "Chargement…",
+        "showFullFailed": "Impossible de charger le message complet",
+        "collapse": "Réduire",
+        "toolInputLabel": "Entrée",
+        "toolOutputLabel": "Sortie"
       },
       "ws": {
-        "reconnecting": "Reconnecting — replaying missed messages…",
-        "replayDone": "Caught up",
-        "paused": "Paused while in background",
-        "resumed": "Resumed"
+        "reconnecting": "Reconnexion — rediffusion des messages manqués…",
+        "replayDone": "Synchronisé",
+        "paused": "En pause en arrière-plan",
+        "resumed": "Repris"
       },
       "a11y": {
-        "newMessages": "{{count}} new agent messages",
-        "taskCompleted": "Task completed",
-        "taskFailed": "Task failed",
-        "taskCancelled": "Task cancelled",
-        "replaying": "Reconnecting and replaying missed messages",
-        "replayDone": "Caught up with agent"
+        "newMessages": "{{count}} nouveaux messages de l'agent",
+        "taskCompleted": "Tâche terminée",
+        "taskFailed": "Tâche en échec",
+        "taskCancelled": "Tâche annulée",
+        "replaying": "Reconnexion et rediffusion des messages manqués",
+        "replayDone": "Synchronisé avec l'agent"
       }
     }
   }

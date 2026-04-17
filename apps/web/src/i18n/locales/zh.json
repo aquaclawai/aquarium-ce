@@ -1272,14 +1272,14 @@
     },
     "scrollToBottom": "滚动到最新消息",
     "composer": {
-      "srHeader": "Chat with the assigned agent",
-      "placeholder": "Type a message… (⌘⏎ to send)",
-      "send": "Send",
-      "sending": "Sending…",
-      "noAssignee": "Assign an agent to this issue before chatting",
-      "sendFailed": "Couldn't send — please try again",
+      "srHeader": "与已指派的代理对话",
+      "placeholder": "输入消息… (⌘⏎ 发送)",
+      "send": "发送",
+      "sending": "发送中…",
+      "noAssignee": "开始聊天前请先为此问题指派代理",
+      "sendFailed": "发送失败 — 请重试",
       "chars": "{{count}} / {{max}}",
-      "hint": "Enter for newline · ⌘⏎ to send"
+      "hint": "回车换行 · ⌘⏎ 发送"
     }
   },
   "agentUI": {
@@ -2447,114 +2447,114 @@
       }
     },
     "detail": {
-      "back": "Back to Issues",
-      "titleSuffix": "Issue #{{issueNumber}} · {{workspaceName}}",
-      "notFound": "Issue not found",
-      "loadFailed": "Couldn't load this issue",
+      "back": "返回问题列表",
+      "titleSuffix": "问题 #{{issueNumber}} · {{workspaceName}}",
+      "notFound": "未找到问题",
+      "loadFailed": "无法加载此问题",
       "issueNumber": "#{{number}}",
-      "postedMeta": "Created {{relativeTime}} by {{author}}",
-      "assignee": "Assignee",
-      "unassigned": "Unassigned",
-      "priority": "Priority",
-      "status": "Status",
-      "dueDate": "Due",
-      "noDescription": "No description",
+      "postedMeta": "由 {{author}} 于 {{relativeTime}} 创建",
+      "assignee": "负责人",
+      "unassigned": "未指派",
+      "priority": "优先级",
+      "status": "状态",
+      "dueDate": "截止",
+      "noDescription": "暂无描述",
       "actions": {
-        "edit": "Edit",
-        "assignAgent": "Assign agent",
-        "changeStatus": "Change status",
-        "delete": "Delete issue"
+        "edit": "编辑",
+        "assignAgent": "指派代理",
+        "changeStatus": "修改状态",
+        "delete": "删除问题"
       },
       "confirmDelete": {
-        "title": "Delete this issue?",
-        "body": "This cannot be undone. All comments and task history will be removed.",
-        "confirm": "Delete"
+        "title": "删除此问题？",
+        "body": "此操作无法撤销，所有评论和任务历史都将被移除。",
+        "confirm": "删除"
       },
       "comments": {
-        "header": "Comments",
+        "header": "评论",
         "count": "{{count}}",
         "empty": {
-          "heading": "No comments yet",
-          "body": "Ask the assigned agent a question or leave a note to start the conversation."
+          "heading": "暂无评论",
+          "body": "向已指派的代理提问或留言，开始对话。"
         },
         "author": {
           "user": "{{displayName}}",
-          "agent": "{{agentName}} · agent",
-          "system": "System"
+          "agent": "{{agentName}} · 代理",
+          "system": "系统"
         },
         "postedAt": "{{relativeTime}}",
-        "reply": "Reply",
-        "edit": "Edit",
-        "delete": "Delete",
-        "cancelReply": "Cancel",
-        "replyPlaceholder": "Reply to {{authorName}}…",
-        "showMore": "Show {{count}} more replies",
+        "reply": "回复",
+        "edit": "编辑",
+        "delete": "删除",
+        "cancelReply": "取消",
+        "replyPlaceholder": "回复 {{authorName}}…",
+        "showMore": "查看另外 {{count}} 条回复",
         "system": {
-          "statusChange": "Status changed from {{from}} to {{to}}"
+          "statusChange": "状态从 {{from}} 变更为 {{to}}"
         },
-        "postFailed": "Couldn't post comment — please try again",
+        "postFailed": "评论发布失败 — 请重试",
         "confirmDelete": {
-          "title": "Delete this comment?",
-          "body": "This cannot be undone.",
-          "confirm": "Delete"
+          "title": "删除此评论？",
+          "body": "此操作无法撤销。",
+          "confirm": "删除"
         }
       },
       "task": {
-        "header": "Active task",
-        "idle": "No active task",
-        "idleBody": "Assign this issue to an agent or chat below to start a task.",
+        "header": "当前任务",
+        "idle": "暂无活动任务",
+        "idleBody": "将此问题指派给代理或在下方聊天即可启动任务。",
         "state": {
-          "queued": "Queued",
-          "dispatched": "Dispatched",
-          "running": "Running",
-          "completed": "Completed",
-          "failed": "Failed",
-          "cancelled": "Cancelled"
+          "queued": "已排队",
+          "dispatched": "已派发",
+          "running": "运行中",
+          "completed": "已完成",
+          "failed": "失败",
+          "cancelled": "已取消"
         },
-        "startedAt": "Started {{relativeTime}}",
-        "completedAt": "Completed {{relativeTime}}",
-        "cancel": "Cancel task",
+        "startedAt": "于 {{relativeTime}} 开始",
+        "completedAt": "于 {{relativeTime}} 完成",
+        "cancel": "取消任务",
         "cancelConfirm": {
-          "title": "Cancel this task?",
-          "body": "The agent will stop as soon as possible. Partial results are preserved.",
-          "confirm": "Cancel task"
+          "title": "取消此任务？",
+          "body": "代理将尽快停止，部分结果会被保留。",
+          "confirm": "取消任务"
         },
-        "cancelFailed": "Couldn't cancel — please try again",
-        "historyHeader": "Task history",
-        "historyEmpty": "No prior tasks",
+        "cancelFailed": "取消失败 — 请重试",
+        "historyHeader": "任务历史",
+        "historyEmpty": "暂无历史任务",
         "stream": {
-          "waiting": "Waiting for the agent to respond…",
-          "stalled": "No activity for {{seconds}}s"
+          "waiting": "等待代理响应…",
+          "stalled": "{{seconds}} 秒无活动"
         },
         "kind": {
-          "text": "reply",
-          "thinking": "thinking",
+          "text": "回复",
+          "thinking": "思考",
           "tool_use": "{{toolName}}",
-          "tool_result": "{{toolName}} result",
-          "error": "error"
+          "tool_result": "{{toolName}} 结果",
+          "error": "错误"
         },
         "seqMeta": "seq {{seq}} · {{relativeTime}}",
-        "truncated": "⋯ truncated (showing {{shown}} of {{total}} bytes)",
-        "showFull": "Show full",
-        "showFullLoading": "Loading…",
-        "showFullFailed": "Couldn't load the full message",
-        "collapse": "Collapse",
-        "toolInputLabel": "Input",
-        "toolOutputLabel": "Output"
+        "truncated": "⋯ 已截断（显示 {{shown}} / {{total}} 字节）",
+        "showFull": "查看完整内容",
+        "showFullLoading": "加载中…",
+        "showFullFailed": "无法加载完整消息",
+        "collapse": "收起",
+        "toolInputLabel": "输入",
+        "toolOutputLabel": "输出"
       },
       "ws": {
-        "reconnecting": "Reconnecting — replaying missed messages…",
-        "replayDone": "Caught up",
-        "paused": "Paused while in background",
-        "resumed": "Resumed"
+        "reconnecting": "正在重新连接 — 补播遗漏消息…",
+        "replayDone": "已同步",
+        "paused": "在后台已暂停",
+        "resumed": "已恢复"
       },
       "a11y": {
-        "newMessages": "{{count}} new agent messages",
-        "taskCompleted": "Task completed",
-        "taskFailed": "Task failed",
-        "taskCancelled": "Task cancelled",
-        "replaying": "Reconnecting and replaying missed messages",
-        "replayDone": "Caught up with agent"
+        "newMessages": "{{count}} 条新代理消息",
+        "taskCompleted": "任务已完成",
+        "taskFailed": "任务失败",
+        "taskCancelled": "任务已取消",
+        "replaying": "正在重新连接并补播遗漏消息",
+        "replayDone": "已与代理同步"
       }
     }
   }

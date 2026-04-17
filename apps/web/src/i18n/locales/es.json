@@ -1130,14 +1130,14 @@
       }
     },
     "composer": {
-      "srHeader": "Chat with the assigned agent",
-      "placeholder": "Type a message… (⌘⏎ to send)",
-      "send": "Send",
-      "sending": "Sending…",
-      "noAssignee": "Assign an agent to this issue before chatting",
-      "sendFailed": "Couldn't send — please try again",
+      "srHeader": "Chatear con el agente asignado",
+      "placeholder": "Escribe un mensaje… (⌘⏎ para enviar)",
+      "send": "Enviar",
+      "sending": "Enviando…",
+      "noAssignee": "Asigna un agente a esta incidencia antes de chatear",
+      "sendFailed": "No se pudo enviar — inténtalo de nuevo",
       "chars": "{{count}} / {{max}}",
-      "hint": "Enter for newline · ⌘⏎ to send"
+      "hint": "Intro para salto de línea · ⌘⏎ para enviar"
     }
   },
   "agentUI": {
@@ -2447,114 +2447,114 @@
       }
     },
     "detail": {
-      "back": "Back to Issues",
-      "titleSuffix": "Issue #{{issueNumber}} · {{workspaceName}}",
-      "notFound": "Issue not found",
-      "loadFailed": "Couldn't load this issue",
+      "back": "Volver a incidencias",
+      "titleSuffix": "Incidencia #{{issueNumber}} · {{workspaceName}}",
+      "notFound": "Incidencia no encontrada",
+      "loadFailed": "No se pudo cargar esta incidencia",
       "issueNumber": "#{{number}}",
-      "postedMeta": "Created {{relativeTime}} by {{author}}",
-      "assignee": "Assignee",
-      "unassigned": "Unassigned",
-      "priority": "Priority",
-      "status": "Status",
-      "dueDate": "Due",
-      "noDescription": "No description",
+      "postedMeta": "Creada {{relativeTime}} por {{author}}",
+      "assignee": "Asignada a",
+      "unassigned": "Sin asignar",
+      "priority": "Prioridad",
+      "status": "Estado",
+      "dueDate": "Vence",
+      "noDescription": "Sin descripción",
       "actions": {
-        "edit": "Edit",
-        "assignAgent": "Assign agent",
-        "changeStatus": "Change status",
-        "delete": "Delete issue"
+        "edit": "Editar",
+        "assignAgent": "Asignar agente",
+        "changeStatus": "Cambiar estado",
+        "delete": "Eliminar incidencia"
       },
       "confirmDelete": {
-        "title": "Delete this issue?",
-        "body": "This cannot be undone. All comments and task history will be removed.",
-        "confirm": "Delete"
+        "title": "¿Eliminar esta incidencia?",
+        "body": "Esta acción no se puede deshacer. Se eliminarán todos los comentarios y el historial de tareas.",
+        "confirm": "Eliminar"
       },
       "comments": {
-        "header": "Comments",
+        "header": "Comentarios",
         "count": "{{count}}",
         "empty": {
-          "heading": "No comments yet",
-          "body": "Ask the assigned agent a question or leave a note to start the conversation."
+          "heading": "Aún no hay comentarios",
+          "body": "Haz una pregunta al agente asignado o deja una nota para iniciar la conversación."
         },
         "author": {
           "user": "{{displayName}}",
-          "agent": "{{agentName}} · agent",
-          "system": "System"
+          "agent": "{{agentName}} · agente",
+          "system": "Sistema"
         },
         "postedAt": "{{relativeTime}}",
-        "reply": "Reply",
-        "edit": "Edit",
-        "delete": "Delete",
-        "cancelReply": "Cancel",
-        "replyPlaceholder": "Reply to {{authorName}}…",
-        "showMore": "Show {{count}} more replies",
+        "reply": "Responder",
+        "edit": "Editar",
+        "delete": "Eliminar",
+        "cancelReply": "Cancelar",
+        "replyPlaceholder": "Responder a {{authorName}}…",
+        "showMore": "Mostrar {{count}} respuestas más",
         "system": {
-          "statusChange": "Status changed from {{from}} to {{to}}"
+          "statusChange": "Estado cambiado de {{from}} a {{to}}"
         },
-        "postFailed": "Couldn't post comment — please try again",
+        "postFailed": "No se pudo publicar el comentario — inténtalo de nuevo",
         "confirmDelete": {
-          "title": "Delete this comment?",
-          "body": "This cannot be undone.",
-          "confirm": "Delete"
+          "title": "¿Eliminar este comentario?",
+          "body": "Esta acción no se puede deshacer.",
+          "confirm": "Eliminar"
         }
       },
       "task": {
-        "header": "Active task",
-        "idle": "No active task",
-        "idleBody": "Assign this issue to an agent or chat below to start a task.",
+        "header": "Tarea activa",
+        "idle": "Sin tarea activa",
+        "idleBody": "Asigna esta incidencia a un agente o chatea abajo para iniciar una tarea.",
         "state": {
-          "queued": "Queued",
-          "dispatched": "Dispatched",
-          "running": "Running",
-          "completed": "Completed",
-          "failed": "Failed",
-          "cancelled": "Cancelled"
+          "queued": "En cola",
+          "dispatched": "Enviada",
+          "running": "En ejecución",
+          "completed": "Completada",
+          "failed": "Fallida",
+          "cancelled": "Cancelada"
         },
-        "startedAt": "Started {{relativeTime}}",
-        "completedAt": "Completed {{relativeTime}}",
-        "cancel": "Cancel task",
+        "startedAt": "Iniciada {{relativeTime}}",
+        "completedAt": "Completada {{relativeTime}}",
+        "cancel": "Cancelar tarea",
         "cancelConfirm": {
-          "title": "Cancel this task?",
-          "body": "The agent will stop as soon as possible. Partial results are preserved.",
-          "confirm": "Cancel task"
+          "title": "¿Cancelar esta tarea?",
+          "body": "El agente se detendrá lo antes posible. Los resultados parciales se conservan.",
+          "confirm": "Cancelar tarea"
         },
-        "cancelFailed": "Couldn't cancel — please try again",
-        "historyHeader": "Task history",
-        "historyEmpty": "No prior tasks",
+        "cancelFailed": "No se pudo cancelar — inténtalo de nuevo",
+        "historyHeader": "Historial de tareas",
+        "historyEmpty": "Sin tareas anteriores",
         "stream": {
-          "waiting": "Waiting for the agent to respond…",
-          "stalled": "No activity for {{seconds}}s"
+          "waiting": "Esperando respuesta del agente…",
+          "stalled": "Sin actividad durante {{seconds}} s"
         },
         "kind": {
-          "text": "reply",
-          "thinking": "thinking",
+          "text": "respuesta",
+          "thinking": "pensando",
           "tool_use": "{{toolName}}",
-          "tool_result": "{{toolName}} result",
+          "tool_result": "Resultado de {{toolName}}",
           "error": "error"
         },
         "seqMeta": "seq {{seq}} · {{relativeTime}}",
-        "truncated": "⋯ truncated (showing {{shown}} of {{total}} bytes)",
-        "showFull": "Show full",
-        "showFullLoading": "Loading…",
-        "showFullFailed": "Couldn't load the full message",
-        "collapse": "Collapse",
-        "toolInputLabel": "Input",
-        "toolOutputLabel": "Output"
+        "truncated": "⋯ truncado (mostrando {{shown}} de {{total}} bytes)",
+        "showFull": "Mostrar completo",
+        "showFullLoading": "Cargando…",
+        "showFullFailed": "No se pudo cargar el mensaje completo",
+        "collapse": "Colapsar",
+        "toolInputLabel": "Entrada",
+        "toolOutputLabel": "Salida"
       },
       "ws": {
-        "reconnecting": "Reconnecting — replaying missed messages…",
-        "replayDone": "Caught up",
-        "paused": "Paused while in background",
-        "resumed": "Resumed"
+        "reconnecting": "Reconectando — recuperando mensajes perdidos…",
+        "replayDone": "Al día",
+        "paused": "Pausado en segundo plano",
+        "resumed": "Reanudado"
       },
       "a11y": {
-        "newMessages": "{{count}} new agent messages",
-        "taskCompleted": "Task completed",
-        "taskFailed": "Task failed",
-        "taskCancelled": "Task cancelled",
-        "replaying": "Reconnecting and replaying missed messages",
-        "replayDone": "Caught up with agent"
+        "newMessages": "{{count}} mensajes nuevos del agente",
+        "taskCompleted": "Tarea completada",
+        "taskFailed": "Tarea fallida",
+        "taskCancelled": "Tarea cancelada",
+        "replaying": "Reconectando y recuperando mensajes perdidos",
+        "replayDone": "Sincronizado con el agente"
       }
     }
   }
