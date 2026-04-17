@@ -12,8 +12,9 @@ import {
   type ListIssuesOpts,
   type ReorderIssueArgs,
 } from '../services/issue-store.js';
+import { listTasksForIssue } from '../services/task-queue-store.js';
 import { broadcast } from '../ws/index.js';
-import type { ApiResponse, Issue, IssueStatus } from '@aquarium/shared';
+import type { AgentTask, ApiResponse, Issue, IssueStatus } from '@aquarium/shared';
 
 const router = Router();
 router.use(requireAuth);
@@ -65,6 +66,24 @@ router.get('/:id', async (req, res) => {
       return;
     }
     res.json({ ok: true, data: issue } satisfies ApiResponse<Issue>);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ ok: false, error: message } satisfies ApiResponse);
+  }
+});
+
+/**
+ * GET /api/issues/:id/tasks
+ *
+ * Phase 24-02 (UI-05). Returns up to 20 recent tasks for the issue, ordered
+ * by `created_at DESC`. Consumed by `useIssueDetail` to derive `latestTask`
+ * for the TaskPanel. Workspace-scoped — cross-workspace issueIds return an
+ * empty array (T-24-02-06 information-disclosure mitigation).
+ */
+router.get('/:id/tasks', async (req, res) => {
+  try {
+    const tasks = await listTasksForIssue(DEFAULT_WORKSPACE_ID, req.params.id);
+    res.json({ ok: true, data: { tasks } } satisfies ApiResponse<{ tasks: AgentTask[] }>);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ ok: false, error: message } satisfies ApiResponse);

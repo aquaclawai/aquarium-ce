@@ -784,3 +784,26 @@ export async function isTaskCancelled(
     .first('status')) as { status: TaskStatus } | undefined;
   return row?.status === 'cancelled';
 }
+
+/**
+ * Phase 24-02 — list the most-recent tasks for an issue, ordered by
+ * `created_at DESC`. Workspace-scoped: cross-workspace issueIds return an
+ * empty array (T-24-02-06 information-disclosure mitigation).
+ *
+ * Default `limit = 20`. TaskPanel only renders the first row (`latestTask`);
+ * the higher cap keeps room for a future "Task history" drawer (24-UI-SPEC
+ * §Task panel interactions — stretch goal) without another round-trip.
+ */
+export async function listTasksForIssue(
+  workspaceId: string,
+  issueId: string,
+  limit = 20,
+  dbOverride?: Knex,
+): Promise<AgentTask[]> {
+  const kx = resolveDb(dbOverride);
+  const rows = (await kx('agent_task_queue')
+    .where({ workspace_id: workspaceId, issue_id: issueId })
+    .orderBy('created_at', 'desc')
+    .limit(limit)) as Array<Record<string, unknown>>;
+  return rows.map(toAgentTask);
+}
