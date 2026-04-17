@@ -682,7 +682,174 @@ test.describe.serial('Phase 24 — Issue Detail + Task Message Streaming', () =>
     ).toBeVisible();
   });
 
-  test.skip('chat on issue', async () => {
-    // plan 24-05: user types → task enqueued with trigger_comment_id → response streams → completes as threaded agent comment
+  test('chat on issue', async ({ page, request }) => {
+    // Plan 24-05 / CHAT-01. Exercises the end-to-end chat loop:
+    //   1. ChatComposer submits → POST /api/issues/:id/comments with
+    //      triggerCommentId → response returns { comment, enqueuedTask }.
+    //   2. enqueuedTask.id becomes the latestTask → TaskPanel renders it.
+    //   3. Simulated completion: we seed text task_messages + transition the
+    //      task row 'dispatched'→'running' (startTask), then call completeTask
+    //      via the task-queue-store from within the test harness. The route
+    //      /api/tasks/:id/cancel is the only HTTP surface for task state in
+    //      CE — there is no /complete endpoint for HOSTED tasks from the UI —
+    //      so we exercise the DB-select fallback via the daemon-style path:
+    //      flush task_messages into DB then call hosted-worker's
+    //      createAgentComment helper indirectly by updating the row + manually
+    //      invoking the post-completion broadcast through the CE-internal
+    //      completeTask API.
+    //   4. Assert the threaded agent comment is rendered by CommentsTimeline
+    //      with author_type='agent' + parent_id matching the user comment id.
+    //
+    // Test strategy: because the CE UI has no trivial way to drive a
+    // controlled hosted-task completion end-to-end through Playwright
+    // (chat.send goes to the gateway), we drive the HTTP /comments POST to
+    // create the user comment + enqueued task, then EMULATE the completion
+    // by direct DB inserts of agent_comment + a WS push isn't possible from
+    // the test context. Instead we rely on the WS broadcast that the server
+    // fires after createAgentComment runs — to trigger that we need the
+    // completion path. The minimal self-contained path: after the task is
+    // enqueued, insert text task_messages + use the daemon /complete route.
+    // That daemon route (Wave 0 + Wave 5) calls listTaskMessagesOfKind +
+    // createAgentComment + broadcasts comment:posted, which the page's
+    // useIssueDetail hook appends to the comment list.
+
+    // Clear prior issues so the fresh issue is the only one under test.
+    const existingRes = await request.get(`${API}/issues`);
+    if (existingRes.ok()) {
+      const existingBody = (await existingRes.json()) as { ok: boolean; data: { id: string }[] };
+      if (existingBody.ok) {
+        for (const row of existingBody.data) {
+          await request.delete(`${API}/issues/${row.id}`);
+        }
+      }
+    }
+
+    // Seed an issue via the API; the CE auto-auth grants the first user.
+    const seedRes = await request.post(`${API}/issues`, {
+      data: { title: 'Phase 24-05 chat-on-issue smoke', status: 'todo' },
+    });
+    expect(seedRes.status()).toBe(201);
+    const seedBody = (await seedRes.json()) as { ok: boolean; data: { id: string } };
+    expect(seedBody.ok).toBe(true);
+    const issueId = seedBody.data.id;
+
+    // Seed a daemon token for the /complete callback below, a runtime, an
+    // agent, and assign the agent to the issue so /comments enqueues a task.
+    const runtimeId = `rt-24-05-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const agentId = `ag-24-05-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const { createHash } = await import('node:crypto');
+    // DAEMON-07 structural check requires `adt_<32+ base64url chars>`.
+    const tokenPlaintext = `adt_${Math.random().toString(36).slice(2).padEnd(32, '0').slice(0, 32)}`;
+    const tokenHash = createHash('sha256').update(tokenPlaintext).digest('hex');
+    const tokenId = `tk-24-05-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+    writeDb((db) => {
+      db.prepare(
+        `INSERT INTO runtimes (id, workspace_id, name, kind, provider, status,
+                               daemon_id, instance_id, metadata,
+                               created_at, updated_at)
+         VALUES (?, 'AQ', ?, 'local_daemon', 'claude', 'online',
+                 ?, NULL, '{}',
+                 datetime('now'), datetime('now'))`,
+      ).run(runtimeId, `phase24-05-rt-${runtimeId}`, `daemon-${runtimeId}`);
+      db.prepare(
+        `INSERT INTO agents (id, workspace_id, runtime_id, name, instructions,
+                             custom_env, custom_args, max_concurrent_tasks,
+                             visibility, status, created_at, updated_at)
+         VALUES (?, 'AQ', ?, ?, 'chat-on-issue smoke agent',
+                 '{}', '[]', 6,
+                 'workspace', 'idle', datetime('now'), datetime('now'))`,
+      ).run(agentId, runtimeId, `phase24-05-agent-${agentId}`);
+      // Assign the issue to the agent so POST /comments enqueues a task.
+      db.prepare(`UPDATE issues SET assignee_id = ? WHERE id = ?`).run(agentId, issueId);
+      // Daemon token for the /complete callback.
+      db.prepare(
+        `INSERT INTO daemon_tokens (id, workspace_id, token_hash, name, daemon_id,
+                                    created_by_user_id, expires_at, last_used_at,
+                                    revoked_at, created_at, updated_at)
+         VALUES (?, 'AQ', ?, ?, ?, NULL, NULL, NULL, NULL, datetime('now'), datetime('now'))`,
+      ).run(tokenId, tokenHash, `phase24-05-tok-${tokenId}`, `daemon-${runtimeId}`);
+    });
+
+    await page.goto(`http://localhost:5173/issues/${issueId}`);
+    await expect(page.getByTestId('issue-detail')).toBeVisible();
+
+    // ChatComposer is mounted.
+    const composer = page.locator('[data-chat-composer]');
+    await expect(composer).toBeVisible();
+
+    // Type + send via the Send button.
+    const textarea = composer.locator('textarea');
+    await textarea.fill('What should I do next?');
+    await page.locator('[data-action="chat-send"]').click();
+
+    // User comment appears in the timeline.
+    const userCommentLocator = page.locator('[data-comment-author-type="user"]').last();
+    await expect(userCommentLocator).toContainText('What should I do next?', { timeout: 10_000 });
+
+    // Read back the actual user comment id + the enqueued task id from the DB.
+    // The POST handler writes both atomically.
+    const { taskId, userCommentId } = readDb<{ taskId: string; userCommentId: string }>((db) => {
+      const commentRow = db
+        .prepare(
+          `SELECT id FROM comments WHERE issue_id = ? AND author_type = 'user'
+           AND content LIKE 'What should I do next?%' ORDER BY created_at DESC LIMIT 1`,
+        )
+        .get(issueId) as { id: string };
+      const taskRow = db
+        .prepare(
+          `SELECT id FROM agent_task_queue WHERE issue_id = ? AND agent_id = ?
+           AND trigger_comment_id = ? ORDER BY created_at DESC LIMIT 1`,
+        )
+        .get(issueId, agentId, commentRow.id) as { id: string };
+      return { userCommentId: commentRow.id, taskId: taskRow.id };
+    });
+
+    // Dispatch + start the task, then seed two 'text' task_messages (the
+    // streaming path the agent would produce).
+    writeDb((db) => {
+      db.prepare(
+        `UPDATE agent_task_queue SET status='running', runtime_id=?,
+         dispatched_at=datetime('now'), started_at=datetime('now') WHERE id = ?`,
+      ).run(runtimeId, taskId);
+      const insertMsg = db.prepare(
+        `INSERT INTO task_messages
+           (id, task_id, seq, type, tool, content, input, output, metadata, created_at)
+         VALUES (?, ?, ?, 'text', NULL, ?, NULL, NULL, '{}', datetime('now'))`,
+      );
+      insertMsg.run(`m-${taskId}-1`, taskId, 1, 'Take the following steps: A, B, C.');
+      insertMsg.run(`m-${taskId}-2`, taskId, 2, 'That should resolve it.');
+    });
+
+    // Hit the daemon /complete endpoint — exercises the Wave 5 DB-select
+    // fallback + createAgentComment + comment:posted broadcast.
+    const completeRes = await request.post(`${API}/daemon/tasks/${taskId}/complete`, {
+      headers: { Authorization: `Bearer ${tokenPlaintext}` },
+      data: { result: { ok: true } },
+    });
+    expect(completeRes.status(), `daemon /complete failed: ${await completeRes.text()}`).toBe(200);
+
+    // The agent comment arrives via WS `comment:posted`. In real use the
+    // user's WS has been subscribed for seconds / minutes before the first
+    // completion, so the broadcast lands deterministically. In the tight
+    // Playwright loop (page.goto → submit → /complete) the WS subscribe can
+    // race the broadcast — reload the page so the detail hook's REST fetch
+    // picks up the persisted agent comment. The threading contract we care
+    // about (author_type='agent' + parent_id = <user comment id>) is
+    // assertable against the post-reload DOM.
+    await page.reload();
+    await expect(page.getByTestId('issue-detail')).toBeVisible();
+
+    // Threaded agent reply renders via WS comment:posted (or by refetch on
+    // subsequent interaction). Assert it shows up under the user comment.
+    await expect(
+      page.locator(`[data-comment-author-type="agent"][data-comment-parent="${userCommentId}"]`),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.locator(`[data-comment-author-type="agent"][data-comment-parent="${userCommentId}"]`),
+    ).toContainText('Take the following steps');
+    await expect(
+      page.locator(`[data-comment-author-type="agent"][data-comment-parent="${userCommentId}"]`),
+    ).toContainText('That should resolve it');
   });
 });

@@ -71,9 +71,18 @@ export function ChatComposer({
     }
     setSubmitting(true);
     try {
+      // Phase 17-04 server-side invariant: createUserComment enqueues a task
+      // iff `triggerCommentId` is truthy AND the issue has an assignee. The
+      // NEWLY-created comment's id is what the server writes into
+      // agent_task_queue.trigger_comment_id (the body value is an intent
+      // flag — "this comment triggers the agent"). For subsequent turns we
+      // prefer the last-user-comment id so completion threads the agent
+      // reply under the most recent prompt per CHAT-01; for the FIRST chat
+      // turn there is no prior user comment so we fall back to issue.id as
+      // a truthy sentinel so the task still enqueues.
       await onSubmit({
         content: trimmed.slice(0, MAX_CHARS),
-        triggerCommentId: lastUserCommentId,
+        triggerCommentId: lastUserCommentId ?? issue.id,
       });
       setContent('');
     } catch {
@@ -81,7 +90,7 @@ export function ChatComposer({
     } finally {
       setSubmitting(false);
     }
-  }, [content, submitting, hasAssignee, onSubmit, lastUserCommentId, t]);
+  }, [content, submitting, hasAssignee, onSubmit, lastUserCommentId, issue.id, t]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
