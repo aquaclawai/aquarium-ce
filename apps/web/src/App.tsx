@@ -55,6 +55,9 @@ const AssistantEditPage = lazy(() => import('./pages/AssistantEditPage').then(m 
 const ExportWizardPage = lazy(() => import('./pages/ExportWizardPage').then(m => ({ default: m.ExportWizardPage })));
 const IssuesBoardPage = lazy(() => import('./pages/IssuesBoardPage').then(m => ({ default: m.IssuesBoardPage })));
 const IssueDetailPage = lazy(() => import('./pages/IssueDetailPage').then(m => ({ default: m.IssueDetailPage })));
+const AgentsPage = lazy(() => import('./pages/AgentsPage').then(m => ({ default: m.AgentsPage })));
+const RuntimesPage = lazy(() => import('./pages/RuntimesPage').then(m => ({ default: m.RuntimesPage })));
+const DaemonTokensPage = lazy(() => import('./pages/DaemonTokensPage').then(m => ({ default: m.DaemonTokensPage })));
 
 // Docs pages (separate chunk)
 const DocsLayout = lazy(() => import('./pages/docs/DocsLayout').then(m => ({ default: m.DocsLayout })));
@@ -100,6 +103,9 @@ function App() {
             <Route path="/assistants/:id/edit" element={<AssistantEditPage />} />
             <Route path="/issues" element={<IssuesBoardPage />} />
             <Route path="/issues/:id" element={<IssueDetailPage />} />
+            <Route path="/agents" element={<AgentsPage />} />
+            <Route path="/runtimes" element={<RuntimesPage />} />
+            <Route path="/daemon-tokens" element={<DaemonTokensPage />} />
             <Route path="/export/:id" element={<ExportWizardPage />} />
             <Route path="/create" element={<CreateWizardPage />} />
             <Route path="/group-chats" element={<GroupChatsListPage />} />

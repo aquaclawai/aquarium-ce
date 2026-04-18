@@ -1444,7 +1444,10 @@
     "account": "账号管理",
     "systemConfig": "系统配置",
     "communityEdition": "社区版",
-    "issues": "问题"
+    "issues": "问题",
+    "agents": "Agents",
+    "runtimes": "Runtimes",
+    "daemonTokens": "Daemon Tokens"
   },
   "assistantEdit": {
     "backButton": "返回我的助手",
@@ -2555,6 +2558,273 @@
         "taskCancelled": "任务已取消",
         "replaying": "正在重新连接并补播遗漏消息",
         "replayDone": "已与代理同步"
+      }
+    }
+  },
+  "management": {
+    "agents": {
+      "title": "Agents",
+      "description": "Agents define what work gets done and how. Assign one to an issue and it starts a task.",
+      "actions": {
+        "create": "New agent",
+        "edit": "Edit",
+        "archive": "Archive",
+        "restore": "Restore"
+      },
+      "tabs": {
+        "active": "Active",
+        "archived": "Archived"
+      },
+      "filter": {
+        "search": "Search agents…"
+      },
+      "columns": {
+        "name": "Name",
+        "runtime": "Runtime",
+        "status": "Status",
+        "maxConcurrent": "Max concurrent",
+        "updated": "Updated",
+        "actions": "Actions"
+      },
+      "noRuntime": "No runtime",
+      "archived": "Archived",
+      "status": {
+        "idle": "Idle",
+        "working": "Working",
+        "blocked": "Blocked",
+        "error": "Error",
+        "offline": "Offline"
+      },
+      "empty": {
+        "heading": "No agents yet",
+        "body": "Create your first agent to start assigning work.",
+        "cta": "New agent"
+      },
+      "noMatches": {
+        "heading": "No agents match your search",
+        "body": "Try a different name.",
+        "clear": "Clear search"
+      },
+      "archivedEmpty": "No archived agents",
+      "form": {
+        "titleCreate": "Create agent",
+        "titleEdit": "Edit agent",
+        "name": {
+          "label": "Name",
+          "placeholder": "e.g. Code reviewer",
+          "hint": "A short, human-friendly name. Must be unique in your workspace."
+        },
+        "instructions": {
+          "label": "Instructions",
+          "placeholder": "Describe what this agent should do and how it should behave. Markdown is supported.",
+          "hint": "Markdown is supported. This text is sent to the agent on every task.",
+          "counter": "{{count}} / {{max}} characters"
+        },
+        "runtime": {
+          "label": "Runtime",
+          "placeholder": "Choose a runtime",
+          "none": "No runtime (agent can't run tasks until assigned)",
+          "hint": "Runtimes are where the agent's code actually executes. Add one from the Runtimes page."
+        },
+        "customEnv": {
+          "label": "Environment variables",
+          "hint": "Passed to daemon runtimes when a task starts. Hosted instances ignore these with a warning.",
+          "keyPlaceholder": "KEY",
+          "valuePlaceholder": "value",
+          "addRow": "Add variable",
+          "removeRow": "Remove variable",
+          "duplicateKey": "Duplicate key \"{{key}}\" — only the last value is kept"
+        },
+        "customArgs": {
+          "label": "Command-line arguments",
+          "hint": "Extra arguments appended when the CLI is invoked. One per tag.",
+          "placeholder": "Type an argument and press Enter",
+          "remove": "Remove argument \"{{arg}}\""
+        },
+        "maxConcurrent": {
+          "label": "Max concurrent tasks",
+          "hint": "How many tasks this agent can run at once. Must be between 1 and 16.",
+          "validation": "Must be between 1 and 16"
+        },
+        "actions": {
+          "create": "Create agent",
+          "save": "Save changes"
+        },
+        "validation": {
+          "nameRequired": "Name is required"
+        },
+        "saveSuccess": "Agent saved",
+        "saveFailed": "Couldn't save the agent — please try again",
+        "nameCollision": "An agent with this name already exists in your workspace"
+      },
+      "archiveConfirm": {
+        "title": "Archive \"{{name}}\"?",
+        "body": "This preserves all historical tasks and comments, but you can't assign new work until you restore it. Any queued tasks stay in the queue.",
+        "confirm": "Archive agent"
+      },
+      "archive": {
+        "success": "Agent archived",
+        "failed": "Couldn't archive — please try again"
+      },
+      "restoreConfirm": {
+        "title": "Restore \"{{name}}\"?",
+        "body": "The agent becomes assignable again. Existing archived issues stay archived.",
+        "confirm": "Restore agent"
+      },
+      "restore": {
+        "success": "Agent restored",
+        "failed": "Couldn't restore — please try again"
+      },
+      "loadFailed": "Couldn't load agents. {{retry}}",
+      "a11y": {
+        "saved": "Agent \"{{name}}\" saved",
+        "archived": "Agent \"{{name}}\" archived",
+        "restored": "Agent \"{{name}}\" restored"
+      }
+    },
+    "runtimes": {
+      "title": "Runtimes",
+      "description": "Runtimes are where agents execute. They're added automatically when an instance starts or a daemon registers.",
+      "filter": {
+        "search": "Search runtimes…",
+        "all": "All",
+        "hostedInstance": "Hosted",
+        "localDaemon": "Local daemon",
+        "externalCloudDaemon": "Cloud daemon",
+        "count": "{{count}}"
+      },
+      "columns": {
+        "name": "Name",
+        "kind": "Kind",
+        "provider": "Provider",
+        "status": "Status",
+        "device": "Device",
+        "lastHeartbeat": "Last heartbeat",
+        "actions": "Actions"
+      },
+      "neverHeartbeat": "Never",
+      "heartbeatJustNow": "Just now",
+      "heartbeatRelative": "{{relativeTime}}",
+      "heartbeatAbsolute": "{{absoluteTime}}",
+      "noDeviceInfo": "—",
+      "kind": {
+        "hostedInstance": "Hosted",
+        "localDaemon": "Local daemon",
+        "externalCloudDaemon": "Cloud daemon"
+      },
+      "status": {
+        "online": "Online",
+        "offline": "Offline",
+        "error": "Error"
+      },
+      "empty": {
+        "heading": "No runtimes yet",
+        "body": "Start an Aquarium instance or run `aquarium daemon start` on your machine to add a runtime."
+      },
+      "noMatches": {
+        "heading": "No runtimes match your filter",
+        "clear": "Clear filter"
+      },
+      "loadFailed": "Couldn't load runtimes. {{retry}}",
+      "detail": {
+        "title": "{{name}}",
+        "kind": "Kind",
+        "provider": "Provider",
+        "status": "Status",
+        "id": "Runtime ID",
+        "daemonId": "Daemon ID",
+        "instanceId": "Instance ID",
+        "createdAt": "Created",
+        "lastHeartbeatAt": "Last heartbeat",
+        "deviceInfoHeader": "Device info",
+        "metadataHeader": "Metadata",
+        "close": "Close details"
+      },
+      "a11y": {
+        "statusChanged": "Runtime \"{{name}}\" is now {{status}}"
+      }
+    },
+    "daemonTokens": {
+      "title": "Daemon Tokens",
+      "description": "Daemon tokens let the Aquarium CLI connect this machine or another to your workspace. Each token appears in plaintext only when you create it — store it somewhere safe.",
+      "actions": {
+        "create": "New token",
+        "revoke": "Revoke"
+      },
+      "columns": {
+        "name": "Name",
+        "created": "Created",
+        "expires": "Expires",
+        "lastUsed": "Last used",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "neverExpires": "Never",
+      "neverUsed": "Never",
+      "relative": "{{relativeTime}}",
+      "status": {
+        "active": "Active",
+        "expiringSoon": "Expires soon",
+        "expired": "Expired",
+        "revoked": "Revoked"
+      },
+      "empty": {
+        "heading": "No tokens yet",
+        "body": "Create a token to connect a daemon to this workspace.",
+        "cta": "New token"
+      },
+      "loadFailed": "Couldn't load tokens. {{retry}}",
+      "createModal": {
+        "title": "New daemon token",
+        "name": {
+          "label": "Friendly name",
+          "placeholder": "e.g. My laptop",
+          "hint": "A label you'll recognise on the list. Max 100 characters.",
+          "required": "Name is required",
+          "tooLong": "Name must be 100 characters or fewer"
+        },
+        "expiry": {
+          "label": "Expires",
+          "never": "Never",
+          "hint": "Optional. After this date the token stops working.",
+          "clear": "Clear date",
+          "future": "Expiry must be in the future"
+        },
+        "actions": {
+          "create": "Create token",
+          "creating": "Creating…"
+        },
+        "createFailed": "Couldn't create token — please try again"
+      },
+      "copyOnce": {
+        "title": "Copy your new token",
+        "warning": "This is the only time you'll see this token. Copy it now and store it somewhere safe — we can't show it again.",
+        "warningIcon": "Warning",
+        "tokenLabel": "Token",
+        "copyButton": "Copy to clipboard",
+        "copied": "Copied to clipboard",
+        "copyFailed": "Couldn't copy — select the text and copy manually",
+        "dismiss": "I've saved it",
+        "confirmClose": {
+          "title": "Close without saving the token?",
+          "body": "You won't see this token again. If you close now, you'll need to create a new one.",
+          "confirm": "Close anyway",
+          "cancel": "Keep showing"
+        }
+      },
+      "revokeConfirm": {
+        "title": "Revoke \"{{name}}\"?",
+        "body": "The daemon using this token loses access within one second. Already-running tasks continue. This can't be undone.",
+        "confirm": "Revoke token"
+      },
+      "revoke": {
+        "success": "Token revoked",
+        "failed": "Couldn't revoke — please try again"
+      },
+      "a11y": {
+        "created": "Token \"{{name}}\" created",
+        "revoked": "Token \"{{name}}\" revoked",
+        "copied": "Token copied to clipboard"
       }
     }
   }

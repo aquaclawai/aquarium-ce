@@ -19,6 +19,7 @@ import {
   FileText,
   ShieldCheck,
   Kanban,
+  Server,
 } from 'lucide-react';
 import {
   Sidebar as SidebarRoot,
@@ -48,6 +49,13 @@ interface NavItemDef {
   to: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
+  /**
+   * Optional data-nav attribute value — threaded onto SidebarMenuButton.
+   * Used by Playwright specs (e.g. tests/e2e/management-uis.spec.ts) to
+   * select nav entries deterministically without relying on text content
+   * that varies across 6 locales.
+   */
+  dataNav?: string;
 }
 
 function NavGroup({ label, items }: { label: string; items: NavItemDef[] }) {
@@ -75,6 +83,7 @@ function NavGroup({ label, items }: { label: string; items: NavItemDef[] }) {
                   tooltip={item.label}
                   isActive={isActive}
                   onClick={() => handleClick(item.to)}
+                  {...(item.dataNav ? { 'data-nav': item.dataNav } : {})}
                 >
                   <item.icon />
                   <span>{item.label}</span>
@@ -99,6 +108,9 @@ function NavMain() {
   const workspaceItems: NavItemDef[] = [
     { to: '/dashboard', icon: LayoutDashboard, label: t('sidebar.dashboard') },
     { to: '/issues', icon: Kanban, label: t('sidebar.issues') },
+    { to: '/agents', icon: Bot, label: t('sidebar.agents'), dataNav: 'agents' },
+    { to: '/runtimes', icon: Server, label: t('sidebar.runtimes'), dataNav: 'runtimes' },
+    { to: '/daemon-tokens', icon: KeyRound, label: t('sidebar.daemonTokens'), dataNav: 'daemon-tokens' },
     { to: '/templates', icon: Store, label: t('sidebar.skills') },
     { to: '/assistants', icon: Bot, label: t('sidebar.assistants') },
   ];
