@@ -493,6 +493,15 @@ Plans:
 2. Playwright suite passes with: (a) daemon-token issuance and revocation, (b) assign-to-daemon-agent happy path via @integration test with a real `claude` stub, (c) assign-to-hosted-agent happy path through the existing openclaw gateway, (d) kanban drag-and-drop, (e) cancel propagation on both runtime kinds
 3. Version bumped to `1.4.0` in `apps/server/package.json`, tagged `v1.4.0`, pushed; release workflow publishes npm + GHCR image successfully; `npx @aquaclawai/aquarium@1.4.0` starts the server and reports v1.4.0 in CLI `--version`
 
+**Plans:** 5/5 plans complete
+
+Plans:
+- [x] 26-01-PLAN.md — Boot wiring regression test + [boot] 9a-9e log markers in server-core.ts (REL-02)
+- [x] 26-02-PLAN.md — @integration test tier extraction + CI integration-smoke job (REL-01 shared harness)
+- [x] 26-03-PLAN.md — Playwright release-smoke-hosted.spec.ts — token flow + kanban DnD + hosted happy path + hosted cancel (REL-01 hosted half)
+- [x] 26-04-PLAN.md — Playwright release-smoke-daemon.spec.ts — daemon happy path + daemon cancel (@integration, REL-01 daemon half)
+- [x] 26-05-PLAN.md — Pre-push checks + version bump to 1.4.0 + annotated tag + human-gated push to trigger release.yml (REL-03)
+
 
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -522,6 +531,6 @@ Plans:
 | 23. Issue Board UI (Kanban) | v1.4 | 6/6 | Complete    | 2026-04-17 |
 | 24. Issue Detail + Streaming | v1.4 | 7/7 | Complete    | 2026-04-17 |
 | 25. Management UIs | v1.4 | 5/5 | Complete    | 2026-04-18 |
-| 26. Integration, E2E, Release | v1.4 | 0/? | Not started | - |
+| 26. Integration, E2E, Release | v1.4 | 5/5 | Complete   | 2026-04-18 |
 
 **Execution Order:** v1.1–v1.3 executed strictly numerically. v1.4 supports parallelism per the phase graph — 15 → {16, 17} → 18 → {19, 20}; 18 → {23, 24}; {16,17,19} → 25; all → 26. Longest critical path: 15 → 18 → 19 → 21 → 22 → 26.
