@@ -17,6 +17,7 @@ import {
   countTaskMessagesForIssue,
   waitForTaskStatus,
   seedAgentAndIssue,
+  pgrepByPattern,
   FAKE_CLAUDE_JS,
   CLI_DIST,
   type DaemonHandle,
@@ -186,11 +187,95 @@ test.describe('@integration Phase 26 release-smoke (daemon) — REL-01', () => {
     ).toBeGreaterThanOrEqual(3);
   });
 
-  // Scenario 2e-daemon (cancel propagation) — implemented by Task 2.
-  // The placeholder reserves the describe-block slot + signals intent without
-  // running. Replaced by a real test body in Plan 26-04 Task 2.
-  test.skip('sub-criterion 2e (daemon): cancel propagation — placeholder replaced by Task 2', () => {
-    /* intentionally empty — see Plan 26-04 Task 2 */
+  test('sub-criterion 2e (daemon): cancel propagation — SIGTERM leaves no zombies', async ({
+    request,
+  }) => {
+    test.skip(
+      process.platform === 'win32',
+      'pgrep is POSIX-only; Windows zombie-check deferred',
+    );
+    test.setTimeout(90_000);
+
+    tmpDir = mkdtempSync(join(tmpdir(), 'aq-rs-2e-daemon-'));
+    const fakeBinDir = join(tmpDir, 'bin');
+    mkdirSync(fakeBinDir, { recursive: true });
+    // --hang makes fake-claude sleep forever so we can cancel mid-task.
+    installFakeBinary(fakeBinDir, 'claude', FAKE_CLAUDE_JS, ['--hang']);
+
+    const { plaintext } = await mintDaemonToken(request, `rs-2e-daemon-${runTag}`);
+    const configPath = join(tmpDir, 'daemon.json');
+    writeFileSync(
+      configPath,
+      JSON.stringify({ server: SERVER_BASE, token: plaintext }, null, 2) + '\n',
+      { mode: 0o600 },
+    );
+    if (process.platform !== 'win32') chmodSync(configPath, 0o600);
+
+    const spawnedAt = Date.now();
+    daemonHandle = spawnDaemon({ dataDir: tmpDir, configPath, fakeBinDir });
+
+    const onlineDaemons = await waitForDaemonRuntime(request, spawnedAt, 15_000, 'claude');
+    expect(onlineDaemons.length).toBeGreaterThanOrEqual(1);
+    const rt = onlineDaemons[0];
+
+    const { issueId } = await seedAgentAndIssue(request, rt.id, `rs-2e-daemon-${runTag}`);
+
+    const serverDbPath =
+      process.env.AQ_SERVER_DB_PATH ?? join(process.env.HOME ?? '', '.aquarium', 'aquarium.db');
+    if (!existsSync(serverDbPath)) {
+      throw new Error(
+        `server DB not found at ${serverDbPath}. Set AQ_SERVER_DB_PATH or ensure \`npm run dev\` is running.`,
+      );
+    }
+
+    // Wait for the daemon to claim + start the hanging task.
+    await waitForTaskStatus(serverDbPath, issueId, ['running'], 20_000);
+
+    // Sanity check: at least one fake-claude child is alive right now. Poll up
+    // to 5 s so we don't fail on a pre-/start race (the daemon may have just
+    // flipped status='running' before the `claude` child finished exec'ing).
+    let preCancelPids: string[] = [];
+    const preDeadline = Date.now() + 5_000;
+    while (Date.now() < preDeadline) {
+      preCancelPids = pgrepByPattern('fake-claude');
+      if (preCancelPids.length > 0) break;
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    expect(
+      preCancelPids.length,
+      'expected at least one fake-claude child before cancel',
+    ).toBeGreaterThan(0);
+
+    // Cancel the issue — ISSUE-04 cascades to cancel every live task; the
+    // daemon's cancel-poller (5 s tick, Plan 21-03) picks it up and SIGTERMs
+    // the child process. 8 s budget covers the tick + SIGTERM grace.
+    const cancelRes = await request.patch(`${API_BASE}/issues/${issueId}`, {
+      data: { status: 'cancelled' },
+    });
+    expect(cancelRes.status()).toBe(200);
+
+    const zombieDeadline = Date.now() + 8_000;
+    let postCancelPids: string[] = [];
+    while (Date.now() < zombieDeadline) {
+      postCancelPids = pgrepByPattern('fake-claude');
+      if (postCancelPids.length === 0) break;
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    expect(
+      postCancelPids,
+      `expected NO fake-claude processes after cancel, found: ${JSON.stringify(postCancelPids)}`,
+    ).toEqual([]);
+
+    // Task status should land in {cancelled, failed} per the Plan 21-03
+    // `isCanceled → failTask('cancelled')` logic + the server ISSUE-04
+    // cascade path. Both terminal states satisfy the no-zombie contract.
+    const finalStatus = await waitForTaskStatus(
+      serverDbPath,
+      issueId,
+      ['cancelled', 'failed'],
+      10_000,
+    );
+    expect(['cancelled', 'failed']).toContain(finalStatus);
   });
 });
 
