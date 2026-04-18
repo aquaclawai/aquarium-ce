@@ -312,6 +312,8 @@ export async function startServer(server: HttpServer, options: StartServerOption
     } catch (err) {
       console.warn('[startup] initial runtime-bridge reconcile failed:', err instanceof Error ? err.message : String(err));
     }
+    // Phase 26-01 REL-02: marker fires even on warned failure so boot-order regression tests are robust.
+    console.log('[boot] 9a runtime-bridge reconcile complete');
 
     // Step 9a (continued): 10s safety-net loop. Catches any instance write path
     // that forgets to call the explicit hooks (16-RESEARCH §"Why hybrid (hook + poll)").
@@ -342,12 +344,15 @@ export async function startServer(server: HttpServer, options: StartServerOption
         err instanceof Error ? err.message : String(err),
       );
     }
+    // Phase 26-01 REL-02: marker fires unconditionally; failure count carried by [startup] line above when non-zero.
+    console.log('[boot] 9b hosted-orphan sweep complete');
 
     // Step 9c: task reaper — fails tasks stuck in dispatched > 5 min or running > 2.5 h
     // (cleans up after daemon crashes between claim and start, or mid-task deadlocks).
     // Must start BEFORE server.listen so a stale task from a previous server crash
     // is already being reaped when the first daemon registers.
     startTaskReaper();
+    console.log('[boot] 9c task-reaper started');
 
     // Step 9c.1: task_messages batcher — 500 ms tick that flushes the
     // in-memory buffer populated by the daemon /tasks/:id/messages endpoint
@@ -364,17 +369,21 @@ export async function startServer(server: HttpServer, options: StartServerOption
     // the time the first tick fires, the DB is clean (Step 9b fails boot
     // orphans; Step 9c's initial sweep reaps any residual daemon staleness).
     startHostedTaskWorker();
+    console.log('[boot] 9d hosted-task worker started');
 
     // Step 9e: offline sweeper — flips daemon runtimes whose last_heartbeat_at
     // is > 90s old to status='offline'. Does NOT touch hosted_instance rows (ST1).
     startRuntimeOfflineSweeper();
+    console.log('[boot] 9e offline-sweeper started');
 
-    // Boot-order recap after Phase 20:
-    //   9a runtimeBridgeReconcile    — mirrors instances → runtimes.hosted_instance
-    //   9b failOrphanedHostedTasks   — Phase 20: HOSTED-04 boot cleanup
-    //   9c startTaskReaper           — Phase 18 generic stale-task reaper
-    //   9d startHostedTaskWorker     — Phase 20: HOSTED-01..03,05,06 dispatch
-    //   9e startRuntimeOfflineSweeper — Phase 16: daemon heartbeat → offline
+    // Boot-order recap (v1.4.0+):
+    //   9a runtimeBridgeReconcile     — '[boot] 9a runtime-bridge reconcile complete'
+    //   9b failOrphanedHostedTasks    — '[boot] 9b hosted-orphan sweep complete'
+    //   9c startTaskReaper            — '[boot] 9c task-reaper started'
+    //   9d startHostedTaskWorker      — '[boot] 9d hosted-task worker started'
+    //   9e startRuntimeOfflineSweeper — '[boot] 9e offline-sweeper started'
+    // Regression test: apps/server/tests/unit/boot-sequence.test.ts asserts
+    // these markers appear in order AND before 'Server listening on port'.
 
     setInterval(async () => {
       console.log('[Scheduler] Running daily snapshots...');
