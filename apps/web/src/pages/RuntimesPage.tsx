@@ -8,6 +8,7 @@ import {
   KindFilterChips,
   type KindFilterValue,
 } from '@/components/management/KindFilterChips';
+import { RuntimeDetailSheet } from '@/components/management/RuntimeDetailSheet';
 import { useRuntimes } from '@/components/management/useRuntimes';
 
 /**
@@ -44,8 +45,7 @@ export function RuntimesPage() {
     coerceKind(searchParams.get('kind')),
   );
   const [searchQuery, setSearchQuery] = useState('');
-  // Task 2 will wire the detail sheet — for now keep the click handler alive.
-  const [, setDetailRuntime] = useState<Runtime | null>(null);
+  const [detailRuntime, setDetailRuntime] = useState<Runtime | null>(null);
 
   const counts = useMemo<Record<KindFilterValue, number>>(() => {
     const base: Record<KindFilterValue, number> = {
@@ -122,6 +122,14 @@ export function RuntimesPage() {
         searchQuery={searchQuery}
         onRowClick={handleRowClick}
         onClearFilter={handleClearFilter}
+      />
+
+      <RuntimeDetailSheet
+        runtime={detailRuntime}
+        open={detailRuntime !== null}
+        onOpenChange={(open) => {
+          if (!open) setDetailRuntime(null);
+        }}
       />
     </main>
   );

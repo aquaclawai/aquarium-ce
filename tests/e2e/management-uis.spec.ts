@@ -490,8 +490,9 @@ test.describe.serial('Phase 25 — Management UIs', () => {
     const sheet = page.locator('[data-runtime-detail-sheet]');
     await expect(sheet).toBeVisible();
 
-    // Title shows the runtime name.
-    await expect(sheet.getByText(rtName)).toBeVisible();
+    // Title shows the runtime name. Use heading role to disambiguate from
+    // the sr-only description that also interpolates the name.
+    await expect(sheet.getByRole('heading', { name: rtName })).toBeVisible();
 
     // deviceInfo JSON is rendered verbatim (all 4 fields present in <pre>).
     const sheetText = await sheet.innerText();
