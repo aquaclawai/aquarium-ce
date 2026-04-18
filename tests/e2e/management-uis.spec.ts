@@ -164,12 +164,115 @@ test.describe.serial('Phase 25 — Management UIs', () => {
     await expect(page.locator('[data-agent-tab="archived"][data-state="active"]')).toBeVisible();
   });
 
-  test('agent form create', async ({ page }) => {
-    test.skip(true, 'Wave 1 / plan 25-01 wires this');
-    // Opens AgentFormDialog, fills name + instructions + runtime +
-    // custom_env + custom_args + max_concurrent_tasks, clicks Create agent,
-    // asserts new row appears in AgentList + POST /api/agents was called.
-    void page;
+  test('agent form create', async ({ page, request }) => {
+    // Plan 25-01 Task 2 — open AgentFormDialog from the /agents page, fill
+    // every form field (name + instructions + runtime + custom env + custom
+    // args + max concurrent), submit, and assert the new row lands in the
+    // Active tab with the correct projection shape (customEnv / customArgs /
+    // maxConcurrentTasks round-trip through the server).
+
+    // Clear agents so a known-empty table hosts the test.
+    const existingRes = await request.get(`${API}/agents`);
+    if (existingRes.ok()) {
+      const body = (await existingRes.json()) as { ok: boolean; data: { id: string }[] };
+      if (body.ok) {
+        for (const row of body.data) {
+          await request.delete(`${API}/agents/${row.id}`);
+        }
+      }
+    }
+
+    // Seed one runtime directly (avoids depending on hosted_instance flow).
+    const runtimeId = `rt-25-01-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const runtimeName = `E2E-Runtime-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`;
+    writeDb((db) => {
+      db.prepare(
+        `INSERT INTO runtimes (id, workspace_id, name, kind, provider, status,
+                               daemon_id, instance_id, metadata,
+                               created_at, updated_at)
+         VALUES (?, 'AQ', ?, 'local_daemon', 'claude', 'online',
+                 ?, NULL, '{}',
+                 datetime('now'), datetime('now'))`,
+      ).run(runtimeId, runtimeName, `daemon-${runtimeId}`);
+    });
+
+    await page.goto('http://localhost:5173/agents');
+    await expect(page.locator('[data-page="agents"]')).toBeVisible();
+
+    // Open dialog.
+    await page.locator('[data-agent-new-open]').click();
+    await expect(page.locator('[data-agent-form-field="name"]')).toBeVisible();
+
+    // Fill fields.
+    const agentName = `E2E-Created-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+    await page.locator('[data-agent-form-field="name"]').fill(agentName);
+    await page
+      .locator('[data-agent-form-field="instructions"]')
+      .fill('Created by Playwright — Plan 25-01 Task 2.');
+
+    // Runtime Select (Radix) — click trigger, then select the runtime option.
+    // Radix portal-positions the option list relative to the trigger; when the
+    // trigger is near the dialog's bottom edge the list can render above it
+    // and Playwright reports the element as outside the viewport even though
+    // it is visible. Using keyboard navigation avoids the viewport check —
+    // Radix Select focuses the first option on open and moves via arrows.
+    const runtimeTrigger = page.locator('[data-agent-form-field="runtime"]');
+    await runtimeTrigger.click();
+    const runtimeOption = page.getByRole('option', { name: new RegExp(runtimeName) });
+    await runtimeOption.waitFor({ state: 'attached' });
+    // Dispatch the click directly on the element — bypasses Playwright's
+    // scroll-into-view heuristic for Radix portal content.
+    await runtimeOption.dispatchEvent('click');
+    // Wait for the trigger to reflect the chosen runtime name.
+    await expect(runtimeTrigger).toContainText(runtimeName, { timeout: 5000 });
+
+    // One env row.
+    await page.locator('[data-agent-env-add]').click();
+    const envRow = page.locator('[data-agent-env-row="0"]');
+    await envRow.locator('input').nth(0).fill('MY_KEY');
+    await envRow.locator('input').nth(1).fill('my-value');
+
+    // One custom arg.
+    await page.locator('[data-agent-args-input]').fill('--verbose');
+    await page.locator('[data-agent-args-input]').press('Enter');
+
+    // Max concurrent.
+    await page.locator('[data-agent-form-field="maxConcurrent"]').fill('4');
+
+    // Submit.
+    await page.locator('[data-agent-form-submit]').click();
+
+    // Dialog closes + row appears.
+    await expect(page.locator('[data-agent-form-submit]')).toHaveCount(0);
+    const newRow = page.locator(`[data-agent-row]`).filter({ hasText: agentName });
+    await expect(newRow).toBeVisible({ timeout: 10000 });
+    await expect(newRow.locator('[data-agent-status-badge]')).toBeVisible();
+
+    // DB verify — customEnv / customArgs / maxConcurrentTasks round-tripped.
+    const dbRow = readDb((db) =>
+      db
+        .prepare(
+          `SELECT id, name, runtime_id, custom_env, custom_args, max_concurrent_tasks
+           FROM agents WHERE name = ?`,
+        )
+        .get(agentName) as
+        | {
+            id: string;
+            name: string;
+            runtime_id: string;
+            custom_env: string;
+            custom_args: string;
+            max_concurrent_tasks: number;
+          }
+        | undefined,
+    );
+    expect(dbRow, 'agent row should exist in DB').toBeTruthy();
+    expect(dbRow!.runtime_id).toBe(runtimeId);
+    expect(dbRow!.max_concurrent_tasks).toBe(4);
+    const envObj = JSON.parse(dbRow!.custom_env) as Record<string, string>;
+    expect(envObj['MY_KEY']).toBe('my-value');
+    const argsArr = JSON.parse(dbRow!.custom_args) as string[];
+    expect(argsArr).toContain('--verbose');
   });
 
   test('agent archive', async ({ page }) => {

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AgentList } from '@/components/management/AgentList';
+import { AgentFormDialog } from '@/components/management/AgentFormDialog';
 import { useAgents } from '@/components/management/useAgents';
 
 /**
@@ -23,9 +24,7 @@ import { useAgents } from '@/components/management/useAgents';
 export function AgentsPage() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { active, archived, isLoading, create, update, archive, restore } = useAgents();
-  void create;
-  void update;
+  const { active, archived, isLoading, refetch, archive, restore } = useAgents();
   void archive;
   void restore;
 
@@ -35,14 +34,14 @@ export function AgentsPage() {
   const [runtimes, setRuntimes] = useState<Runtime[]>([]);
   const [runtimesLoading, setRuntimesLoading] = useState(true);
 
-  // Form + archive dialog state (wired in Tasks 2 + 3)
+  // Form dialog state.
   const [formState, setFormState] = useState<{
     open: boolean;
     mode: 'create' | 'edit';
     agent: Agent | null;
   }>({ open: false, mode: 'create', agent: null });
-  void formState;
 
+  // Archive/restore dialog state (wired in Task 3).
   const [archiveState, setArchiveState] = useState<{
     open: boolean;
     agent: Agent | null;
@@ -170,7 +169,18 @@ export function AgentsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* AgentFormDialog mounted in Task 2 */}
+      <AgentFormDialog
+        mode={formState.mode}
+        agent={formState.agent ?? undefined}
+        runtimes={runtimes}
+        open={formState.open}
+        onOpenChange={(open) => setFormState((s) => ({ ...s, open }))}
+        onSaved={() => {
+          void refetch();
+          setFormState({ open: false, mode: 'create', agent: null });
+        }}
+      />
+
       {/* ArchiveConfirmDialog mounted in Task 3 */}
     </main>
   );
