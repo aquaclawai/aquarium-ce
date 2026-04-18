@@ -310,6 +310,17 @@ test.describe.serial('Phase 26 release-smoke (hosted) — REL-01', () => {
     sharedRuntimeId = hostedRuntime!.id;
     expect(hostedRuntime!.kind).toBe('hosted_instance');
 
+    // Docker-absent detection (belt + suspenders on the 201 check above).
+    // CE's POST /api/instances creates the DB row even when the Docker
+    // daemon is unreachable — the runtime mirrors to 'offline' and the
+    // HostedTaskWorker will never dispatch. Skip cleanly with an operator-
+    // visible reason; release-gate enforcement for 2c on Docker-capable
+    // hosts is delegated to Plan 26-05 Task 2's preconditions.
+    test.skip(
+      hostedRuntime!.status === 'offline' || hostedRuntime!.status === 'error',
+      `skipped: hosted runtime status='${hostedRuntime!.status}' — Docker engine not available`,
+    );
+
     // Create an agent bound to the hosted runtime.
     const agentRes = await request.post(`${API_BASE}/agents`, {
       data: {

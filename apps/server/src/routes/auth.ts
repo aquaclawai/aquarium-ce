@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
+import { getAdapter } from '../db/adapter.js';
 import { config } from '../config.js';
 import { requireAuth } from '../middleware/auth.js';
 import type { ApiResponse, User, UserExtended, LoginHistoryEntry, UpdateProfileRequest } from '@aquarium/shared';
@@ -38,19 +39,23 @@ if (config.nodeEnv === 'test' || !config.clerk.secretKey) {
         return;
       }
 
-      const [newUser] = await db('users')
+      const adapter = getAdapter();
+      const id = adapter.generateId();
+      await db('users')
         .insert({
+          id,
           email: email.toLowerCase(),
           password_hash: password ? `test:${password}` : null,
           display_name: displayName ?? email.split('@')[0],
           clerk_id: `test_${crypto.randomUUID()}`,
           created_at: new Date(),
           updated_at: new Date(),
-        })
-        .returning(['id', 'email', 'display_name']);
+        });
+      const newUser = { id, email: email.toLowerCase(), display_name: displayName ?? email.split('@')[0] };
 
       // Insert auth_events record for signup
       await db('auth_events').insert({
+        id: adapter.generateId(),
         event_type: 'signup',
         user_id: newUser.id,
         email: email.toLowerCase(),
@@ -110,6 +115,7 @@ if (config.nodeEnv === 'test' || !config.clerk.secretKey) {
 
       // Insert auth_events record for login
       await db('auth_events').insert({
+        id: getAdapter().generateId(),
         event_type: 'login',
         user_id: row.id,
         email: email.toLowerCase(),
