@@ -437,11 +437,77 @@ test.describe.serial('Phase 25 — Management UIs', () => {
   });
 
   test('runtime row details', async ({ page }) => {
-    test.skip(true, 'Wave 2 / plan 25-02 wires this');
-    // Asserts each runtime row renders device_info + last_heartbeat_at +
-    // status badge. Clicking a row opens the Sheet detail drawer with
-    // device_info JSON pretty-printed + metadata.
-    void page;
+    // Plan 25-02 Task 2 — click a runtime row to open the RuntimeDetailSheet
+    // drawer, assert the sheet renders the full Runtime shape (name in
+    // header + deviceInfo JSON + metadata JSON), then press Escape to close.
+
+    // Clean any pre-existing rows so our click targets are unambiguous.
+    writeDb((db) => {
+      db.prepare(`DELETE FROM runtimes WHERE workspace_id = 'AQ'`).run();
+    });
+
+    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const rtId = `rt-detail-${suffix}`;
+    const rtName = `E2E-Detail-${suffix}`;
+    const deviceInfo = {
+      os: 'darwin',
+      arch: 'arm64',
+      hostname: 'e2e-host',
+      version: '14.2',
+    };
+    const metadata = { foo: 'bar' };
+    const recent = new Date(Date.now() - 60_000).toISOString();
+
+    writeDb((db) => {
+      db.prepare(
+        `INSERT INTO runtimes (id, workspace_id, name, kind, provider, status,
+                               daemon_id, instance_id, device_info,
+                               last_heartbeat_at, metadata,
+                               created_at, updated_at)
+         VALUES (?, 'AQ', ?, 'local_daemon', 'claude', 'online',
+                 ?, NULL, ?,
+                 ?, ?,
+                 datetime('now'), datetime('now'))`,
+      ).run(
+        rtId,
+        rtName,
+        `daemon-${rtId}`,
+        JSON.stringify(deviceInfo),
+        recent,
+        JSON.stringify(metadata),
+      );
+    });
+
+    await page.goto('http://localhost:5173/runtimes');
+    await expect(page.locator('[data-page="runtimes"]')).toBeVisible();
+
+    // Click the seeded row to open the detail Sheet.
+    const row = page.locator(`[data-runtime-row="${rtId}"]`);
+    await expect(row).toBeVisible();
+    await row.click();
+
+    // Sheet opens with the data-runtime-detail-sheet marker.
+    const sheet = page.locator('[data-runtime-detail-sheet]');
+    await expect(sheet).toBeVisible();
+
+    // Title shows the runtime name.
+    await expect(sheet.getByText(rtName)).toBeVisible();
+
+    // deviceInfo JSON is rendered verbatim (all 4 fields present in <pre>).
+    const sheetText = await sheet.innerText();
+    expect(sheetText).toContain('darwin');
+    expect(sheetText).toContain('arm64');
+    expect(sheetText).toContain('e2e-host');
+    expect(sheetText).toContain('14.2');
+    // Metadata JSON field present.
+    expect(sheetText).toContain('"foo"');
+    expect(sheetText).toContain('"bar"');
+
+    // Press Escape → Sheet closes.
+    await page.keyboard.press('Escape');
+    await expect(page.locator('[data-runtime-detail-sheet]')).toHaveCount(0, {
+      timeout: 5000,
+    });
   });
 
   test('token copy once', async ({ page }) => {
