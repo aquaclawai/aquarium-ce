@@ -29,34 +29,37 @@ interface ReconnectBannerProps {
 
 export function ReconnectBanner({ isReconnecting, isReplaying }: ReconnectBannerProps) {
   const { t } = useTranslation();
-  // caughtUpUntil holds a timestamp the "Caught up" state expires at — we
-  // poll Date.now() on render (coarse) and set a timeout to force a re-render
-  // at the exact millisecond we need to unmount.
-  const [caughtUpUntil, setCaughtUpUntil] = useState(0);
-  const prevActiveRef = useRef(isReconnecting || isReplaying);
-
-  // Detect the transition active → idle. On that exact edge we light up the
-  // 1.5 s "Caught up" fade. Subsequent renders with !active + stale
-  // caughtUpUntil won't re-trigger because prevActiveRef now reflects idle.
-  useEffect(() => {
-    const active = isReconnecting || isReplaying;
-    if (prevActiveRef.current && !active) {
-      setCaughtUpUntil(Date.now() + 1500);
-    }
-    prevActiveRef.current = active;
-  }, [isReconnecting, isReplaying]);
-
-  // Drive a re-render when the caught-up window expires so the banner unmounts.
-  useEffect(() => {
-    if (caughtUpUntil === 0) return;
-    const remaining = caughtUpUntil - Date.now();
-    if (remaining <= 0) return;
-    const handle = setTimeout(() => setCaughtUpUntil(0), remaining);
-    return () => clearTimeout(handle);
-  }, [caughtUpUntil]);
-
+  // `showCaughtUp` is a pure boolean: when active flips to idle we set it
+  // true, schedule a 1.5 s timer in the same effect to flip it back to false,
+  // and clear the timer on any dep change. All clock reads live inside the
+  // effect — never at render time (react-hooks/purity). The active→idle
+  // transition is detected via a ref that mirrors the previous prop value,
+  // not via state (react-hooks/set-state-in-effect).
   const active = isReconnecting || isReplaying;
-  const showCaughtUp = !active && caughtUpUntil > Date.now();
+  const [showCaughtUp, setShowCaughtUp] = useState(false);
+  const prevActiveRef = useRef(active);
+
+  useEffect(() => {
+    const wasActive = prevActiveRef.current;
+    prevActiveRef.current = active;
+
+    // Only schedule the fade on the exact active → idle edge.
+    if (!wasActive || active) return;
+
+    // The fade is an external-timer-driven UI pulse: we MUST setState inside
+    // the effect to trigger the fade (true) and retract it 1.5 s later
+    // (false). There is no external store we can useSyncExternalStore over —
+    // the trigger is a local prop transition. This is the React 19 recommended
+    // pattern (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes)
+    // when a prop change must produce a transient, timed UI state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setShowCaughtUp(true);
+    const handle = setTimeout(() => {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShowCaughtUp(false);
+    }, 1500);
+    return () => clearTimeout(handle);
+  }, [active]);
 
   if (!active && !showCaughtUp) return null;
 
