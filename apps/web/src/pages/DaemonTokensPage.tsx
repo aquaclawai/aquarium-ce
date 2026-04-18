@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { DaemonToken } from '@aquarium/shared';
 import { Button } from '@/components/ui/button';
 import { DaemonTokenList } from '@/components/management/DaemonTokenList';
+import { DaemonTokenCreateModal } from '@/components/management/DaemonTokenCreateModal';
 import { useDaemonTokens } from '@/components/management/useDaemonTokens';
 
 /**
@@ -10,16 +11,15 @@ import { useDaemonTokens } from '@/components/management/useDaemonTokens';
  *
  * Orchestrates the /daemon-tokens surface:
  *   - list (DaemonTokenList) with derived status + Revoke action
- *   - create (DaemonTokenCreateModal — wired in Task 2; two-step form +
- *     copy-once plaintext view; plaintext lives ONLY in local useState
- *     inside the modal)
+ *   - create (DaemonTokenCreateModal — two-step form + copy-once view;
+ *     sensitive adt_* string lives ONLY in local useState inside the modal)
  *   - revoke (RevokeConfirmDialog — wired in Task 3)
  *
- * MGMT-03 HARD invariant: the plaintext `adt_*` token never reaches this
- * page component. The modal's `onCreated` callback receives only the
- * hashed-projection `DaemonToken` shape (no `plaintext` field — type-
- * enforced). The sr-only announcer interpolates `{{name}}` only, never
- * plaintext.
+ * MGMT-03 HARD invariant: the sensitive string never reaches this page
+ * component. The modal's `onCreated` callback receives only the hashed
+ * `DaemonToken` projection (no plaintext field — type-enforced). The
+ * sr-only announcer interpolates `{{name}}` only, never the sensitive
+ * string.
  */
 export function DaemonTokensPage() {
   const { t } = useTranslation();
@@ -28,16 +28,11 @@ export function DaemonTokensPage() {
   const [revokeTarget, setRevokeTarget] = useState<DaemonToken | null>(null);
   const [announcement, setAnnouncement] = useState('');
 
-  // Silence unused-variable lint for Task 2/3 wiring — these are activated
-  // by subsequent tasks in the same plan. Keeping the state + handler
-  // references in Task 1 lets Task 2/3 wire the imports at their boundary.
-  void createOpen;
-  void setCreateOpen;
+  // Task 3 wires revoke; reference the handlers here to keep ESLint quiet
+  // until then.
   void revokeTarget;
   void setRevokeTarget;
   void revoke;
-  void setAnnouncement;
-  void refetch;
 
   return (
     <main
@@ -74,13 +69,28 @@ export function DaemonTokensPage() {
       <DaemonTokenList
         tokens={tokens}
         isLoading={isLoading}
-        onRevoke={(t) => setRevokeTarget(t)}
+        onRevoke={(tok) => setRevokeTarget(tok)}
         onOpenCreate={() => setCreateOpen(true)}
       />
 
+      <DaemonTokenCreateModal
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={(token) => {
+          // Refetch so the new hashed row appears; announce via i18n key
+          // that interpolates only the friendly name (never the sensitive
+          // string — see MGMT-03 HARD invariant).
+          void refetch();
+          setAnnouncement(
+            t('management.daemonTokens.a11y.created', { name: token.name }),
+          );
+        }}
+      />
+
       {/*
-        sr-only a11y announcer. NEVER interpolates plaintext — only
-        `{{name}}` via the `management.daemonTokens.a11y.*` keys.
+        sr-only a11y announcer. NEVER interpolates the sensitive adt_*
+        string — only `{{name}}` via the `management.daemonTokens.a11y.*`
+        keys.
       */}
       <div role="status" aria-live="polite" className="sr-only">
         {announcement}
