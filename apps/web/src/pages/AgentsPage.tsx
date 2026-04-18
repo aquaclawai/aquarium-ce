@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AgentList } from '@/components/management/AgentList';
 import { AgentFormDialog } from '@/components/management/AgentFormDialog';
+import { ArchiveConfirmDialog } from '@/components/management/ArchiveConfirmDialog';
 import { useAgents } from '@/components/management/useAgents';
 
 /**
@@ -25,8 +26,9 @@ export function AgentsPage() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { active, archived, isLoading, refetch, archive, restore } = useAgents();
-  void archive;
-  void restore;
+
+  // sr-only live region announcements (management.agents.a11y.*)
+  const [announcement, setAnnouncement] = useState('');
 
   const initialTab = searchParams.get('tab') === 'archived' ? 'archived' : 'active';
   const [tab, setTab] = useState<'active' | 'archived'>(initialTab);
@@ -41,13 +43,11 @@ export function AgentsPage() {
     agent: Agent | null;
   }>({ open: false, mode: 'create', agent: null });
 
-  // Archive/restore dialog state (wired in Task 3).
+  // Archive/restore dialog state.
   const [archiveState, setArchiveState] = useState<{
-    open: boolean;
     agent: Agent | null;
     mode: 'archive' | 'restore';
-  }>({ open: false, agent: null, mode: 'archive' });
-  void archiveState;
+  }>({ agent: null, mode: 'archive' });
 
   // Fetch runtimes once.
   useEffect(() => {
@@ -90,11 +90,34 @@ export function AgentsPage() {
   };
 
   const handleArchive = (agent: Agent) => {
-    setArchiveState({ open: true, agent, mode: 'archive' });
+    setArchiveState({ agent, mode: 'archive' });
   };
 
   const handleRestore = (agent: Agent) => {
-    setArchiveState({ open: true, agent, mode: 'restore' });
+    setArchiveState({ agent, mode: 'restore' });
+  };
+
+  const handleArchiveConfirm = async () => {
+    if (!archiveState.agent) return;
+    const { agent, mode } = archiveState;
+    try {
+      if (mode === 'archive') {
+        await archive(agent.id);
+        toast.success(t('management.agents.archive.success'));
+        setAnnouncement(t('management.agents.a11y.archived', { name: agent.name }));
+      } else {
+        await restore(agent.id);
+        toast.success(t('management.agents.restore.success'));
+        setAnnouncement(t('management.agents.a11y.restored', { name: agent.name }));
+      }
+      setArchiveState({ agent: null, mode: 'archive' });
+    } catch {
+      toast.error(
+        mode === 'archive'
+          ? t('management.agents.archive.failed')
+          : t('management.agents.restore.failed'),
+      );
+    }
   };
 
   const handleClearSearch = () => setSearchQuery('');
@@ -175,13 +198,26 @@ export function AgentsPage() {
         runtimes={runtimes}
         open={formState.open}
         onOpenChange={(open) => setFormState((s) => ({ ...s, open }))}
-        onSaved={() => {
+        onSaved={(agent) => {
           void refetch();
+          setAnnouncement(t('management.agents.a11y.saved', { name: agent.name }));
           setFormState({ open: false, mode: 'create', agent: null });
         }}
       />
 
-      {/* ArchiveConfirmDialog mounted in Task 3 */}
+      <ArchiveConfirmDialog
+        agent={archiveState.agent}
+        mode={archiveState.mode}
+        onConfirm={handleArchiveConfirm}
+        onOpenChange={(open) => {
+          if (!open) setArchiveState({ agent: null, mode: archiveState.mode });
+        }}
+      />
+
+      {/* sr-only live region announcer (management.agents.a11y.*) */}
+      <div role="status" aria-live="polite" className="sr-only">
+        {announcement}
+      </div>
     </main>
   );
 }

@@ -275,11 +275,59 @@ test.describe.serial('Phase 25 — Management UIs', () => {
     expect(argsArr).toContain('--verbose');
   });
 
-  test('agent archive', async ({ page }) => {
-    test.skip(true, 'Wave 1 / plan 25-01 wires this');
-    // Opens row dropdown → Archive, confirms dialog, asserts agent moves
-    // to Archived tab + archivedAt is non-null in DB.
-    void page;
+  test('agent archive', async ({ page, request }) => {
+    // Plan 25-01 Task 3 — open an agent's action dropdown, click Archive,
+    // confirm in the destructive-variant dialog, assert the row disappears
+    // from Active tab and shows up in Archived tab with archivedAt set.
+
+    // Start from a clean Active slate.
+    const existingRes = await request.get(`${API}/agents`);
+    if (existingRes.ok()) {
+      const body = (await existingRes.json()) as { ok: boolean; data: { id: string }[] };
+      if (body.ok) {
+        for (const row of body.data) {
+          await request.delete(`${API}/agents/${row.id}`);
+        }
+      }
+    }
+
+    // Seed 1 agent via POST.
+    const agentName = `E2E-Archive-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+    const seedRes = await request.post(`${API}/agents`, { data: { name: agentName } });
+    expect(seedRes.status()).toBe(201);
+    const seedBody = (await seedRes.json()) as { ok: boolean; data: { id: string } };
+    expect(seedBody.ok).toBe(true);
+    const agentId = seedBody.data.id;
+
+    await page.goto('http://localhost:5173/agents');
+    await expect(page.locator(`[data-agent-row="${agentId}"]`)).toBeVisible();
+
+    // Open the row's action dropdown + click Archive.
+    await page.locator(`[data-agent-actions-trigger="${agentId}"]`).click();
+    await page.locator('[data-agent-action="archive"]').click();
+
+    // Archive dialog opens — title interpolates agent name.
+    await expect(
+      page.getByRole('dialog').getByText(agentName, { exact: false }),
+    ).toBeVisible();
+
+    await page.locator('[data-agent-archive-confirm]').click();
+
+    // Row disappears from Active tab (zero-agent empty state renders).
+    await expect(page.locator(`[data-agent-row="${agentId}"]`)).toHaveCount(0, { timeout: 5000 });
+
+    // Switch to Archived tab — the row should appear there with the
+    // Archived secondary badge.
+    await page.locator('[data-agent-tab="archived"]').click();
+    await expect(page.locator(`[data-agent-row="${agentId}"]`)).toBeVisible({ timeout: 5000 });
+
+    // DB confirmation — archived_at is non-null.
+    const archivedAt = readDb((db) =>
+      (db
+        .prepare(`SELECT archived_at FROM agents WHERE id = ?`)
+        .get(agentId) as { archived_at: string | null } | undefined)?.archived_at,
+    );
+    expect(archivedAt, 'archived_at should be set after archive').toBeTruthy();
   });
 
   test('runtimes unified list', async ({ page }) => {
