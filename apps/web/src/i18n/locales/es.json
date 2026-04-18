@@ -1255,9 +1255,9 @@
     "chat": "Chat",
     "orders": "Orders",
     "issues": "Incidencias",
-    "agents": "Agents",
-    "runtimes": "Runtimes",
-    "daemonTokens": "Daemon Tokens"
+    "agents": "Agentes",
+    "runtimes": "Entornos",
+    "daemonTokens": "Tokens de daemon"
   },
   "aiTab": {
     "providerMode": {
@@ -2563,268 +2563,268 @@
   },
   "management": {
     "agents": {
-      "title": "Agents",
-      "description": "Agents define what work gets done and how. Assign one to an issue and it starts a task.",
+      "title": "Agentes",
+      "description": "Los agentes definen qué trabajo se realiza y cómo. Asigne uno a una incidencia y comenzará una tarea.",
       "actions": {
-        "create": "New agent",
-        "edit": "Edit",
-        "archive": "Archive",
-        "restore": "Restore"
+        "create": "Nuevo agente",
+        "edit": "Editar",
+        "archive": "Archivar",
+        "restore": "Restaurar"
       },
       "tabs": {
-        "active": "Active",
-        "archived": "Archived"
+        "active": "Activos",
+        "archived": "Archivados"
       },
       "filter": {
-        "search": "Search agents…"
+        "search": "Buscar agentes…"
       },
       "columns": {
-        "name": "Name",
-        "runtime": "Runtime",
-        "status": "Status",
-        "maxConcurrent": "Max concurrent",
-        "updated": "Updated",
-        "actions": "Actions"
+        "name": "Nombre",
+        "runtime": "Entorno",
+        "status": "Estado",
+        "maxConcurrent": "Máx. simultáneos",
+        "updated": "Actualizado",
+        "actions": "Acciones"
       },
-      "noRuntime": "No runtime",
-      "archived": "Archived",
+      "noRuntime": "Sin entorno",
+      "archived": "Archivado",
       "status": {
-        "idle": "Idle",
-        "working": "Working",
-        "blocked": "Blocked",
+        "idle": "Inactivo",
+        "working": "Trabajando",
+        "blocked": "Bloqueado",
         "error": "Error",
-        "offline": "Offline"
+        "offline": "Desconectado"
       },
       "empty": {
-        "heading": "No agents yet",
-        "body": "Create your first agent to start assigning work.",
-        "cta": "New agent"
+        "heading": "Aún no hay agentes",
+        "body": "Cree su primer agente para empezar a asignar trabajo.",
+        "cta": "Nuevo agente"
       },
       "noMatches": {
-        "heading": "No agents match your search",
-        "body": "Try a different name.",
-        "clear": "Clear search"
+        "heading": "Ningún agente coincide con su búsqueda",
+        "body": "Pruebe con otro nombre.",
+        "clear": "Borrar búsqueda"
       },
-      "archivedEmpty": "No archived agents",
+      "archivedEmpty": "No hay agentes archivados",
       "form": {
-        "titleCreate": "Create agent",
-        "titleEdit": "Edit agent",
+        "titleCreate": "Crear agente",
+        "titleEdit": "Editar agente",
         "name": {
-          "label": "Name",
-          "placeholder": "e.g. Code reviewer",
-          "hint": "A short, human-friendly name. Must be unique in your workspace."
+          "label": "Nombre",
+          "placeholder": "p. ej. Revisor de código",
+          "hint": "Un nombre corto y reconocible. Debe ser único en su espacio de trabajo."
         },
         "instructions": {
-          "label": "Instructions",
-          "placeholder": "Describe what this agent should do and how it should behave. Markdown is supported.",
-          "hint": "Markdown is supported. This text is sent to the agent on every task.",
-          "counter": "{{count}} / {{max}} characters"
+          "label": "Instrucciones",
+          "placeholder": "Describa qué debe hacer este agente y cómo debe comportarse. Se admite Markdown.",
+          "hint": "Se admite Markdown. Este texto se envía al agente en cada tarea.",
+          "counter": "{{count}} / {{max}} caracteres"
         },
         "runtime": {
-          "label": "Runtime",
-          "placeholder": "Choose a runtime",
-          "none": "No runtime (agent can't run tasks until assigned)",
-          "hint": "Runtimes are where the agent's code actually executes. Add one from the Runtimes page."
+          "label": "Entorno",
+          "placeholder": "Elegir un entorno",
+          "none": "Sin entorno (el agente no puede ejecutar tareas hasta que se le asigne uno)",
+          "hint": "Los entornos son donde el código del agente se ejecuta realmente. Añada uno desde la página Entornos."
         },
         "customEnv": {
-          "label": "Environment variables",
-          "hint": "Passed to daemon runtimes when a task starts. Hosted instances ignore these with a warning.",
-          "keyPlaceholder": "KEY",
-          "valuePlaceholder": "value",
-          "addRow": "Add variable",
-          "removeRow": "Remove variable",
-          "duplicateKey": "Duplicate key \"{{key}}\" — only the last value is kept"
+          "label": "Variables de entorno",
+          "hint": "Se pasan a los entornos daemon cuando se inicia una tarea. Las instancias alojadas las ignoran con un aviso.",
+          "keyPlaceholder": "CLAVE",
+          "valuePlaceholder": "valor",
+          "addRow": "Añadir variable",
+          "removeRow": "Quitar variable",
+          "duplicateKey": "Clave \"{{key}}\" duplicada — solo se conserva el último valor"
         },
         "customArgs": {
-          "label": "Command-line arguments",
-          "hint": "Extra arguments appended when the CLI is invoked. One per tag.",
-          "placeholder": "Type an argument and press Enter",
-          "remove": "Remove argument \"{{arg}}\""
+          "label": "Argumentos de línea de comandos",
+          "hint": "Argumentos adicionales añadidos al invocar la CLI. Uno por etiqueta.",
+          "placeholder": "Escriba un argumento y pulse Intro",
+          "remove": "Quitar argumento \"{{arg}}\""
         },
         "maxConcurrent": {
-          "label": "Max concurrent tasks",
-          "hint": "How many tasks this agent can run at once. Must be between 1 and 16.",
-          "validation": "Must be between 1 and 16"
+          "label": "Tareas simultáneas máximas",
+          "hint": "Cuántas tareas puede ejecutar este agente a la vez. Debe estar entre 1 y 16.",
+          "validation": "Debe estar entre 1 y 16"
         },
         "actions": {
-          "create": "Create agent",
-          "save": "Save changes"
+          "create": "Crear agente",
+          "save": "Guardar cambios"
         },
         "validation": {
-          "nameRequired": "Name is required"
+          "nameRequired": "El nombre es obligatorio"
         },
-        "saveSuccess": "Agent saved",
-        "saveFailed": "Couldn't save the agent — please try again",
-        "nameCollision": "An agent with this name already exists in your workspace"
+        "saveSuccess": "Agente guardado",
+        "saveFailed": "No se pudo guardar el agente — inténtelo de nuevo",
+        "nameCollision": "Ya existe un agente con ese nombre en su espacio de trabajo"
       },
       "archiveConfirm": {
-        "title": "Archive \"{{name}}\"?",
-        "body": "This preserves all historical tasks and comments, but you can't assign new work until you restore it. Any queued tasks stay in the queue.",
-        "confirm": "Archive agent"
+        "title": "¿Archivar \"{{name}}\"?",
+        "body": "Esto conserva todo el historial de tareas y comentarios, pero no podrá asignar nuevo trabajo hasta que lo restaure. Las tareas en cola permanecen en la cola.",
+        "confirm": "Archivar agente"
       },
       "archive": {
-        "success": "Agent archived",
-        "failed": "Couldn't archive — please try again"
+        "success": "Agente archivado",
+        "failed": "No se pudo archivar — inténtelo de nuevo"
       },
       "restoreConfirm": {
-        "title": "Restore \"{{name}}\"?",
-        "body": "The agent becomes assignable again. Existing archived issues stay archived.",
-        "confirm": "Restore agent"
+        "title": "¿Restaurar \"{{name}}\"?",
+        "body": "El agente vuelve a ser asignable. Las incidencias archivadas siguen estando archivadas.",
+        "confirm": "Restaurar agente"
       },
       "restore": {
-        "success": "Agent restored",
-        "failed": "Couldn't restore — please try again"
+        "success": "Agente restaurado",
+        "failed": "No se pudo restaurar — inténtelo de nuevo"
       },
-      "loadFailed": "Couldn't load agents. {{retry}}",
+      "loadFailed": "No se pudieron cargar los agentes. {{retry}}",
       "a11y": {
-        "saved": "Agent \"{{name}}\" saved",
-        "archived": "Agent \"{{name}}\" archived",
-        "restored": "Agent \"{{name}}\" restored"
+        "saved": "Agente \"{{name}}\" guardado",
+        "archived": "Agente \"{{name}}\" archivado",
+        "restored": "Agente \"{{name}}\" restaurado"
       }
     },
     "runtimes": {
-      "title": "Runtimes",
-      "description": "Runtimes are where agents execute. They're added automatically when an instance starts or a daemon registers.",
+      "title": "Entornos",
+      "description": "Los entornos son donde se ejecutan los agentes. Se añaden automáticamente cuando arranca una instancia o se registra un daemon.",
       "filter": {
-        "search": "Search runtimes…",
-        "all": "All",
-        "hostedInstance": "Hosted",
-        "localDaemon": "Local daemon",
-        "externalCloudDaemon": "Cloud daemon",
+        "search": "Buscar entornos…",
+        "all": "Todos",
+        "hostedInstance": "Alojado",
+        "localDaemon": "Daemon local",
+        "externalCloudDaemon": "Daemon en la nube",
         "count": "{{count}}"
       },
       "columns": {
-        "name": "Name",
-        "kind": "Kind",
-        "provider": "Provider",
-        "status": "Status",
-        "device": "Device",
-        "lastHeartbeat": "Last heartbeat",
-        "actions": "Actions"
+        "name": "Nombre",
+        "kind": "Tipo",
+        "provider": "Proveedor",
+        "status": "Estado",
+        "device": "Dispositivo",
+        "lastHeartbeat": "Último latido",
+        "actions": "Acciones"
       },
-      "neverHeartbeat": "Never",
-      "heartbeatJustNow": "Just now",
+      "neverHeartbeat": "Nunca",
+      "heartbeatJustNow": "Justo ahora",
       "heartbeatRelative": "{{relativeTime}}",
       "heartbeatAbsolute": "{{absoluteTime}}",
       "noDeviceInfo": "—",
       "kind": {
-        "hostedInstance": "Hosted",
-        "localDaemon": "Local daemon",
-        "externalCloudDaemon": "Cloud daemon"
+        "hostedInstance": "Alojado",
+        "localDaemon": "Daemon local",
+        "externalCloudDaemon": "Daemon en la nube"
       },
       "status": {
-        "online": "Online",
-        "offline": "Offline",
+        "online": "En línea",
+        "offline": "Desconectado",
         "error": "Error"
       },
       "empty": {
-        "heading": "No runtimes yet",
-        "body": "Start an Aquarium instance or run `aquarium daemon start` on your machine to add a runtime."
+        "heading": "Aún no hay entornos",
+        "body": "Inicie una instancia de Aquarium o ejecute `aquarium daemon start` en su máquina para añadir un entorno."
       },
       "noMatches": {
-        "heading": "No runtimes match your filter",
-        "clear": "Clear filter"
+        "heading": "Ningún entorno coincide con su filtro",
+        "clear": "Borrar filtro"
       },
-      "loadFailed": "Couldn't load runtimes. {{retry}}",
+      "loadFailed": "No se pudieron cargar los entornos. {{retry}}",
       "detail": {
         "title": "{{name}}",
-        "kind": "Kind",
-        "provider": "Provider",
-        "status": "Status",
-        "id": "Runtime ID",
-        "daemonId": "Daemon ID",
-        "instanceId": "Instance ID",
-        "createdAt": "Created",
-        "lastHeartbeatAt": "Last heartbeat",
-        "deviceInfoHeader": "Device info",
-        "metadataHeader": "Metadata",
-        "close": "Close details"
+        "kind": "Tipo",
+        "provider": "Proveedor",
+        "status": "Estado",
+        "id": "ID de entorno",
+        "daemonId": "ID de daemon",
+        "instanceId": "ID de instancia",
+        "createdAt": "Creado",
+        "lastHeartbeatAt": "Último latido",
+        "deviceInfoHeader": "Información del dispositivo",
+        "metadataHeader": "Metadatos",
+        "close": "Cerrar detalles"
       },
       "a11y": {
-        "statusChanged": "Runtime \"{{name}}\" is now {{status}}"
+        "statusChanged": "El entorno \"{{name}}\" ahora está {{status}}"
       }
     },
     "daemonTokens": {
-      "title": "Daemon Tokens",
-      "description": "Daemon tokens let the Aquarium CLI connect this machine or another to your workspace. Each token appears in plaintext only when you create it — store it somewhere safe.",
+      "title": "Tokens de daemon",
+      "description": "Los tokens de daemon permiten que la CLI de Aquarium conecte esta máquina u otra a su espacio de trabajo. Cada token aparece en texto plano solo al crearlo — guárdelo en un lugar seguro.",
       "actions": {
-        "create": "New token",
-        "revoke": "Revoke"
+        "create": "Nuevo token",
+        "revoke": "Revocar"
       },
       "columns": {
-        "name": "Name",
-        "created": "Created",
-        "expires": "Expires",
-        "lastUsed": "Last used",
-        "status": "Status",
-        "actions": "Actions"
+        "name": "Nombre",
+        "created": "Creado",
+        "expires": "Caduca",
+        "lastUsed": "Último uso",
+        "status": "Estado",
+        "actions": "Acciones"
       },
-      "neverExpires": "Never",
-      "neverUsed": "Never",
+      "neverExpires": "Nunca",
+      "neverUsed": "Nunca",
       "relative": "{{relativeTime}}",
       "status": {
-        "active": "Active",
-        "expiringSoon": "Expires soon",
-        "expired": "Expired",
-        "revoked": "Revoked"
+        "active": "Activo",
+        "expiringSoon": "Caduca pronto",
+        "expired": "Caducado",
+        "revoked": "Revocado"
       },
       "empty": {
-        "heading": "No tokens yet",
-        "body": "Create a token to connect a daemon to this workspace.",
-        "cta": "New token"
+        "heading": "Aún no hay tokens",
+        "body": "Cree un token para conectar un daemon a este espacio de trabajo.",
+        "cta": "Nuevo token"
       },
-      "loadFailed": "Couldn't load tokens. {{retry}}",
+      "loadFailed": "No se pudieron cargar los tokens. {{retry}}",
       "createModal": {
-        "title": "New daemon token",
+        "title": "Nuevo token de daemon",
         "name": {
-          "label": "Friendly name",
-          "placeholder": "e.g. My laptop",
-          "hint": "A label you'll recognise on the list. Max 100 characters.",
-          "required": "Name is required",
-          "tooLong": "Name must be 100 characters or fewer"
+          "label": "Nombre descriptivo",
+          "placeholder": "p. ej. Mi portátil",
+          "hint": "Una etiqueta que reconocerá en la lista. Máx. 100 caracteres.",
+          "required": "El nombre es obligatorio",
+          "tooLong": "El nombre no puede superar los 100 caracteres"
         },
         "expiry": {
-          "label": "Expires",
-          "never": "Never",
-          "hint": "Optional. After this date the token stops working.",
-          "clear": "Clear date",
-          "future": "Expiry must be in the future"
+          "label": "Caduca",
+          "never": "Nunca",
+          "hint": "Opcional. Después de esta fecha el token dejará de funcionar.",
+          "clear": "Borrar fecha",
+          "future": "La fecha de caducidad debe ser futura"
         },
         "actions": {
-          "create": "Create token",
-          "creating": "Creating…"
+          "create": "Crear token",
+          "creating": "Creando…"
         },
-        "createFailed": "Couldn't create token — please try again"
+        "createFailed": "No se pudo crear el token — inténtelo de nuevo"
       },
       "copyOnce": {
-        "title": "Copy your new token",
-        "warning": "This is the only time you'll see this token. Copy it now and store it somewhere safe — we can't show it again.",
-        "warningIcon": "Warning",
+        "title": "Copie su nuevo token",
+        "warning": "Esta es la única vez que verá este token. Cópielo ahora y guárdelo en un lugar seguro — no podremos volver a mostrarlo.",
+        "warningIcon": "Advertencia",
         "tokenLabel": "Token",
-        "copyButton": "Copy to clipboard",
-        "copied": "Copied to clipboard",
-        "copyFailed": "Couldn't copy — select the text and copy manually",
-        "dismiss": "I've saved it",
+        "copyButton": "Copiar al portapapeles",
+        "copied": "Copiado al portapapeles",
+        "copyFailed": "No se pudo copiar — seleccione el texto y cópielo manualmente",
+        "dismiss": "Ya lo he guardado",
         "confirmClose": {
-          "title": "Close without saving the token?",
-          "body": "You won't see this token again. If you close now, you'll need to create a new one.",
-          "confirm": "Close anyway",
-          "cancel": "Keep showing"
+          "title": "¿Cerrar sin guardar el token?",
+          "body": "No volverá a ver este token. Si cierra ahora, tendrá que crear uno nuevo.",
+          "confirm": "Cerrar igualmente",
+          "cancel": "Seguir mostrando"
         }
       },
       "revokeConfirm": {
-        "title": "Revoke \"{{name}}\"?",
-        "body": "The daemon using this token loses access within one second. Already-running tasks continue. This can't be undone.",
-        "confirm": "Revoke token"
+        "title": "¿Revocar \"{{name}}\"?",
+        "body": "El daemon que use este token perderá el acceso en menos de un segundo. Las tareas en ejecución continúan. Esta acción no se puede deshacer.",
+        "confirm": "Revocar token"
       },
       "revoke": {
-        "success": "Token revoked",
-        "failed": "Couldn't revoke — please try again"
+        "success": "Token revocado",
+        "failed": "No se pudo revocar — inténtelo de nuevo"
       },
       "a11y": {
-        "created": "Token \"{{name}}\" created",
-        "revoked": "Token \"{{name}}\" revoked",
-        "copied": "Token copied to clipboard"
+        "created": "Token \"{{name}}\" creado",
+        "revoked": "Token \"{{name}}\" revocado",
+        "copied": "Token copiado al portapapeles"
       }
     }
   }
