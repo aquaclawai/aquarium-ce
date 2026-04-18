@@ -331,13 +331,102 @@ test.describe.serial('Phase 25 — Management UIs', () => {
   });
 
   test('runtimes unified list', async ({ page }) => {
-    test.skip(true, 'Wave 2 / plan 25-02 wires this');
-    // Seeds 1 hosted_instance runtime + 1 local_daemon runtime + 1
-    // external_cloud_daemon runtime. Navigates to /runtimes. Asserts all
-    // three appear in the unified table (MGMT-02 HARD invariant: NO
-    // per-kind table split). Clicks each kind filter chip, asserts the
-    // chip count matches + only matching rows remain visible.
-    void page;
+    // Plan 25-02 Task 1 — seed 3 runtimes across all 3 kinds directly in the
+    // DB, navigate to /runtimes, assert all three appear in the unified
+    // table (MGMT-02 HARD invariant: NO per-kind table split), then click
+    // each kind-filter chip and assert the URL + visible rows change.
+
+    // Clean any pre-existing rows so our chip counts are deterministic.
+    writeDb((db) => {
+      db.prepare(`DELETE FROM runtimes WHERE workspace_id = 'AQ'`).run();
+    });
+
+    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const hostedId = `rt-hosted-${suffix}`;
+    const localId = `rt-local-${suffix}`;
+    const cloudId = `rt-cloud-${suffix}`;
+    const hostedName = `E2E-Hosted-${suffix}`;
+    const localName = `E2E-Local-${suffix}`;
+    const cloudName = `E2E-Cloud-${suffix}`;
+    const recent = new Date(Date.now() - 30_000).toISOString();
+
+    writeDb((db) => {
+      const insert = db.prepare(
+        `INSERT INTO runtimes (id, workspace_id, name, kind, provider, status,
+                               daemon_id, instance_id, device_info,
+                               last_heartbeat_at, metadata,
+                               created_at, updated_at)
+         VALUES (@id, 'AQ', @name, @kind, @provider, @status,
+                 @daemon_id, @instance_id, @device_info,
+                 @last_heartbeat_at, '{}',
+                 datetime('now'), datetime('now'))`,
+      );
+      insert.run({
+        id: hostedId,
+        name: hostedName,
+        kind: 'hosted_instance',
+        provider: 'hosted',
+        status: 'online',
+        daemon_id: null,
+        instance_id: null,
+        device_info: null,
+        last_heartbeat_at: null,
+      });
+      insert.run({
+        id: localId,
+        name: localName,
+        kind: 'local_daemon',
+        provider: 'claude',
+        status: 'online',
+        daemon_id: `daemon-${localId}`,
+        instance_id: null,
+        device_info: '{"os":"darwin","arch":"arm64","hostname":"mbp","version":"14.2"}',
+        last_heartbeat_at: recent,
+      });
+      insert.run({
+        id: cloudId,
+        name: cloudName,
+        kind: 'external_cloud_daemon',
+        provider: 'codex',
+        status: 'online',
+        daemon_id: `daemon-${cloudId}`,
+        instance_id: null,
+        device_info: '{"os":"linux","arch":"x64","hostname":"fly-io","version":"22.04"}',
+        last_heartbeat_at: recent,
+      });
+    });
+
+    await page.goto('http://localhost:5173/runtimes');
+    await expect(page.locator('[data-page="runtimes"]')).toBeVisible();
+
+    // 3 rows rendered with stable data-runtime-row markers.
+    await expect(page.locator(`[data-runtime-row="${hostedId}"]`)).toBeVisible();
+    await expect(page.locator(`[data-runtime-row="${localId}"]`)).toBeVisible();
+    await expect(page.locator(`[data-runtime-row="${cloudId}"]`)).toBeVisible();
+
+    // Per-kind data attributes for the unified-list invariant assertion.
+    await expect(
+      page.locator(`[data-runtime-row="${hostedId}"][data-runtime-kind="hosted_instance"]`),
+    ).toBeVisible();
+    await expect(
+      page.locator(`[data-runtime-row="${localId}"][data-runtime-kind="local_daemon"]`),
+    ).toBeVisible();
+    await expect(
+      page.locator(`[data-runtime-row="${cloudId}"][data-runtime-kind="external_cloud_daemon"]`),
+    ).toBeVisible();
+
+    // Click Hosted chip → only hosted row visible + URL contains ?kind=hosted_instance.
+    await page.locator('[data-kind-filter="hosted_instance"]').click();
+    await expect(page).toHaveURL(/\?kind=hosted_instance/);
+    await expect(page.locator(`[data-runtime-row="${hostedId}"]`)).toBeVisible();
+    await expect(page.locator(`[data-runtime-row="${localId}"]`)).toHaveCount(0);
+    await expect(page.locator(`[data-runtime-row="${cloudId}"]`)).toHaveCount(0);
+
+    // Click All chip → all three rows reappear.
+    await page.locator('[data-kind-filter="all"]').click();
+    await expect(page.locator(`[data-runtime-row="${hostedId}"]`)).toBeVisible();
+    await expect(page.locator(`[data-runtime-row="${localId}"]`)).toBeVisible();
+    await expect(page.locator(`[data-runtime-row="${cloudId}"]`)).toBeVisible();
   });
 
   test('runtime row details', async ({ page }) => {
