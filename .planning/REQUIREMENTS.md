@@ -165,9 +165,12 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 
 ### Integration & Release
 
-- [ ] **REL-01**: Playwright E2E suite validates: daemon registration, claim-to-complete happy path on hosted runtime, claim-to-complete on daemon runtime (`@integration` smoke), cancel propagation, board drag-and-drop, daemon token issuance
-- [ ] **REL-02**: Boot sequence wiring (`server-core.ts`) initializes runtime-bridge, task-queue sweeper, hosted worker, and offline sweeper in the right order without regressing existing v1.3 gateway behaviour
+- [~] **REL-01**: Playwright E2E suite validates: daemon registration, claim-to-complete happy path on hosted runtime, claim-to-complete on daemon runtime (`@integration` smoke), cancel propagation, board drag-and-drop, daemon token issuance
+  - Hosted spec (`tests/e2e/release-smoke-hosted.spec.ts`) and daemon spec (`tests/e2e/release-smoke-daemon.spec.ts`) landed in Phase 26-03/26-04. Hosted 2a/2d pass automatically; hosted 2c/2e-hosted require a Docker-capable host (skip cleanly on Docker-absent). Daemon spec is `@integration`-tagged and requires `AQUARIUM_INTEGRATION=1` + built daemon CLI + real `claude` stub; the full matrix must be exercised by the operator on a Docker-capable host before `v1.4.0` tag.
+- [x] **REL-02**: Boot sequence wiring (`server-core.ts`) initializes runtime-bridge, task-queue sweeper, hosted worker, and offline sweeper in the right order without regressing existing v1.3 gateway behaviour
+  - `[boot] 9a..9e` console markers added in `apps/server/src/server-core.ts`; `apps/server/tests/unit/boot-sequence.test.ts` captures stdout + asserts the order. Part of Phase 26-01.
 - [ ] **REL-03**: Version bumped to `1.4.0`, tagged, and released via existing GitHub Actions workflow without breaking `npx @aquaclawai/aquarium` startup
+  - Deferred. PR #11 opens Phase 26 for review; tagging + GHA release will happen after the PR merges and the operator re-runs the full test matrix on a Docker-capable host.
 
 ## Future Requirements (v1.5+)
 
@@ -212,7 +215,7 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 | UI-01..UI-03 | Phase 23 | Pending |
 | UI-04..UI-08, CHAT-01 | Phase 24 | Pending |
 | MGMT-01..MGMT-03 | Phase 25 | Pending |
-| REL-01..REL-03 | Phase 26 | Pending |
+| REL-01..REL-03 | Phase 26 | REL-01 partial (specs land; operator matrix pending) · REL-02 met · REL-03 deferred |
 
 **Coverage:**
 - v1.4 requirements: 56 total
