@@ -1256,8 +1256,8 @@
     "orders": "Orders",
     "issues": "Tickets",
     "agents": "Agents",
-    "runtimes": "Runtimes",
-    "daemonTokens": "Daemon Tokens"
+    "runtimes": "Environnements",
+    "daemonTokens": "Jetons de démon"
   },
   "aiTab": {
     "providerMode": {
@@ -2564,267 +2564,267 @@
   "management": {
     "agents": {
       "title": "Agents",
-      "description": "Agents define what work gets done and how. Assign one to an issue and it starts a task.",
+      "description": "Les agents définissent quel travail est effectué et comment. Assignez-en un à un ticket et une tâche démarre.",
       "actions": {
-        "create": "New agent",
-        "edit": "Edit",
-        "archive": "Archive",
-        "restore": "Restore"
+        "create": "Nouvel agent",
+        "edit": "Modifier",
+        "archive": "Archiver",
+        "restore": "Restaurer"
       },
       "tabs": {
-        "active": "Active",
-        "archived": "Archived"
+        "active": "Actifs",
+        "archived": "Archivés"
       },
       "filter": {
-        "search": "Search agents…"
+        "search": "Rechercher des agents…"
       },
       "columns": {
-        "name": "Name",
-        "runtime": "Runtime",
-        "status": "Status",
-        "maxConcurrent": "Max concurrent",
-        "updated": "Updated",
+        "name": "Nom",
+        "runtime": "Environnement",
+        "status": "Statut",
+        "maxConcurrent": "Concurrence max",
+        "updated": "Mis à jour",
         "actions": "Actions"
       },
-      "noRuntime": "No runtime",
-      "archived": "Archived",
+      "noRuntime": "Aucun environnement",
+      "archived": "Archivé",
       "status": {
-        "idle": "Idle",
-        "working": "Working",
-        "blocked": "Blocked",
-        "error": "Error",
-        "offline": "Offline"
+        "idle": "Inactif",
+        "working": "En cours",
+        "blocked": "Bloqué",
+        "error": "Erreur",
+        "offline": "Hors ligne"
       },
       "empty": {
-        "heading": "No agents yet",
-        "body": "Create your first agent to start assigning work.",
-        "cta": "New agent"
+        "heading": "Aucun agent pour le moment",
+        "body": "Créez votre premier agent pour commencer à lui assigner du travail.",
+        "cta": "Nouvel agent"
       },
       "noMatches": {
-        "heading": "No agents match your search",
-        "body": "Try a different name.",
-        "clear": "Clear search"
+        "heading": "Aucun agent ne correspond à votre recherche",
+        "body": "Essayez un autre nom.",
+        "clear": "Effacer la recherche"
       },
-      "archivedEmpty": "No archived agents",
+      "archivedEmpty": "Aucun agent archivé",
       "form": {
-        "titleCreate": "Create agent",
-        "titleEdit": "Edit agent",
+        "titleCreate": "Créer un agent",
+        "titleEdit": "Modifier l'agent",
         "name": {
-          "label": "Name",
-          "placeholder": "e.g. Code reviewer",
-          "hint": "A short, human-friendly name. Must be unique in your workspace."
+          "label": "Nom",
+          "placeholder": "p. ex. Relecteur de code",
+          "hint": "Un nom court et lisible. Doit être unique dans votre espace de travail."
         },
         "instructions": {
           "label": "Instructions",
-          "placeholder": "Describe what this agent should do and how it should behave. Markdown is supported.",
-          "hint": "Markdown is supported. This text is sent to the agent on every task.",
-          "counter": "{{count}} / {{max}} characters"
+          "placeholder": "Décrivez ce que cet agent doit faire et comment il doit se comporter. Markdown pris en charge.",
+          "hint": "Markdown pris en charge. Ce texte est envoyé à l'agent à chaque tâche.",
+          "counter": "{{count}} / {{max}} caractères"
         },
         "runtime": {
-          "label": "Runtime",
-          "placeholder": "Choose a runtime",
-          "none": "No runtime (agent can't run tasks until assigned)",
-          "hint": "Runtimes are where the agent's code actually executes. Add one from the Runtimes page."
+          "label": "Environnement",
+          "placeholder": "Choisir un environnement",
+          "none": "Aucun environnement (l'agent ne peut exécuter aucune tâche tant qu'il n'en a pas)",
+          "hint": "Les environnements sont là où le code de l'agent s'exécute réellement. Ajoutez-en un depuis la page Environnements."
         },
         "customEnv": {
-          "label": "Environment variables",
-          "hint": "Passed to daemon runtimes when a task starts. Hosted instances ignore these with a warning.",
-          "keyPlaceholder": "KEY",
-          "valuePlaceholder": "value",
-          "addRow": "Add variable",
-          "removeRow": "Remove variable",
-          "duplicateKey": "Duplicate key \"{{key}}\" — only the last value is kept"
+          "label": "Variables d'environnement",
+          "hint": "Transmises aux environnements démon au démarrage d'une tâche. Les instances hébergées les ignorent avec un avertissement.",
+          "keyPlaceholder": "CLÉ",
+          "valuePlaceholder": "valeur",
+          "addRow": "Ajouter une variable",
+          "removeRow": "Supprimer la variable",
+          "duplicateKey": "Clé \"{{key}}\" dupliquée — seule la dernière valeur est conservée"
         },
         "customArgs": {
-          "label": "Command-line arguments",
-          "hint": "Extra arguments appended when the CLI is invoked. One per tag.",
-          "placeholder": "Type an argument and press Enter",
-          "remove": "Remove argument \"{{arg}}\""
+          "label": "Arguments de ligne de commande",
+          "hint": "Arguments supplémentaires ajoutés lors de l'invocation de la CLI. Un par étiquette.",
+          "placeholder": "Saisissez un argument puis Entrée",
+          "remove": "Supprimer l'argument \"{{arg}}\""
         },
         "maxConcurrent": {
-          "label": "Max concurrent tasks",
-          "hint": "How many tasks this agent can run at once. Must be between 1 and 16.",
-          "validation": "Must be between 1 and 16"
+          "label": "Tâches simultanées max",
+          "hint": "Nombre de tâches que cet agent peut exécuter en parallèle. Doit être entre 1 et 16.",
+          "validation": "Doit être entre 1 et 16"
         },
         "actions": {
-          "create": "Create agent",
-          "save": "Save changes"
+          "create": "Créer l'agent",
+          "save": "Enregistrer"
         },
         "validation": {
-          "nameRequired": "Name is required"
+          "nameRequired": "Le nom est requis"
         },
-        "saveSuccess": "Agent saved",
-        "saveFailed": "Couldn't save the agent — please try again",
-        "nameCollision": "An agent with this name already exists in your workspace"
+        "saveSuccess": "Agent enregistré",
+        "saveFailed": "Impossible d'enregistrer l'agent — veuillez réessayer",
+        "nameCollision": "Un agent portant ce nom existe déjà dans votre espace de travail"
       },
       "archiveConfirm": {
-        "title": "Archive \"{{name}}\"?",
-        "body": "This preserves all historical tasks and comments, but you can't assign new work until you restore it. Any queued tasks stay in the queue.",
-        "confirm": "Archive agent"
+        "title": "Archiver \"{{name}}\" ?",
+        "body": "Cela préserve toutes les tâches et commentaires historiques, mais vous ne pourrez plus assigner de nouveau travail tant que vous ne l'aurez pas restauré. Les tâches en file d'attente restent dans la file.",
+        "confirm": "Archiver l'agent"
       },
       "archive": {
-        "success": "Agent archived",
-        "failed": "Couldn't archive — please try again"
+        "success": "Agent archivé",
+        "failed": "Impossible d'archiver — veuillez réessayer"
       },
       "restoreConfirm": {
-        "title": "Restore \"{{name}}\"?",
-        "body": "The agent becomes assignable again. Existing archived issues stay archived.",
-        "confirm": "Restore agent"
+        "title": "Restaurer \"{{name}}\" ?",
+        "body": "L'agent redevient assignable. Les tickets déjà archivés restent archivés.",
+        "confirm": "Restaurer l'agent"
       },
       "restore": {
-        "success": "Agent restored",
-        "failed": "Couldn't restore — please try again"
+        "success": "Agent restauré",
+        "failed": "Impossible de restaurer — veuillez réessayer"
       },
-      "loadFailed": "Couldn't load agents. {{retry}}",
+      "loadFailed": "Impossible de charger les agents. {{retry}}",
       "a11y": {
-        "saved": "Agent \"{{name}}\" saved",
-        "archived": "Agent \"{{name}}\" archived",
-        "restored": "Agent \"{{name}}\" restored"
+        "saved": "Agent \"{{name}}\" enregistré",
+        "archived": "Agent \"{{name}}\" archivé",
+        "restored": "Agent \"{{name}}\" restauré"
       }
     },
     "runtimes": {
-      "title": "Runtimes",
-      "description": "Runtimes are where agents execute. They're added automatically when an instance starts or a daemon registers.",
+      "title": "Environnements",
+      "description": "Les environnements sont là où les agents s'exécutent. Ils sont ajoutés automatiquement lorsqu'une instance démarre ou qu'un démon s'enregistre.",
       "filter": {
-        "search": "Search runtimes…",
-        "all": "All",
-        "hostedInstance": "Hosted",
-        "localDaemon": "Local daemon",
-        "externalCloudDaemon": "Cloud daemon",
+        "search": "Rechercher des environnements…",
+        "all": "Tous",
+        "hostedInstance": "Hébergé",
+        "localDaemon": "Démon local",
+        "externalCloudDaemon": "Démon cloud",
         "count": "{{count}}"
       },
       "columns": {
-        "name": "Name",
-        "kind": "Kind",
-        "provider": "Provider",
-        "status": "Status",
-        "device": "Device",
-        "lastHeartbeat": "Last heartbeat",
+        "name": "Nom",
+        "kind": "Type",
+        "provider": "Fournisseur",
+        "status": "Statut",
+        "device": "Appareil",
+        "lastHeartbeat": "Dernier battement",
         "actions": "Actions"
       },
-      "neverHeartbeat": "Never",
-      "heartbeatJustNow": "Just now",
+      "neverHeartbeat": "Jamais",
+      "heartbeatJustNow": "À l'instant",
       "heartbeatRelative": "{{relativeTime}}",
       "heartbeatAbsolute": "{{absoluteTime}}",
       "noDeviceInfo": "—",
       "kind": {
-        "hostedInstance": "Hosted",
-        "localDaemon": "Local daemon",
-        "externalCloudDaemon": "Cloud daemon"
+        "hostedInstance": "Hébergé",
+        "localDaemon": "Démon local",
+        "externalCloudDaemon": "Démon cloud"
       },
       "status": {
-        "online": "Online",
-        "offline": "Offline",
-        "error": "Error"
+        "online": "En ligne",
+        "offline": "Hors ligne",
+        "error": "Erreur"
       },
       "empty": {
-        "heading": "No runtimes yet",
-        "body": "Start an Aquarium instance or run `aquarium daemon start` on your machine to add a runtime."
+        "heading": "Aucun environnement pour le moment",
+        "body": "Démarrez une instance Aquarium ou exécutez `aquarium daemon start` sur votre machine pour ajouter un environnement."
       },
       "noMatches": {
-        "heading": "No runtimes match your filter",
-        "clear": "Clear filter"
+        "heading": "Aucun environnement ne correspond à votre filtre",
+        "clear": "Effacer le filtre"
       },
-      "loadFailed": "Couldn't load runtimes. {{retry}}",
+      "loadFailed": "Impossible de charger les environnements. {{retry}}",
       "detail": {
         "title": "{{name}}",
-        "kind": "Kind",
-        "provider": "Provider",
-        "status": "Status",
-        "id": "Runtime ID",
-        "daemonId": "Daemon ID",
-        "instanceId": "Instance ID",
-        "createdAt": "Created",
-        "lastHeartbeatAt": "Last heartbeat",
-        "deviceInfoHeader": "Device info",
-        "metadataHeader": "Metadata",
-        "close": "Close details"
+        "kind": "Type",
+        "provider": "Fournisseur",
+        "status": "Statut",
+        "id": "ID d'environnement",
+        "daemonId": "ID de démon",
+        "instanceId": "ID d'instance",
+        "createdAt": "Créé",
+        "lastHeartbeatAt": "Dernier battement",
+        "deviceInfoHeader": "Infos appareil",
+        "metadataHeader": "Métadonnées",
+        "close": "Fermer les détails"
       },
       "a11y": {
-        "statusChanged": "Runtime \"{{name}}\" is now {{status}}"
+        "statusChanged": "L'environnement \"{{name}}\" est maintenant {{status}}"
       }
     },
     "daemonTokens": {
-      "title": "Daemon Tokens",
-      "description": "Daemon tokens let the Aquarium CLI connect this machine or another to your workspace. Each token appears in plaintext only when you create it — store it somewhere safe.",
+      "title": "Jetons de démon",
+      "description": "Les jetons de démon permettent à la CLI Aquarium de connecter cette machine ou une autre à votre espace de travail. Chaque jeton n'apparaît en clair qu'à la création — conservez-le en lieu sûr.",
       "actions": {
-        "create": "New token",
-        "revoke": "Revoke"
+        "create": "Nouveau jeton",
+        "revoke": "Révoquer"
       },
       "columns": {
-        "name": "Name",
-        "created": "Created",
-        "expires": "Expires",
-        "lastUsed": "Last used",
-        "status": "Status",
+        "name": "Nom",
+        "created": "Créé",
+        "expires": "Expire",
+        "lastUsed": "Dernière utilisation",
+        "status": "Statut",
         "actions": "Actions"
       },
-      "neverExpires": "Never",
-      "neverUsed": "Never",
+      "neverExpires": "Jamais",
+      "neverUsed": "Jamais",
       "relative": "{{relativeTime}}",
       "status": {
-        "active": "Active",
-        "expiringSoon": "Expires soon",
-        "expired": "Expired",
-        "revoked": "Revoked"
+        "active": "Actif",
+        "expiringSoon": "Expire bientôt",
+        "expired": "Expiré",
+        "revoked": "Révoqué"
       },
       "empty": {
-        "heading": "No tokens yet",
-        "body": "Create a token to connect a daemon to this workspace.",
-        "cta": "New token"
+        "heading": "Aucun jeton pour le moment",
+        "body": "Créez un jeton pour connecter un démon à cet espace de travail.",
+        "cta": "Nouveau jeton"
       },
-      "loadFailed": "Couldn't load tokens. {{retry}}",
+      "loadFailed": "Impossible de charger les jetons. {{retry}}",
       "createModal": {
-        "title": "New daemon token",
+        "title": "Nouveau jeton de démon",
         "name": {
-          "label": "Friendly name",
-          "placeholder": "e.g. My laptop",
-          "hint": "A label you'll recognise on the list. Max 100 characters.",
-          "required": "Name is required",
-          "tooLong": "Name must be 100 characters or fewer"
+          "label": "Nom convivial",
+          "placeholder": "p. ex. Mon ordinateur portable",
+          "hint": "Un libellé reconnaissable dans la liste. 100 caractères max.",
+          "required": "Le nom est requis",
+          "tooLong": "Le nom ne doit pas dépasser 100 caractères"
         },
         "expiry": {
-          "label": "Expires",
-          "never": "Never",
-          "hint": "Optional. After this date the token stops working.",
-          "clear": "Clear date",
-          "future": "Expiry must be in the future"
+          "label": "Expire",
+          "never": "Jamais",
+          "hint": "Facultatif. Après cette date, le jeton cesse de fonctionner.",
+          "clear": "Effacer la date",
+          "future": "La date d'expiration doit être dans le futur"
         },
         "actions": {
-          "create": "Create token",
-          "creating": "Creating…"
+          "create": "Créer le jeton",
+          "creating": "Création…"
         },
-        "createFailed": "Couldn't create token — please try again"
+        "createFailed": "Impossible de créer le jeton — veuillez réessayer"
       },
       "copyOnce": {
-        "title": "Copy your new token",
-        "warning": "This is the only time you'll see this token. Copy it now and store it somewhere safe — we can't show it again.",
-        "warningIcon": "Warning",
-        "tokenLabel": "Token",
-        "copyButton": "Copy to clipboard",
-        "copied": "Copied to clipboard",
-        "copyFailed": "Couldn't copy — select the text and copy manually",
-        "dismiss": "I've saved it",
+        "title": "Copiez votre nouveau jeton",
+        "warning": "C'est la seule fois où vous verrez ce jeton. Copiez-le maintenant et conservez-le en lieu sûr — nous ne pourrons plus l'afficher.",
+        "warningIcon": "Avertissement",
+        "tokenLabel": "Jeton",
+        "copyButton": "Copier dans le presse-papiers",
+        "copied": "Copié dans le presse-papiers",
+        "copyFailed": "Impossible de copier — sélectionnez le texte et copiez-le manuellement",
+        "dismiss": "J'ai bien noté",
         "confirmClose": {
-          "title": "Close without saving the token?",
-          "body": "You won't see this token again. If you close now, you'll need to create a new one.",
-          "confirm": "Close anyway",
-          "cancel": "Keep showing"
+          "title": "Fermer sans enregistrer le jeton ?",
+          "body": "Vous ne reverrez plus ce jeton. Si vous fermez maintenant, vous devrez en créer un nouveau.",
+          "confirm": "Fermer quand même",
+          "cancel": "Continuer à afficher"
         }
       },
       "revokeConfirm": {
-        "title": "Revoke \"{{name}}\"?",
-        "body": "The daemon using this token loses access within one second. Already-running tasks continue. This can't be undone.",
-        "confirm": "Revoke token"
+        "title": "Révoquer \"{{name}}\" ?",
+        "body": "Le démon utilisant ce jeton perd l'accès en moins d'une seconde. Les tâches déjà en cours se poursuivent. Cette action est irréversible.",
+        "confirm": "Révoquer le jeton"
       },
       "revoke": {
-        "success": "Token revoked",
-        "failed": "Couldn't revoke — please try again"
+        "success": "Jeton révoqué",
+        "failed": "Impossible de révoquer — veuillez réessayer"
       },
       "a11y": {
-        "created": "Token \"{{name}}\" created",
-        "revoked": "Token \"{{name}}\" revoked",
-        "copied": "Token copied to clipboard"
+        "created": "Jeton \"{{name}}\" créé",
+        "revoked": "Jeton \"{{name}}\" révoqué",
+        "copied": "Jeton copié dans le presse-papiers"
       }
     }
   }
