@@ -511,31 +511,205 @@ test.describe.serial('Phase 25 — Management UIs', () => {
     });
   });
 
-  test('token copy once', async ({ page }) => {
-    test.skip(true, 'Wave 3 / plan 25-03 wires this');
-    // MGMT-03 HARD invariant. Creates a token via the form → copy-once
-    // dialog shows plaintext exactly once in a <pre> block. Clicking
-    // "I've saved it" dismisses; revisit /daemon-tokens; plaintext is
-    // gone from DOM + never in localStorage/sessionStorage (CI grep
-    // guard also enforces the storage invariant at build time).
-    void page;
+  test('token create form', async ({ page, request }) => {
+    // Plan 25-03 Task 2 — open DaemonTokenCreateModal via the /daemon-tokens
+    // page, fill name + expiry, submit; assert Step B renders the
+    // plaintext once in a <pre data-token-plaintext>. Parent list
+    // refetches with the new row showing active status.
+
+    // Clean any pre-existing tokens so the new row is unambiguous.
+    const existingRes = await request.get(`${API}/daemon-tokens`);
+    if (existingRes.ok()) {
+      const body = (await existingRes.json()) as { ok: boolean; data: { id: string }[] };
+      if (body.ok) {
+        for (const row of body.data) {
+          await request.delete(`${API}/daemon-tokens/${row.id}`);
+        }
+      }
+    }
+
+    await page.goto('http://localhost:5173/daemon-tokens');
+    await expect(page.locator('[data-page="daemon-tokens"]')).toBeVisible();
+
+    await page.locator('[data-token-create-open]').click();
+
+    // Step A visible.
+    await expect(page.locator('[data-token-form-field="name"]')).toBeVisible();
+
+    // Fill name + an expiry 30 days ahead.
+    const tokenName = `E2E-Token-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 5)}`;
+    await page.locator('[data-token-form-field="name"]').fill(tokenName);
+
+    const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const futureIso = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}-${String(future.getDate()).padStart(2, '0')}`;
+    await page.locator('[data-token-form-field="expiresAt"]').fill(futureIso);
+
+    await page.locator('[data-token-form-submit]').click();
+
+    // Step B visible with plaintext starting with 'adt_'.
+    const plaintextEl = page.locator('[data-token-plaintext]');
+    await expect(plaintextEl).toBeVisible({ timeout: 5000 });
+    const plaintext = (await plaintextEl.innerText()).trim();
+    expect(plaintext).toMatch(/^adt_/);
   });
 
-  test('token create form', async ({ page }) => {
-    test.skip(true, 'Wave 3 / plan 25-03 wires this');
-    // Create modal: name (required, ≤ 100 chars) + optional expiry date
-    // picker. Validates name required + expiry-must-be-future. Submits
-    // via POST /api/daemon-tokens → response carries plaintext exactly
-    // once.
-    void page;
+  test('token copy once', async ({ page, request }) => {
+    // Plan 25-03 Task 2 — MGMT-03 HARD invariant. Intercept the clipboard
+    // write to observe what text was copied. After dismiss, assert the
+    // plaintext <pre> is gone from DOM; after page reload, assert the
+    // plaintext string does NOT appear anywhere in the page body HTML or
+    // in localStorage / sessionStorage.
+
+    const existingRes = await request.get(`${API}/daemon-tokens`);
+    if (existingRes.ok()) {
+      const body = (await existingRes.json()) as { ok: boolean; data: { id: string }[] };
+      if (body.ok) {
+        for (const row of body.data) {
+          await request.delete(`${API}/daemon-tokens/${row.id}`);
+        }
+      }
+    }
+
+    // Install clipboard interceptor before navigation. We also grant
+    // clipboard-write permission so `navigator.clipboard.writeText` does
+    // not throw on headless Chromium.
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.addInitScript(() => {
+      (window as unknown as { __clipboardWrites: string[] }).__clipboardWrites = [];
+      const origWriteText = navigator.clipboard?.writeText?.bind(navigator.clipboard);
+      Object.defineProperty(navigator.clipboard, 'writeText', {
+        configurable: true,
+        value: async (v: string) => {
+          (window as unknown as { __clipboardWrites: string[] }).__clipboardWrites.push(v);
+          return origWriteText ? origWriteText(v) : undefined;
+        },
+      });
+    });
+
+    await page.goto('http://localhost:5173/daemon-tokens');
+    await expect(page.locator('[data-page="daemon-tokens"]')).toBeVisible();
+
+    await page.locator('[data-token-create-open]').click();
+    await expect(page.locator('[data-token-form-field="name"]')).toBeVisible();
+
+    const tokenName = `E2E-CopyOnce-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 5)}`;
+    await page.locator('[data-token-form-field="name"]').fill(tokenName);
+    await page.locator('[data-token-form-submit]').click();
+
+    // Capture plaintext string.
+    const plaintextEl = page.locator('[data-token-plaintext]');
+    await expect(plaintextEl).toBeVisible({ timeout: 5000 });
+    const plaintext = (await plaintextEl.innerText()).trim();
+    expect(plaintext).toMatch(/^adt_/);
+
+    // Click Copy; interceptor records the value.
+    await page.locator('[data-token-copy-button]').click();
+
+    const writes = await page.evaluate(
+      () => (window as unknown as { __clipboardWrites: string[] }).__clipboardWrites,
+    );
+    expect(writes[0], 'clipboard interceptor should have captured the plaintext').toBe(
+      plaintext,
+    );
+
+    // Dismiss — plaintext element disappears.
+    await page.locator('[data-token-dismiss]').click();
+    await expect(page.locator('[data-token-plaintext]')).toHaveCount(0, {
+      timeout: 5000,
+    });
+
+    // Reload → assert the row appears with active status AND plaintext is
+    // nowhere in the DOM or browser storage.
+    await page.reload();
+    await expect(page.locator('[data-page="daemon-tokens"]')).toBeVisible();
+
+    const rowWithActive = page.locator('[data-token-row][data-token-status="active"]').filter({
+      hasText: tokenName,
+    });
+    await expect(rowWithActive).toBeVisible({ timeout: 5000 });
+
+    // The sensitive string must be absent from rendered HTML.
+    const bodyHtml = await page.evaluate(() => document.body.innerHTML);
+    expect(bodyHtml.includes(plaintext)).toBe(false);
+
+    // And must be absent from localStorage + sessionStorage.
+    const storageAudit = await page.evaluate((target) => {
+      const ls = Object.entries(localStorage);
+      const ss = Object.entries(sessionStorage);
+      const match =
+        ls.some(([k, v]) => k === target || v === target) ||
+        ss.some(([k, v]) => k === target || v === target);
+      return { localStorageEntryCount: ls.length, sessionStorageEntryCount: ss.length, match };
+    }, plaintext);
+    expect(storageAudit.match, 'plaintext must not appear in browser storage').toBe(false);
   });
 
-  test('token revoke', async ({ page }) => {
-    test.skip(true, 'Wave 3 / plan 25-03 wires this');
-    // Row action Revoke → confirm dialog → POST /api/daemon-tokens/:id/
-    // revoke → row flips to status=revoked (badge + derived projection).
-    // Body warns this is NOT reversible. After confirm: revokedAt non-
-    // null in DB.
-    void page;
+  test('token revoke', async ({ page, request }) => {
+    // Plan 25-03 Task 3 — seed an active token, open the row's action
+    // dropdown → Revoke → confirm in destructive dialog → assert row's
+    // derived status flips to 'revoked' + DB `revoked_at` is non-null.
+
+    // Clean existing tokens so this scenario owns a single fresh row.
+    const existingRes = await request.get(`${API}/daemon-tokens`);
+    if (existingRes.ok()) {
+      const body = (await existingRes.json()) as { ok: boolean; data: { id: string }[] };
+      if (body.ok) {
+        for (const row of body.data) {
+          await request.delete(`${API}/daemon-tokens/${row.id}`);
+        }
+      }
+    }
+
+    // Seed via POST /api/daemon-tokens — discard the plaintext; the
+    // scenario only needs the hashed token's id.
+    const tokenName = `E2E-Revoke-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 5)}`;
+    const seedRes = await request.post(`${API}/daemon-tokens`, {
+      data: { name: tokenName },
+    });
+    expect(seedRes.status(), `seed token failed: ${await seedRes.text()}`).toBe(200);
+    const seedBody = (await seedRes.json()) as {
+      ok: boolean;
+      data: { token: { id: string; name: string } };
+    };
+    expect(seedBody.ok).toBe(true);
+    const tokenId = seedBody.data.token.id;
+
+    await page.goto('http://localhost:5173/daemon-tokens');
+    await expect(page.locator('[data-page="daemon-tokens"]')).toBeVisible();
+
+    const row = page.locator(`[data-token-row="${tokenId}"]`);
+    await expect(row).toBeVisible();
+    await expect(row).toHaveAttribute('data-token-status', 'active');
+
+    // Open the row's actions dropdown + click Revoke.
+    await page.locator(`[data-token-actions-trigger="${tokenId}"]`).click();
+    await page.locator(`[data-token-revoke-open="${tokenId}"]`).click();
+
+    // Revoke dialog opens — title interpolates token name.
+    await expect(
+      page.getByRole('dialog').getByText(tokenName, { exact: false }),
+    ).toBeVisible();
+
+    // Confirm the destructive action.
+    await page.locator('[data-token-revoke-confirm]').click();
+
+    // Dialog closes, row's derived status flips to 'revoked' after refetch.
+    await expect(
+      page.locator(`[data-token-row="${tokenId}"][data-token-status="revoked"]`),
+    ).toBeVisible({ timeout: 5000 });
+
+    // DB read — revoked_at is non-null.
+    const revokedAt = readDb((db) =>
+      (db
+        .prepare(`SELECT revoked_at FROM daemon_tokens WHERE id = ?`)
+        .get(tokenId) as { revoked_at: string | null } | undefined)?.revoked_at,
+    );
+    expect(revokedAt, 'revoked_at should be set after revoke').toBeTruthy();
   });
 });
