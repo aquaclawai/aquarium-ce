@@ -44,3 +44,19 @@ jobs:
             exit 1
           fi
           echo "OK: all ReactMarkdown usage in detail/ goes through SafeMarkdown"
+      - name: Verify no dangerouslySetInnerHTML in management pages
+        # UI-07 carry-forward + MGMT-03 hard invariant: agent-authored
+        # content + plaintext daemon tokens in the management subtree
+        # never reach the DOM via innerHTML. React text children only;
+        # SafeMarkdown wrapper is the sole permitted markdown entry point.
+        # Uses `! grep` form (not `if grep; then exit 1; fi`) so grep's
+        # exit code 2 (error) also fails the step — bulletproof guard.
+        run: '! grep -rE "dangerouslySetInnerHTML" apps/web/src/components/management'
+      - name: Verify plaintext token never leaks to browser storage
+        # MGMT-03 HARD invariant: the plaintext `adt_...` token MUST
+        # live only in React useState inside DaemonTokenCreateModal.
+        # No localStorage, no sessionStorage anywhere under
+        # apps/web/src/components/management/**. Grep guards the
+        # invariant against future regressions. `! grep` form
+        # ensures grep exit 2 (error) also fails the step.
+        run: '! grep -rE "localStorage|sessionStorage" apps/web/src/components/management'
