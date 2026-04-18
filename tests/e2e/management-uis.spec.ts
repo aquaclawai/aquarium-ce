@@ -361,6 +361,13 @@ test.describe.serial('Phase 25 — Management UIs', () => {
                  @last_heartbeat_at, '{}',
                  datetime('now'), datetime('now'))`,
       );
+      // hosted_instance requires instance_id (XOR trigger enforced). Use any
+      // existing instance row — FK CASCADE is off in this CE build so the row
+      // does not need to be freshly seeded; we just need a non-null string.
+      const anyInstance = db
+        .prepare(`SELECT id FROM instances LIMIT 1`)
+        .get() as { id: string } | undefined;
+      const instanceIdForHosted = anyInstance?.id ?? `inst-${suffix}`;
       insert.run({
         id: hostedId,
         name: hostedName,
@@ -368,7 +375,7 @@ test.describe.serial('Phase 25 — Management UIs', () => {
         provider: 'hosted',
         status: 'online',
         daemon_id: null,
-        instance_id: null,
+        instance_id: instanceIdForHosted,
         device_info: null,
         last_heartbeat_at: null,
       });
