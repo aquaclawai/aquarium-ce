@@ -2,7 +2,7 @@
 phase: 25
 slug: management-uis
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-04-18
 ---
@@ -46,7 +46,7 @@ created: 2026-04-18
 | 25-00-01 | 00 | 0 | MGMT-01/02/03 | — | Playwright spec scaffolded with skip-stubs for all downstream scenarios | build | `grep -c "test.skip(" tests/e2e/management-uis.spec.ts >= 6` | ❌ Wave 0 | ⬜ pending |
 | 25-00-02 | 00 | 0 | MGMT-01/02/03 | — | `apps/web/src/components/management/` directory scaffold + i18n `management.agents.*`/`management.runtimes.*`/`management.daemonTokens.*` namespaces in all 6 locales | build | `node apps/web/scripts/check-i18n-parity.mjs` exits 0 | ❌ Wave 0 | ⬜ pending |
 | 25-00-03 | 00 | 0 | MGMT-01/02/03 | — | Sidebar nav entries for Agents / Runtimes / Daemon Tokens wired into layout | e2e | `-g "sidebar nav"` asserts 3 new nav items visible | ❌ Wave 0 | ⬜ pending |
-| 25-01-01 | 01 | 1 | MGMT-01 | — | Agents page lists agents with runtime badge, status, max_concurrent_tasks | e2e | `-g "agents list renders"` | ❌ Wave 0 | ⬜ pending |
+| 25-01-01 | 01 | 1 | MGMT-01 | — | Agents page lists agents with runtime badge, status (Agent.status enum rendered as Badge with `data-agent-status-badge`), max_concurrent_tasks | e2e | `-g "agents list renders"` | ❌ Wave 0 | ⬜ pending |
 | 25-01-02 | 01 | 1 | MGMT-01 | — | Create/edit agent form includes instructions, runtime selector, custom_env, custom_args, max_concurrent_tasks | e2e | `-g "agent form create"` | ❌ Wave 0 | ⬜ pending |
 | 25-01-03 | 01 | 1 | MGMT-01 | — | Agent archive flow with confirmation | e2e | `-g "agent archive"` | ❌ Wave 0 | ⬜ pending |
 | 25-02-01 | 02 | 2 | MGMT-02 | — | Runtimes page shows hosted + daemon runtimes in one unified list with kind filter chip | e2e | `-g "runtimes unified list"` | ❌ Wave 0 | ⬜ pending |
@@ -67,7 +67,7 @@ created: 2026-04-18
 - [ ] `apps/web/src/components/management/` directory scaffold (AgentList, AgentForm, RuntimeList, RuntimeRow, DaemonTokenList, DaemonTokenCreateModal, sub-components)
 - [ ] `apps/web/src/App.tsx` — add `/agents`, `/runtimes`, `/daemon-tokens` routes
 - [ ] `apps/web/src/components/layout/Sidebar.tsx` — add 3 nav entries
-- [ ] i18n namespaces in all 6 locales: `management.agents.*` + `management.runtimes.*` + `management.daemonTokens.*` + `sidebar.agents`/`sidebar.runtimes`/`sidebar.daemonTokens` (en complete; 5 locales as placeholders for Wave 4 to translate)
+- [ ] i18n namespaces in all 6 locales: `management.agents.*` + `management.runtimes.*` + `management.daemonTokens.*` + `sidebar.agents`/`sidebar.runtimes`/`sidebar.daemonTokens` (en complete; 5 locales as placeholders for Wave 4 to translate). Includes `management.agents.columns.status` + `management.agents.status.{idle|working|blocked|error|offline}` per Plan 25-01 SC-1 Status column requirement (Blocker-3 fix in revision 2)
 
 ---
 
@@ -83,11 +83,19 @@ created: 2026-04-18
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references (pages, components, spec, i18n)
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 70 s full suite
-- [ ] `nyquist_compliant: true` set in frontmatter after planner confirms
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies — every task in 25-00/01/02/03/04 has an `<automated>` command in its `<verify>` block; no task relies on manual-only verification for sign-off
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify — Wave 0 (2 tasks) both have automated; Wave 1 (3 tasks) all have automated; Wave 2 (2 tasks) all have automated; Wave 3 (3 tasks) all have automated; Wave 4 (1 task) has automated i18n parity check — longest run without automated = 0
+- [x] Wave 0 covers all MISSING references (pages, components, spec, i18n) — 25-00 Task 1 creates all page stubs, management/ dir via .gitkeep, Playwright spec with 9 skip-stubs, full i18n namespaces in all 6 locales (en complete + 5 placeholders). 25-00 Task 2 adds the 2 CI grep guards.
+- [x] No watch-mode flags — all `<automated>` commands run once and exit (playwright without `--ui`, vitest-style watch not used; build and typecheck are one-shot)
+- [x] Feedback latency < 70 s full suite — Test Infrastructure table above estimates ~50–70 s for the full Playwright spec; per-scenario grep-filtered runs are ~15–25 s; i18n parity ~2 s
+- [x] `nyquist_compliant: true` set in frontmatter after planner confirms — set in frontmatter above (revision 2 sign-off)
 
-**Approval:** pending
+**Approval:** planner-confirmed 2026-04-18 (Phase 25 revision iteration 2)
+
+Rationale (matching Phase 23 / Phase 24 precedent):
+- Every task across the 5 plans (25-00, 25-01, 25-02, 25-03, 25-04) carries an `<automated>` verify command — typecheck + build:ce + Playwright scenario + i18n parity — with no manual gate preventing forward progress
+- CI grep guards added in 25-00 Task 2 use the bulletproof `! grep -rE` form per UI-SPEC lines 742-750 so MGMT-03 HARD invariants (no localStorage/sessionStorage, no dangerouslySetInnerHTML) cannot be silently bypassed by grep exit code 2
+- Per-scenario feedback latency well under the 70 s ceiling; full suite comfortably inside budget
+- Wave ordering respects the Nyquist sampling contract: every wave lands with automated checks before the next wave begins; no 3 consecutive tasks without an automated verify
+- Dependency-inversion fix in 25-00 Task 1 (i18n keys added BEFORE page stubs in the same task) means the `npm run build:ce` acceptance criterion does not race the i18n additions — Nyquist sampling remains continuous through Wave 0
+- Plan 25-01 Task 1 Status column (Blocker-3 revision fix) adds the `-g "agents list renders"` scenario as the sign-off for MGMT-01 SC-1 — visible column assertion landed as a grep + runtime check rather than manual inspection

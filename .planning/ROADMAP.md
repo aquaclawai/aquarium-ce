@@ -473,6 +473,15 @@ Plans:
 3. Daemon Tokens page lets users create a new token with friendly name + optional expiry, copy plaintext once, list existing tokens, and revoke with confirmation
 4. All new strings ship in all 6 locales and pass the i18n CI check
 
+**Plans:** 5 plans
+
+Plans:
+- [ ] 25-00-PLAN.md — Wave 0 foundation: 3 page scaffolds + management/ component dir + App.tsx routes + Sidebar nav + Playwright spec stub (>=6 skips) + i18n namespaces (en complete + 5 locale placeholders) + CI grep guards (no dangerouslySetInnerHTML + no localStorage/sessionStorage under components/management/**)
+- [ ] 25-01-PLAN.md — Wave 1 Agents page: AgentList + AgentFormDialog + CustomEnvEditor + CustomArgsEditor + ArchiveConfirmDialog + useAgents + 3 Playwright scenarios (MGMT-01)
+- [ ] 25-02-PLAN.md — Wave 2 Runtimes page: RuntimeList + KindFilterChips + RuntimeDetailSheet + useRuntimes (30s poll) + 2 Playwright scenarios; unified list HARD invariant (MGMT-02)
+- [ ] 25-03-PLAN.md — Wave 3 Daemon Tokens page: DaemonTokenList + DaemonTokenCreateModal (two-step copy-once) + RevokeConfirmDialog + useDaemonTokens + tokenStatus helper + 3 Playwright scenarios; MGMT-03 HARD plaintext invariants (no localStorage/sessionStorage/innerHTML/document.title; grep-verified)
+- [ ] 25-04-PLAN.md — Wave 4 i18n polish: translate management.agents/runtimes/daemonTokens + sidebar.agents/runtimes/daemonTokens to zh/fr/de/es/it; PROJECT.md evolution footer (MGMT-01/02/03 + UI-08)
+
 ### Phase 26: Integration, Boot Wiring, E2E & Release
 **Goal:** All v1.4 components are wired into the CE boot sequence in the correct order, Playwright E2E coverage validates the golden paths end-to-end on both hosted and daemon runtimes, and v1.4.0 is released via the existing GitHub Actions pipeline.
 **Depends on:** Phases 15-25 (all prior v1.4 phases)
