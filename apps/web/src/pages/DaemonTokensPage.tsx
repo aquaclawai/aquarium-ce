@@ -4,6 +4,7 @@ import type { DaemonToken } from '@aquarium/shared';
 import { Button } from '@/components/ui/button';
 import { DaemonTokenList } from '@/components/management/DaemonTokenList';
 import { DaemonTokenCreateModal } from '@/components/management/DaemonTokenCreateModal';
+import { RevokeConfirmDialog } from '@/components/management/RevokeConfirmDialog';
 import { useDaemonTokens } from '@/components/management/useDaemonTokens';
 
 /**
@@ -28,11 +29,6 @@ export function DaemonTokensPage() {
   const [revokeTarget, setRevokeTarget] = useState<DaemonToken | null>(null);
   const [announcement, setAnnouncement] = useState('');
 
-  // Task 3 wires revoke; reference the handlers here to keep ESLint quiet
-  // until then.
-  void revokeTarget;
-  void setRevokeTarget;
-  void revoke;
 
   return (
     <main
@@ -83,6 +79,25 @@ export function DaemonTokensPage() {
           void refetch();
           setAnnouncement(
             t('management.daemonTokens.a11y.created', { name: token.name }),
+          );
+        }}
+      />
+
+      <RevokeConfirmDialog
+        token={revokeTarget}
+        onOpenChange={(open) => {
+          if (!open) setRevokeTarget(null);
+        }}
+        onConfirm={async () => {
+          if (!revokeTarget) return;
+          await revoke(revokeTarget.id);
+          // a11y announce — interpolates only the friendly name, never the
+          // sensitive adt_* string (type-enforced: the list hook never
+          // holds plaintext in the first place).
+          setAnnouncement(
+            t('management.daemonTokens.a11y.revoked', {
+              name: revokeTarget.name,
+            }),
           );
         }}
       />

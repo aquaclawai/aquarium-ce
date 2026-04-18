@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
@@ -101,9 +101,11 @@ export function DaemonTokenList({
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage ?? i18n.language ?? 'en';
 
-  // Compute "now" once per render so every row uses the same epoch for
-  // derive checks. If the list mutates (refetch), a fresh render re-evaluates.
-  const now = useMemo(() => new Date(), [tokens]);
+  // Compute "now" once per render so every row in a single paint uses the
+  // same epoch for derive checks. A fresh render (triggered by any
+  // downstream state change — refetch, revoke, create) naturally
+  // produces a new timestamp.
+  const now = new Date();
 
   // Loading skeleton — 5 rows.
   if (isLoading) {

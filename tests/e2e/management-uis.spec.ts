@@ -648,12 +648,68 @@ test.describe.serial('Phase 25 — Management UIs', () => {
     expect(storageAudit.match, 'plaintext must not appear in browser storage').toBe(false);
   });
 
-  test('token revoke', async ({ page }) => {
-    test.skip(true, 'Wave 3 / plan 25-03 Task 3 wires this');
-    // Row action Revoke → confirm dialog → POST /api/daemon-tokens/:id/
-    // revoke → row flips to status=revoked (badge + derived projection).
-    // Body warns this is NOT reversible. After confirm: revokedAt non-
-    // null in DB.
-    void page;
+  test('token revoke', async ({ page, request }) => {
+    // Plan 25-03 Task 3 — seed an active token, open the row's action
+    // dropdown → Revoke → confirm in destructive dialog → assert row's
+    // derived status flips to 'revoked' + DB `revoked_at` is non-null.
+
+    // Clean existing tokens so this scenario owns a single fresh row.
+    const existingRes = await request.get(`${API}/daemon-tokens`);
+    if (existingRes.ok()) {
+      const body = (await existingRes.json()) as { ok: boolean; data: { id: string }[] };
+      if (body.ok) {
+        for (const row of body.data) {
+          await request.delete(`${API}/daemon-tokens/${row.id}`);
+        }
+      }
+    }
+
+    // Seed via POST /api/daemon-tokens — discard the plaintext; the
+    // scenario only needs the hashed token's id.
+    const tokenName = `E2E-Revoke-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 5)}`;
+    const seedRes = await request.post(`${API}/daemon-tokens`, {
+      data: { name: tokenName },
+    });
+    expect(seedRes.status(), `seed token failed: ${await seedRes.text()}`).toBe(200);
+    const seedBody = (await seedRes.json()) as {
+      ok: boolean;
+      data: { token: { id: string; name: string } };
+    };
+    expect(seedBody.ok).toBe(true);
+    const tokenId = seedBody.data.token.id;
+
+    await page.goto('http://localhost:5173/daemon-tokens');
+    await expect(page.locator('[data-page="daemon-tokens"]')).toBeVisible();
+
+    const row = page.locator(`[data-token-row="${tokenId}"]`);
+    await expect(row).toBeVisible();
+    await expect(row).toHaveAttribute('data-token-status', 'active');
+
+    // Open the row's actions dropdown + click Revoke.
+    await page.locator(`[data-token-actions-trigger="${tokenId}"]`).click();
+    await page.locator(`[data-token-revoke-open="${tokenId}"]`).click();
+
+    // Revoke dialog opens — title interpolates token name.
+    await expect(
+      page.getByRole('dialog').getByText(tokenName, { exact: false }),
+    ).toBeVisible();
+
+    // Confirm the destructive action.
+    await page.locator('[data-token-revoke-confirm]').click();
+
+    // Dialog closes, row's derived status flips to 'revoked' after refetch.
+    await expect(
+      page.locator(`[data-token-row="${tokenId}"][data-token-status="revoked"]`),
+    ).toBeVisible({ timeout: 5000 });
+
+    // DB read — revoked_at is non-null.
+    const revokedAt = readDb((db) =>
+      (db
+        .prepare(`SELECT revoked_at FROM daemon_tokens WHERE id = ?`)
+        .get(tokenId) as { revoked_at: string | null } | undefined)?.revoked_at,
+    );
+    expect(revokedAt, 'revoked_at should be set after revoke').toBeTruthy();
   });
 });
