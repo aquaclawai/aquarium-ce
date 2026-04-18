@@ -473,14 +473,14 @@ Plans:
 3. Daemon Tokens page lets users create a new token with friendly name + optional expiry, copy plaintext once, list existing tokens, and revoke with confirmation
 4. All new strings ship in all 6 locales and pass the i18n CI check
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 25-00-PLAN.md — Wave 0 foundation: 3 page scaffolds + management/ component dir + App.tsx routes + Sidebar nav + Playwright spec stub (>=6 skips) + i18n namespaces (en complete + 5 locale placeholders) + CI grep guards (no dangerouslySetInnerHTML + no localStorage/sessionStorage under components/management/**)
 - [x] 25-01-PLAN.md — Wave 1 Agents page: AgentList + AgentFormDialog + CustomEnvEditor + CustomArgsEditor + ArchiveConfirmDialog + useAgents + 3 Playwright scenarios (MGMT-01)
 - [x] 25-02-PLAN.md — Wave 2 Runtimes page: RuntimeList + KindFilterChips + RuntimeDetailSheet + useRuntimes (30s poll) + 2 Playwright scenarios; unified list HARD invariant (MGMT-02)
 - [x] 25-03-PLAN.md — Wave 3 Daemon Tokens page: DaemonTokenList + DaemonTokenCreateModal (two-step copy-once) + RevokeConfirmDialog + useDaemonTokens + tokenStatus helper + 3 Playwright scenarios; MGMT-03 HARD plaintext invariants (no localStorage/sessionStorage/innerHTML/document.title; grep-verified)
-- [ ] 25-04-PLAN.md — Wave 4 i18n polish: translate management.agents/runtimes/daemonTokens + sidebar.agents/runtimes/daemonTokens to zh/fr/de/es/it; PROJECT.md evolution footer (MGMT-01/02/03 + UI-08)
+- [x] 25-04-PLAN.md — Wave 4 i18n polish: translate management.agents/runtimes/daemonTokens + sidebar.agents/runtimes/daemonTokens to zh/fr/de/es/it; PROJECT.md evolution footer (MGMT-01/02/03 + UI-08)
 
 ### Phase 26: Integration, Boot Wiring, E2E & Release
 **Goal:** All v1.4 components are wired into the CE boot sequence in the correct order, Playwright E2E coverage validates the golden paths end-to-end on both hosted and daemon runtimes, and v1.4.0 is released via the existing GitHub Actions pipeline.
@@ -521,7 +521,7 @@ Plans:
 | 22. Remaining Agent Backends | v1.4 | 4/4 | Complete    | 2026-04-17 |
 | 23. Issue Board UI (Kanban) | v1.4 | 6/6 | Complete    | 2026-04-17 |
 | 24. Issue Detail + Streaming | v1.4 | 7/7 | Complete    | 2026-04-17 |
-| 25. Management UIs | v1.4 | 4/5 | In Progress|  |
+| 25. Management UIs | v1.4 | 5/5 | Complete    | 2026-04-18 |
 | 26. Integration, E2E, Release | v1.4 | 0/? | Not started | - |
 
 **Execution Order:** v1.1–v1.3 executed strictly numerically. v1.4 supports parallelism per the phase graph — 15 → {16, 17} → 18 → {19, 20}; 18 → {23, 24}; {16,17,19} → 25; all → 26. Longest critical path: 15 → 18 → 19 → 21 → 22 → 26.

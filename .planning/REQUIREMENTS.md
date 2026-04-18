@@ -155,9 +155,9 @@ Requirements for the gateway communication overhaul. Each maps to roadmap phases
 
 ### Management UI
 
-- [ ] **MGMT-01**: User can browse / create / edit / archive Agents with a form showing instructions, runtime selector, custom env, custom args, max concurrent tasks
-- [ ] **MGMT-02**: User can browse Runtimes in a unified list showing hosted instances + daemon connections with status badges
-- [ ] **MGMT-03**: User can issue a new daemon token with a friendly name and an optional expiry, copy the plaintext once, then revoke from a list view
+- [x] **MGMT-01**: User can browse / create / edit / archive Agents with a form showing instructions, runtime selector, custom env, custom args, max concurrent tasks
+- [x] **MGMT-02**: User can browse Runtimes in a unified list showing hosted instances + daemon connections with status badges
+- [x] **MGMT-03**: User can issue a new daemon token with a friendly name and an optional expiry, copy the plaintext once, then revoke from a list view
 
 ### Chat on Issue (Differentiator)
 
