@@ -64,7 +64,6 @@
       "error": "error",
       "healthy": "Saludable",
       "unhealthy": "No saludable",
-      "": "common.status.",
       "active": "Active",
       "expired": "Expired",
       "revoked": "Revoked"
@@ -89,12 +88,10 @@
     },
     "comingSoon": "Próximamente",
     "deploymentTarget": {
-      "": "common.deploymentTarget.",
       "docker": "Docker",
       "kubernetes": "Kubernetes"
     },
     "agentType": {
-      "": "common.agentType.",
       "openclaw": "OpenClaw",
       "opencode": "OpenCode",
       "claude-code": "Claude Code"
@@ -243,7 +240,7 @@
       "more": "Más",
       "extensions": "Extensiones",
       "channels": "Channels",
-      "advanced": "instance.tabs.advanced",
+      "advanced": "Avanzado",
       "cron": "Cron"
     },
     "overview": {
@@ -1310,12 +1307,12 @@
       "saveFailed": "Failed to save API key.",
       "deleted": "API key removed.",
       "deleteFailed": "Failed to remove API key.",
-      "oauthConnected": "aiTab.byokCredential.oauthConnected",
-      "disconnectButton": "aiTab.byokCredential.disconnectButton",
-      "oauthButton": "aiTab.byokCredential.oauthButton",
-      "oauthDeviceHint": "aiTab.byokCredential.oauthDeviceHint",
-      "oauthHint": "aiTab.byokCredential.oauthHint",
-      "orDivider": "aiTab.byokCredential.orDivider"
+      "oauthConnected": "OAuth conectado",
+      "disconnectButton": "Desconectar",
+      "oauthButton": "Iniciar sesión con {{provider}}",
+      "oauthDeviceHint": "Usa el flujo de código de dispositivo — abre una nueva página para autenticarse.",
+      "oauthHint": "Abre una ventana emergente para autenticarse.",
+      "orDivider": "— o usar clave API —"
     },
     "toolCredentials": {
       "title": "Tool Credentials",
@@ -2111,16 +2108,16 @@
       "myCredentials": "My Credentials",
       "mySubscriptions": "My Subscriptions"
     },
-    "emptyTitle": "credentials.emptyTitle",
-    "emptyDescription": "credentials.emptyDescription",
+    "emptyTitle": "Aún no hay credenciales",
+    "emptyDescription": "Añada su primera clave API para empezar",
     "usageCount": "Usage Count",
     "disableCredential": "Disable",
     "enableCredential": "Enable",
     "editCredential": "Edit Credential",
     "securityTip": "Security Tip: Rotate your API keys regularly to ensure security",
     "subscriptions": {
-      "emptyTitle": "credentials.subscriptions.emptyTitle",
-      "emptyDescription": "credentials.subscriptions.emptyDescription",
+      "emptyTitle": "Aún no hay suscripciones",
+      "emptyDescription": "No tiene ningún plan de suscripción activo",
       "noSubscriptions": "No subscriptions yet",
       "noSubscriptionsDesc": "You don't have any active subscription plans",
       "currentPlan": "Current Plan",
