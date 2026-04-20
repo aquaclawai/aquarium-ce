@@ -66,19 +66,16 @@
       "unhealthy": "Unhealthy",
       "active": "Active",
       "expired": "Expired",
-      "revoked": "Revoked",
-      "": "common.status."
+      "revoked": "Revoked"
     },
     "deploymentTarget": {
       "docker": "Docker",
-      "kubernetes": "Kubernetes",
-      "": "common.deploymentTarget."
+      "kubernetes": "Kubernetes"
     },
     "agentType": {
       "openclaw": "OpenClaw",
       "opencode": "OpenCode",
-      "claude-code": "Claude Code",
-      "": "common.agentType."
+      "claude-code": "Claude Code"
     },
     "errors": {
       "generic": "An error occurred",
@@ -257,7 +254,7 @@
       "extensions": "Extensions",
       "channels": "Channels",
       "cron": "Cron",
-      "advanced": "instance.tabs.advanced"
+      "advanced": "Advanced"
     },
     "overview": {
       "title": "Instance Details",
@@ -1550,11 +1547,11 @@
       "cancelled": "Cancelled",
       "yes": "Yes",
       "no": "No",
-      "emptyTitle": "credentials.subscriptions.emptyTitle",
-      "emptyDescription": "credentials.subscriptions.emptyDescription"
+      "emptyTitle": "No subscriptions yet",
+      "emptyDescription": "You don't have any active subscription plans"
     },
-    "emptyTitle": "credentials.emptyTitle",
-    "emptyDescription": "credentials.emptyDescription"
+    "emptyTitle": "No credentials yet",
+    "emptyDescription": "Add your first API key to get started"
   },
   "billing": {
     "title": "Billing Overview",
@@ -1718,12 +1715,12 @@
       "saveFailed": "Failed to save API key.",
       "deleted": "API key removed.",
       "deleteFailed": "Failed to remove API key.",
-      "oauthConnected": "aiTab.byokCredential.oauthConnected",
-      "disconnectButton": "aiTab.byokCredential.disconnectButton",
-      "oauthButton": "aiTab.byokCredential.oauthButton",
-      "oauthDeviceHint": "aiTab.byokCredential.oauthDeviceHint",
-      "oauthHint": "aiTab.byokCredential.oauthHint",
-      "orDivider": "aiTab.byokCredential.orDivider"
+      "oauthConnected": "OAuth connected",
+      "disconnectButton": "Disconnect",
+      "oauthButton": "Sign in with {{provider}}",
+      "oauthDeviceHint": "Uses device code flow — opens a new page to authenticate.",
+      "oauthHint": "Opens a popup to authenticate.",
+      "orDivider": "— or use API key —"
     },
     "toolCredentials": {
       "title": "Tool Credentials",

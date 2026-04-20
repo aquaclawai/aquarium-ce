@@ -66,19 +66,16 @@
       "unhealthy": "异常",
       "active": "有效",
       "expired": "已过期",
-      "revoked": "已吊销",
-      "": "common.status."
+      "revoked": "已吊销"
     },
     "deploymentTarget": {
       "docker": "Docker",
-      "kubernetes": "Kubernetes",
-      "": "common.deploymentTarget."
+      "kubernetes": "Kubernetes"
     },
     "agentType": {
       "openclaw": "OpenClaw",
       "opencode": "OpenCode",
-      "claude-code": "Claude Code",
-      "": "common.agentType."
+      "claude-code": "Claude Code"
     },
     "errors": {
       "generic": "发生错误",
@@ -256,7 +253,7 @@
       "more": "更多",
       "extensions": "扩展",
       "channels": "Channels",
-      "advanced": "instance.tabs.advanced",
+      "advanced": "高级",
       "cron": "Cron"
     },
     "overview": {
@@ -1550,11 +1547,11 @@
       "cancelled": "已取消",
       "yes": "是",
       "no": "否",
-      "emptyTitle": "credentials.subscriptions.emptyTitle",
-      "emptyDescription": "credentials.subscriptions.emptyDescription"
+      "emptyTitle": "暂无订阅",
+      "emptyDescription": "您还没有任何活跃的订阅计划"
     },
-    "emptyTitle": "credentials.emptyTitle",
-    "emptyDescription": "credentials.emptyDescription"
+    "emptyTitle": "暂无凭证",
+    "emptyDescription": "添加您的第一个 API 密钥以开始使用"
   },
   "billing": {
     "title": "费用概览",
@@ -1718,12 +1715,12 @@
       "saveFailed": "保存 API Key 失败。",
       "deleted": "API Key 已移除。",
       "deleteFailed": "移除 API Key 失败。",
-      "oauthConnected": "aiTab.byokCredential.oauthConnected",
-      "disconnectButton": "aiTab.byokCredential.disconnectButton",
-      "oauthButton": "aiTab.byokCredential.oauthButton",
-      "oauthDeviceHint": "aiTab.byokCredential.oauthDeviceHint",
-      "oauthHint": "aiTab.byokCredential.oauthHint",
-      "orDivider": "aiTab.byokCredential.orDivider"
+      "oauthConnected": "已连接 OAuth",
+      "disconnectButton": "断开连接",
+      "oauthButton": "使用 {{provider}} 登录",
+      "oauthDeviceHint": "使用设备代码流程 — 将打开新页面进行身份验证。",
+      "oauthHint": "将打开弹窗进行身份验证。",
+      "orDivider": "— 或使用 API Key —"
     },
     "toolCredentials": {
       "title": "工具凭证",
