@@ -99,7 +99,7 @@ export function CommentsTimeline({
       <div className="pt-2">
         <CommentComposer
           onSubmit={(c) => onPost(c)}
-          placeholderKey="issues.detail.comments.replyPlaceholder"
+          placeholderKey="issues.detail.comments.addPlaceholder"
         />
       </div>
     </section>

@@ -95,7 +95,10 @@ export function IssueHeader({ issue, onEdit, onDelete, onAssign, onChangeStatus 
             <span className="text-xs text-muted-foreground">
               {t('issues.detail.postedMeta', {
                 relativeTime: formatRelative(issue.createdAt),
-                author: issue.creatorUserId ?? t('issues.detail.comments.author.system'),
+                author:
+                  issue.creatorUserDisplayName ??
+                  issue.creatorUserId ??
+                  t('issues.detail.comments.author.system'),
               })}
             </span>
           </div>

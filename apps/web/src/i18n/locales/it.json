@@ -2437,6 +2437,23 @@
       "reorderConflict": "Un'altra sessione ha spostato questo ticket — aggiornamento in corso",
       "offline": "Riconnessione in corso…",
       "loadFailed": "Impossibile caricare i ticket.",
+      "createFailed": "Impossibile creare il ticket — riprova.",
+      "createSucceeded": "Ticket «{{title}}» creato",
+      "create": {
+        "title": "Nuovo ticket",
+        "description": "Descrivi il lavoro. Potrai assegnare un agente dalla pagina di dettaglio dopo la creazione.",
+        "submit": "Crea ticket",
+        "creating": "Creazione…",
+        "cancel": "Annulla",
+        "fields": {
+          "title": "Titolo",
+          "titlePlaceholder": "Un riepilogo breve e orientato all'azione",
+          "description": "Descrizione",
+          "descriptionPlaceholder": "Facoltativo — il markdown è supportato",
+          "status": "Stato",
+          "priority": "Priorità"
+        }
+      },
       "a11y": {
         "picked": "Ticket \"{{title}}\" selezionato",
         "movedWithin": "Ticket \"{{title}}\" spostato alla posizione {{pos}} di {{total}} in {{column}}",
@@ -2491,6 +2508,7 @@
         "delete": "Elimina",
         "cancelReply": "Annulla",
         "replyPlaceholder": "Rispondi a {{authorName}}…",
+        "addPlaceholder": "Aggiungi un commento…",
         "showMore": "Mostra altre {{count}} risposte",
         "system": {
           "statusChange": "Stato cambiato da {{from}} a {{to}}"
@@ -2751,6 +2769,7 @@
         "create": "Nuovo token",
         "revoke": "Revoca"
       },
+      "searchPlaceholder": "Cerca token…",
       "columns": {
         "name": "Nome",
         "created": "Creato",

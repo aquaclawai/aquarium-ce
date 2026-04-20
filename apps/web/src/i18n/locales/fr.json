@@ -2437,6 +2437,23 @@
       "reorderConflict": "Une autre session a déplacé ce ticket — actualisation",
       "offline": "Reconnexion…",
       "loadFailed": "Impossible de charger les tickets.",
+      "createFailed": "Impossible de créer le ticket — veuillez réessayer.",
+      "createSucceeded": "Ticket « {{title}} » créé",
+      "create": {
+        "title": "Nouveau ticket",
+        "description": "Décrivez le travail. Vous pourrez affecter un agent depuis la page de détails une fois le ticket créé.",
+        "submit": "Créer le ticket",
+        "creating": "Création…",
+        "cancel": "Annuler",
+        "fields": {
+          "title": "Titre",
+          "titlePlaceholder": "Un résumé court et orienté action",
+          "description": "Description",
+          "descriptionPlaceholder": "Facultatif — le markdown est pris en charge",
+          "status": "Statut",
+          "priority": "Priorité"
+        }
+      },
       "a11y": {
         "picked": "Ticket \"{{title}}\" sélectionné",
         "movedWithin": "Ticket \"{{title}}\" déplacé à la position {{pos}} sur {{total}} dans {{column}}",
@@ -2491,6 +2508,7 @@
         "delete": "Supprimer",
         "cancelReply": "Annuler",
         "replyPlaceholder": "Répondre à {{authorName}}…",
+        "addPlaceholder": "Ajouter un commentaire…",
         "showMore": "Afficher {{count}} réponses supplémentaires",
         "system": {
           "statusChange": "Statut passé de {{from}} à {{to}}"
@@ -2751,6 +2769,7 @@
         "create": "Nouveau jeton",
         "revoke": "Révoquer"
       },
+      "searchPlaceholder": "Rechercher des jetons…",
       "columns": {
         "name": "Nom",
         "created": "Créé",

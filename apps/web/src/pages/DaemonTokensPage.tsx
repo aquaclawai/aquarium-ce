@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DaemonToken } from '@aquarium/shared';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { DaemonTokenList } from '@/components/management/DaemonTokenList';
 import { DaemonTokenCreateModal } from '@/components/management/DaemonTokenCreateModal';
 import { RevokeConfirmDialog } from '@/components/management/RevokeConfirmDialog';
@@ -28,7 +29,13 @@ export function DaemonTokensPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [revokeTarget, setRevokeTarget] = useState<DaemonToken | null>(null);
   const [announcement, setAnnouncement] = useState('');
+  const [search, setSearch] = useState('');
 
+  const filteredTokens = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return tokens;
+    return tokens.filter((tok) => tok.name.toLowerCase().includes(q));
+  }, [tokens, search]);
 
   return (
     <main
@@ -44,13 +51,24 @@ export function DaemonTokensPage() {
         </p>
       </header>
 
-      <div className="flex items-center justify-end mb-4">
-        <Button
-          data-token-create-open
-          onClick={() => setCreateOpen(true)}
-        >
-          {t('management.daemonTokens.actions.create')}
-        </Button>
+      <div className="flex items-center gap-3 mb-4">
+        <Input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t('management.daemonTokens.searchPlaceholder')}
+          aria-label={t('management.daemonTokens.searchPlaceholder')}
+          className="max-w-xs"
+          data-token-search
+        />
+        <div className="ml-auto">
+          <Button
+            data-token-create-open
+            onClick={() => setCreateOpen(true)}
+          >
+            {t('management.daemonTokens.actions.create')}
+          </Button>
+        </div>
       </div>
 
       {error ? (
@@ -63,7 +81,7 @@ export function DaemonTokensPage() {
       ) : null}
 
       <DaemonTokenList
-        tokens={tokens}
+        tokens={filteredTokens}
         isLoading={isLoading}
         onRevoke={(tok) => setRevokeTarget(tok)}
         onOpenCreate={() => setCreateOpen(true)}

@@ -2437,6 +2437,23 @@
       "reorderConflict": "Another session moved this issue — refreshing",
       "offline": "Reconnecting…",
       "loadFailed": "Couldn't load issues.",
+      "createFailed": "Couldn't create issue — please try again.",
+      "createSucceeded": "Issue \"{{title}}\" created",
+      "create": {
+        "title": "New issue",
+        "description": "Describe the work. You can assign an agent from the detail page once it's created.",
+        "submit": "Create issue",
+        "creating": "Creating…",
+        "cancel": "Cancel",
+        "fields": {
+          "title": "Title",
+          "titlePlaceholder": "A short, action-oriented summary",
+          "description": "Description",
+          "descriptionPlaceholder": "Optional — markdown is supported",
+          "status": "Status",
+          "priority": "Priority"
+        }
+      },
       "a11y": {
         "picked": "Picked up issue \"{{title}}\"",
         "movedWithin": "Issue \"{{title}}\" moved to position {{pos}} of {{total}} in {{column}}",
@@ -2491,6 +2508,7 @@
         "delete": "Delete",
         "cancelReply": "Cancel",
         "replyPlaceholder": "Reply to {{authorName}}…",
+        "addPlaceholder": "Add a comment…",
         "showMore": "Show {{count}} more replies",
         "system": {
           "statusChange": "Status changed from {{from}} to {{to}}"
@@ -2751,6 +2769,7 @@
         "create": "New token",
         "revoke": "Revoke"
       },
+      "searchPlaceholder": "Search tokens…",
       "columns": {
         "name": "Name",
         "created": "Created",

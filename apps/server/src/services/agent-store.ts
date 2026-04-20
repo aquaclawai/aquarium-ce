@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { db } from '../db/index.js';
 import { getAdapter } from '../db/adapter.js';
+import { toIsoUtc } from '../db/timestamps.js';
 import type { Agent, AgentStatus, AgentVisibility } from '@aquarium/shared';
 
 /**
@@ -44,10 +45,10 @@ function toAgent(row: Record<string, unknown>): Agent {
     visibility: row.visibility as AgentVisibility,
     status: row.status as AgentStatus,
     ownerUserId: (row.owner_user_id as string) ?? null,
-    archivedAt: row.archived_at ? String(row.archived_at) : null,
+    archivedAt: row.archived_at ? toIsoUtc(row.archived_at) : null,
     archivedBy: (row.archived_by as string) ?? null,
-    createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at),
+    createdAt: toIsoUtc(row.created_at),
+    updatedAt: toIsoUtc(row.updated_at),
   };
 }
 

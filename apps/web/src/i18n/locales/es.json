@@ -2437,6 +2437,23 @@
       "reorderConflict": "Otra sesión movió esta incidencia — actualizando",
       "offline": "Reconectando…",
       "loadFailed": "No se pudieron cargar las incidencias.",
+      "createFailed": "No se pudo crear la incidencia — inténtalo de nuevo.",
+      "createSucceeded": "Incidencia «{{title}}» creada",
+      "create": {
+        "title": "Nueva incidencia",
+        "description": "Describe el trabajo. Podrás asignar un agente desde la página de detalle una vez creada.",
+        "submit": "Crear incidencia",
+        "creating": "Creando…",
+        "cancel": "Cancelar",
+        "fields": {
+          "title": "Título",
+          "titlePlaceholder": "Un resumen breve y orientado a la acción",
+          "description": "Descripción",
+          "descriptionPlaceholder": "Opcional — se admite Markdown",
+          "status": "Estado",
+          "priority": "Prioridad"
+        }
+      },
       "a11y": {
         "picked": "Incidencia \"{{title}}\" seleccionada",
         "movedWithin": "Incidencia \"{{title}}\" movida a la posición {{pos}} de {{total}} en {{column}}",
@@ -2491,6 +2508,7 @@
         "delete": "Eliminar",
         "cancelReply": "Cancelar",
         "replyPlaceholder": "Responder a {{authorName}}…",
+        "addPlaceholder": "Añadir un comentario…",
         "showMore": "Mostrar {{count}} respuestas más",
         "system": {
           "statusChange": "Estado cambiado de {{from}} a {{to}}"
@@ -2751,6 +2769,7 @@
         "create": "Nuevo token",
         "revoke": "Revocar"
       },
+      "searchPlaceholder": "Buscar tokens…",
       "columns": {
         "name": "Nombre",
         "created": "Creado",

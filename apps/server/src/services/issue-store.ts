@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { db } from '../db/index.js';
 import { getAdapter } from '../db/adapter.js';
+import { toIsoUtc } from '../db/timestamps.js';
 import {
   enqueueTaskForIssue,
   cancelPendingTasksForIssueAgent,
@@ -36,6 +37,17 @@ import type { Knex } from 'knex';
 const RENUMBER_STEP = 1000;
 const COLLAPSE_EPSILON = 1e-6;
 
+/**
+ * Select list shared by every issue read so `creator_display_name` is
+ * always present as a LEFT JOIN onto users. Keeping this as a single
+ * constant means `toIssue` never needs to guard against a missing field
+ * and every read path (get, list, createIssue read-back) stays in sync.
+ */
+const ISSUE_SELECT = [
+  'issues.*',
+  'users.display_name as creator_display_name',
+] as const;
+
 function toIssue(row: Record<string, unknown>): Issue {
   const adapter = getAdapter();
   return {
@@ -48,16 +60,17 @@ function toIssue(row: Record<string, unknown>): Issue {
     priority: row.priority as IssuePriority,
     assigneeId: (row.assignee_id as string) ?? null,
     creatorUserId: (row.creator_user_id as string) ?? null,
+    creatorUserDisplayName: (row.creator_display_name as string | null | undefined) ?? null,
     position:
       row.position !== null && row.position !== undefined ? Number(row.position) : null,
-    dueDate: row.due_date ? String(row.due_date) : null,
-    completedAt: row.completed_at ? String(row.completed_at) : null,
-    cancelledAt: row.cancelled_at ? String(row.cancelled_at) : null,
+    dueDate: row.due_date ? toIsoUtc(row.due_date) : null,
+    completedAt: row.completed_at ? toIsoUtc(row.completed_at) : null,
+    cancelledAt: row.cancelled_at ? toIsoUtc(row.cancelled_at) : null,
     metadata: row.metadata
       ? (adapter.parseJson<Record<string, unknown>>(row.metadata) ?? {})
       : {},
-    createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at),
+    createdAt: toIsoUtc(row.created_at),
+    updatedAt: toIsoUtc(row.updated_at),
   };
 }
 
@@ -146,7 +159,11 @@ export async function createIssue(args: CreateIssueArgs): Promise<Issue> {
       updated_at: db.fn.now(),
     });
 
-    const row = await trx('issues').where({ id }).first();
+    const row = await trx('issues')
+      .leftJoin('users', 'issues.creator_user_id', 'users.id')
+      .where('issues.id', id)
+      .select(ISSUE_SELECT as unknown as string[])
+      .first();
     if (!row) throw new Error('Issue creation failed — row not readable');
     return toIssue(row as Record<string, unknown>);
   });
@@ -348,7 +365,11 @@ export async function updateIssue(
       id,
     );
 
-    const row = await trx('issues').where({ id, workspace_id: workspaceId }).first();
+    const row = await trx('issues')
+      .leftJoin('users', 'issues.creator_user_id', 'users.id')
+      .where({ 'issues.id': id, 'issues.workspace_id': workspaceId })
+      .select(ISSUE_SELECT as unknown as string[])
+      .first();
     if (!row) return null;
     return {
       issue: toIssue(row as Record<string, unknown>),
@@ -363,7 +384,11 @@ export async function deleteIssue(id: string, workspaceId: string): Promise<bool
 }
 
 export async function getIssue(id: string, workspaceId: string): Promise<Issue | null> {
-  const row = await db('issues').where({ id, workspace_id: workspaceId }).first();
+  const row = await db('issues')
+    .leftJoin('users', 'issues.creator_user_id', 'users.id')
+    .where({ 'issues.id': id, 'issues.workspace_id': workspaceId })
+    .select(ISSUE_SELECT as unknown as string[])
+    .first();
   return row ? toIssue(row as Record<string, unknown>) : null;
 }
 
@@ -383,13 +408,16 @@ export async function listIssues(
   workspaceId: string,
   opts: ListIssuesOpts = {},
 ): Promise<Issue[]> {
-  let query = db('issues').where({ workspace_id: workspaceId });
-  if (opts.status) query = query.where({ status: opts.status });
-  if (opts.assigneeId) query = query.where({ assignee_id: opts.assigneeId });
+  let query = db('issues')
+    .leftJoin('users', 'issues.creator_user_id', 'users.id')
+    .where({ 'issues.workspace_id': workspaceId });
+  if (opts.status) query = query.where({ 'issues.status': opts.status });
+  if (opts.assigneeId) query = query.where({ 'issues.assignee_id': opts.assigneeId });
   const rows = await query
-    .orderByRaw('CASE WHEN position IS NULL THEN 1 ELSE 0 END ASC')
-    .orderBy('position', 'asc')
-    .orderBy('created_at', 'desc');
+    .select(ISSUE_SELECT as unknown as string[])
+    .orderByRaw('CASE WHEN issues.position IS NULL THEN 1 ELSE 0 END ASC')
+    .orderBy('issues.position', 'asc')
+    .orderBy('issues.created_at', 'desc');
   return rows.map((r: Record<string, unknown>) => toIssue(r));
 }
 
@@ -497,7 +525,11 @@ export async function reorderIssue(
       .where({ id, workspace_id: workspaceId })
       .update({ position: newPos, updated_at: db.fn.now() });
 
-    const row = await trx('issues').where({ id, workspace_id: workspaceId }).first();
+    const row = await trx('issues')
+      .leftJoin('users', 'issues.creator_user_id', 'users.id')
+      .where({ 'issues.id': id, 'issues.workspace_id': workspaceId })
+      .select(ISSUE_SELECT as unknown as string[])
+      .first();
     return row ? toIssue(row as Record<string, unknown>) : null;
   });
 }

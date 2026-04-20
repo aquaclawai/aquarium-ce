@@ -54,9 +54,13 @@ function CommentCardImpl({ comment, isActiveReplyTarget, onReply, onEdit, onDele
     );
   }
 
-  const authorName = comment.authorType === 'agent'
-    ? (comment.authorAgentId ?? 'agent')
-    : (comment.authorUserId ?? 'user');
+  // Prefer the pre-joined display name from the server (users.display_name
+  // for user comments, agents.name for agent comments). Fall back to the
+  // raw UUID only when the joined source row was deleted (SET NULL).
+  const authorName = comment.authorDisplayName
+    ?? (comment.authorType === 'agent'
+      ? (comment.authorAgentId ?? 'agent')
+      : (comment.authorUserId ?? 'user'));
   const authorLabel = comment.authorType === 'agent'
     ? t('issues.detail.comments.author.agent', { agentName: authorName })
     : t('issues.detail.comments.author.user', { displayName: authorName });

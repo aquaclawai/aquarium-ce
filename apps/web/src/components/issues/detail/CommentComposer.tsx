@@ -6,6 +6,12 @@ import { Button } from '@/components/ui/button';
 interface CommentComposerProps {
   onSubmit: (content: string) => Promise<void>;
   placeholderKey: string;
+  /**
+   * Interpolation value for the i18n placeholder key. Required when the
+   * placeholder key contains `{{authorName}}` — e.g. threaded replies. For
+   * placeholder keys with no interpolation variables this is ignored.
+   */
+  authorName?: string;
   autoFocus?: boolean;
   onCancel?: () => void;
 }
@@ -15,7 +21,7 @@ interface CommentComposerProps {
  * (default behaviour); ⌘⏎ / Ctrl+Enter submits. Disabled while the parent
  * handler's promise is pending. Errors surface through the parent's toast.
  */
-export function CommentComposer({ onSubmit, placeholderKey, autoFocus, onCancel }: CommentComposerProps) {
+export function CommentComposer({ onSubmit, placeholderKey, authorName, autoFocus, onCancel }: CommentComposerProps) {
   const { t } = useTranslation();
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -57,7 +63,7 @@ export function CommentComposer({ onSubmit, placeholderKey, autoFocus, onCancel 
         value={content}
         onChange={(e) => setContent(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={t(placeholderKey)}
+        placeholder={authorName ? t(placeholderKey, { authorName }) : t(placeholderKey)}
         disabled={submitting}
       />
       <div className="flex items-center gap-2">

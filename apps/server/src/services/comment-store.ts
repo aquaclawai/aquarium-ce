@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { db } from '../db/index.js';
 import { getAdapter } from '../db/adapter.js';
+import { toIsoUtc } from '../db/timestamps.js';
 import { enqueueTaskForIssue } from './task-queue-store.js';
 import type {
   Comment,
@@ -38,22 +39,49 @@ import type { Knex } from 'knex';
  *     target conversation, not bookkeeping.
  */
 
+/**
+ * Shared select list for comment reads: always LEFT JOIN both users and
+ * agents, then pick the right display label via the author_type
+ * discriminator. Centralising this keeps `toComment` free of join-shape
+ * awareness and guarantees every read path (create, list, get, update)
+ * returns the resolved `authorDisplayName`.
+ */
+const COMMENT_SELECT = [
+  'comments.*',
+  'users.display_name as author_user_display_name',
+  'agents.name as author_agent_display_name',
+] as const;
+
+function applyAuthorJoins<T extends Knex.QueryBuilder>(q: T): T {
+  return q
+    .leftJoin('users', 'comments.author_user_id', 'users.id')
+    .leftJoin('agents', 'comments.author_agent_id', 'agents.id') as unknown as T;
+}
+
 function toComment(row: Record<string, unknown>): Comment {
   const adapter = getAdapter();
+  const authorType = row.author_type as CommentAuthorType;
+  const authorDisplayName: string | null =
+    authorType === 'user'
+      ? ((row.author_user_display_name as string | null | undefined) ?? null)
+      : authorType === 'agent'
+        ? ((row.author_agent_display_name as string | null | undefined) ?? null)
+        : null;
   return {
     id: row.id as string,
     issueId: row.issue_id as string,
-    authorType: row.author_type as CommentAuthorType,
+    authorType,
     authorUserId: (row.author_user_id as string) ?? null,
     authorAgentId: (row.author_agent_id as string) ?? null,
+    authorDisplayName,
     content: row.content as string,
     type: row.type as CommentType,
     parentId: (row.parent_id as string) ?? null,
     metadata: row.metadata
       ? (adapter.parseJson<Record<string, unknown>>(row.metadata) ?? {})
       : {},
-    createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at),
+    createdAt: toIsoUtc(row.created_at),
+    updatedAt: toIsoUtc(row.updated_at),
   };
 }
 
@@ -141,7 +169,10 @@ export async function createUserComment(
       updated_at: db.fn.now(),
     });
 
-    const row = await trx('comments').where({ id }).first();
+    const row = await applyAuthorJoins(trx('comments'))
+      .where({ 'comments.id': id })
+      .select(COMMENT_SELECT as unknown as string[])
+      .first();
     const comment = toComment(row as Record<string, unknown>);
 
     let enqueuedTask: AgentTask | null = null;
@@ -234,7 +265,10 @@ export async function createAgentComment(args: CreateAgentCommentArgs): Promise<
       created_at: db.fn.now(),
       updated_at: db.fn.now(),
     });
-    const row = await runner('comments').where({ id }).first();
+    const row = await applyAuthorJoins(runner('comments'))
+      .where({ 'comments.id': id })
+      .select(COMMENT_SELECT as unknown as string[])
+      .first();
     return toComment(row as Record<string, unknown>);
   };
 
@@ -279,7 +313,10 @@ export async function createSystemComment(
       created_at: db.fn.now(),
       updated_at: db.fn.now(),
     });
-    const row = await trx('comments').where({ id }).first();
+    const row = await applyAuthorJoins(trx('comments'))
+      .where({ 'comments.id': id })
+      .select(COMMENT_SELECT as unknown as string[])
+      .first();
     return toComment(row as Record<string, unknown>);
   };
   if (args.trx) return run(args.trx);
@@ -309,7 +346,10 @@ export async function updateComment(
     .where({ id, issue_id: issueId })
     .update(update);
   if (affected === 0) return null;
-  const row = await db('comments').where({ id }).first();
+  const row = await applyAuthorJoins(db('comments'))
+    .where({ 'comments.id': id })
+    .select(COMMENT_SELECT as unknown as string[])
+    .first();
   return row ? toComment(row as Record<string, unknown>) : null;
 }
 
@@ -326,7 +366,10 @@ export async function deleteComment(id: string, issueId: string): Promise<boolea
 }
 
 export async function getComment(id: string): Promise<Comment | null> {
-  const row = await db('comments').where({ id }).first();
+  const row = await applyAuthorJoins(db('comments'))
+    .where({ 'comments.id': id })
+    .select(COMMENT_SELECT as unknown as string[])
+    .first();
   return row ? toComment(row as Record<string, unknown>) : null;
 }
 
@@ -344,9 +387,10 @@ export async function listCommentsForIssue(
     .where({ id: issueId, workspace_id: workspaceId })
     .first('id');
   if (!issue) return [];
-  const rows = await db('comments')
-    .where({ issue_id: issueId })
-    .orderBy('created_at', 'asc');
+  const rows = await applyAuthorJoins(db('comments'))
+    .where({ 'comments.issue_id': issueId })
+    .select(COMMENT_SELECT as unknown as string[])
+    .orderBy('comments.created_at', 'asc');
   return rows.map((r: Record<string, unknown>) => toComment(r));
 }
 

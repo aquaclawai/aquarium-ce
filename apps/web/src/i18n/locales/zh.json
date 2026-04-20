@@ -2437,6 +2437,23 @@
       "reorderConflict": "另一会话已移动此问题 — 正在刷新",
       "offline": "正在重新连接…",
       "loadFailed": "无法加载问题。",
+      "createFailed": "无法创建问题 — 请重试。",
+      "createSucceeded": "已创建问题 “{{title}}”",
+      "create": {
+        "title": "新建问题",
+        "description": "描述要完成的工作。创建后,您可以在详情页面指派代理。",
+        "submit": "创建问题",
+        "creating": "创建中…",
+        "cancel": "取消",
+        "fields": {
+          "title": "标题",
+          "titlePlaceholder": "简短且以动作为导向的概述",
+          "description": "描述",
+          "descriptionPlaceholder": "可选 — 支持 Markdown",
+          "status": "状态",
+          "priority": "优先级"
+        }
+      },
       "a11y": {
         "picked": "已拾取问题 \"{{title}}\"",
         "movedWithin": "问题 \"{{title}}\" 已移至 {{column}} 栏第 {{pos}}/{{total}} 位",
@@ -2491,6 +2508,7 @@
         "delete": "删除",
         "cancelReply": "取消",
         "replyPlaceholder": "回复 {{authorName}}…",
+        "addPlaceholder": "添加评论…",
         "showMore": "查看另外 {{count}} 条回复",
         "system": {
           "statusChange": "状态从 {{from}} 变更为 {{to}}"
@@ -2751,6 +2769,7 @@
         "create": "新建令牌",
         "revoke": "撤销"
       },
+      "searchPlaceholder": "搜索令牌…",
       "columns": {
         "name": "名称",
         "created": "创建时间",

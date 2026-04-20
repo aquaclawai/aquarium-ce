@@ -97,6 +97,13 @@ export interface Issue {
   priority: IssuePriority;
   assigneeId: string | null;
   creatorUserId: string | null;
+  /**
+   * Pre-joined `users.display_name` for `creatorUserId`. Null when the
+   * creator was deleted (SET NULL) or when the row was created without an
+   * auth context. Clients MUST prefer this over `creatorUserId` when
+   * rendering; the raw UUID fallback exists only for backward-compat.
+   */
+  creatorUserDisplayName: string | null;
   position: number | null;
   dueDate: string | null;
   completedAt: string | null;
@@ -117,6 +124,13 @@ export interface Comment {
   authorType: CommentAuthorType;
   authorUserId: string | null;
   authorAgentId: string | null;
+  /**
+   * Pre-joined display name for the author — `users.display_name` when
+   * `authorType === 'user'`, `agents.name` when `authorType === 'agent'`,
+   * null for system comments or when the source row was deleted. Clients
+   * MUST prefer this over the raw IDs when rendering.
+   */
+  authorDisplayName: string | null;
   content: string;
   type: CommentType;
   parentId: string | null;

@@ -74,6 +74,7 @@ export function CommentThread({
           onSubmit={(c) => onPost(c, root.id)}
           autoFocus
           placeholderKey="issues.detail.comments.replyPlaceholder"
+          authorName={root.authorDisplayName ?? root.authorUserId ?? root.authorAgentId ?? ''}
           onCancel={() => onReply(null)}
         />
       )}

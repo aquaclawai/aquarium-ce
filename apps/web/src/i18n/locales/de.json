@@ -2437,6 +2437,23 @@
       "reorderConflict": "Eine andere Sitzung hat dieses Ticket verschoben — wird aktualisiert",
       "offline": "Verbindung wird wiederhergestellt…",
       "loadFailed": "Tickets konnten nicht geladen werden.",
+      "createFailed": "Ticket konnte nicht erstellt werden — bitte erneut versuchen.",
+      "createSucceeded": "Ticket „{{title}}“ erstellt",
+      "create": {
+        "title": "Neues Ticket",
+        "description": "Beschreiben Sie die Arbeit. Nach dem Erstellen können Sie auf der Detailseite einen Agent zuweisen.",
+        "submit": "Ticket erstellen",
+        "creating": "Wird erstellt…",
+        "cancel": "Abbrechen",
+        "fields": {
+          "title": "Titel",
+          "titlePlaceholder": "Eine kurze, handlungsorientierte Zusammenfassung",
+          "description": "Beschreibung",
+          "descriptionPlaceholder": "Optional — Markdown wird unterstützt",
+          "status": "Status",
+          "priority": "Priorität"
+        }
+      },
       "a11y": {
         "picked": "Ticket \"{{title}}\" aufgenommen",
         "movedWithin": "Ticket \"{{title}}\" verschoben zu Position {{pos}} von {{total}} in {{column}}",
@@ -2491,6 +2508,7 @@
         "delete": "Löschen",
         "cancelReply": "Abbrechen",
         "replyPlaceholder": "Antwort an {{authorName}}…",
+        "addPlaceholder": "Kommentar hinzufügen…",
         "showMore": "{{count}} weitere Antworten anzeigen",
         "system": {
           "statusChange": "Status von {{from}} zu {{to}} geändert"
@@ -2751,6 +2769,7 @@
         "create": "Neues Token",
         "revoke": "Widerrufen"
       },
+      "searchPlaceholder": "Token suchen…",
       "columns": {
         "name": "Name",
         "created": "Erstellt",
