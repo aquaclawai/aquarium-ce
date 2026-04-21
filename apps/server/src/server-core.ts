@@ -16,6 +16,12 @@ import { getRuntimeEngine } from './runtime/factory.js';
 import { startHealthMonitor } from './services/health-monitor.js';
 import { startGatewayEventRelay } from './services/gateway-event-relay.js';
 import { runDailySnapshots } from './services/snapshot-store.js';
+import { reconcileFromInstances as runtimeBridgeReconcile } from './task-dispatch/runtime-bridge.js';
+import { startRuntimeOfflineSweeper } from './task-dispatch/offline-sweeper.js';
+import { startTaskReaper } from './task-dispatch/task-reaper.js';
+import { startTaskMessageBatcher } from './task-dispatch/task-message-batcher.js';
+import { failOrphanedHostedTasks } from './task-dispatch/hosted-orphan-sweep.js';
+import { startHostedTaskWorker } from './task-dispatch/hosted-task-worker.js';
 import {
   dynamicCors,
   dynamicGeneralLimiter,
@@ -49,6 +55,13 @@ import systemConfigRoutes from './routes/system-config.js';
 import snapshotRoutes from './routes/snapshots.js';
 import instanceFilesRoutes from './routes/instance-files.js';
 import uiProxyRoutes from './routes/ui-proxy.js';
+import runtimeRoutes from './routes/runtimes.js';
+import agentRoutes from './routes/agents.js';
+import issueRoutes from './routes/issues.js';
+import commentRoutes, { issueCommentRouter } from './routes/comments.js';
+import tasksRouter from './routes/tasks.js';
+import daemonRoutes from './routes/daemon.js';
+import daemonTokenRoutes from './routes/daemon-tokens.js';
 import { attachWebSocketProxy } from './routes/instance-proxy.js';
 import { getInstance } from './services/instance-manager.js';
 import type { AuthPayload } from './middleware/auth.js';
@@ -116,6 +129,10 @@ export function createApp(options: CreateAppOptions = {}): { app: express.Applic
       standardHeaders: true,
       legacyHeaders: false,
       validate: { trustProxy: false, xForwardedForHeader: false },
+      // DAEMON-08: daemon polling must not be throttled by the global user-IP
+      // bucket. /api/daemon/* has its own per-token bucket mounted inside
+      // routes/daemon.ts (keyed on tokenHash, 1000/60s).
+      skip: (req) => req.originalUrl.startsWith('/api/daemon/'),
     }));
 
     app.use('/api/auth/login', rateLimit({
@@ -138,7 +155,15 @@ export function createApp(options: CreateAppOptions = {}): { app: express.Applic
 
   // Dynamic rate limiters (admin-configurable) — also disabled in development for E2E tests
   if (config.nodeEnv === 'production') {
-    app.use('/api/', dynamicGeneralLimiter);
+    // DAEMON-08: wrap the admin-configurable general limiter so `/api/daemon/*`
+    // skips it. Daemon traffic uses the per-token bucket inside routes/daemon.ts.
+    app.use('/api/', (req, res, next) => {
+      if (req.originalUrl.startsWith('/api/daemon/')) {
+        next();
+        return;
+      }
+      dynamicGeneralLimiter(req, res, next);
+    });
     app.use('/api/auth/login', dynamicLoginLimiter);
     app.use('/api/credentials', dynamicCredentialsLimiter);
   }
@@ -146,6 +171,21 @@ export function createApp(options: CreateAppOptions = {}): { app: express.Applic
   // Shared routes (both CE and EE)
   app.use('/api/auth', authRoutes);
   app.use('/api/instances', instanceRoutes);
+  app.use('/api/runtimes', runtimeRoutes);
+  app.use('/api/agents', agentRoutes);
+  app.use('/api/issues', issueRoutes);
+  app.use('/api/issues/:issueId/comments', issueCommentRouter);
+  app.use('/api/comments', commentRoutes);
+  // Phase 24-00: task replay + cancel surface (GET /:id/messages, /:seq/full, POST /:id/cancel)
+  app.use('/api/tasks', tasksRouter);
+  // Phase 19: daemon REST surface — authenticated with `adt_*` bearer only
+  // (requireDaemonAuth is mounted inside the router). `/api/daemon/*` is
+  // exempt from the two global `/api/` rate limiters above; its own
+  // per-token bucket (DAEMON-08) is mounted inside routes/daemon.ts.
+  app.use('/api/daemon', daemonRoutes);
+  // Phase 19-03: user-facing daemon-token management (cookie-JWT authed via
+  // `requireAuth` inside the router — AUTH1 rejects `adt_*` bearers here).
+  app.use('/api/daemon-tokens', daemonTokenRoutes);
   app.use('/api/instances', credentialRoutes);
   app.use('/api/instances', rpcProxyRoutes);
   app.use('/api/agent-types', agentTypeRoutes);
@@ -217,6 +257,17 @@ export async function startServer(server: HttpServer, options: StartServerOption
       loadExtensions: [runningFromDist ? '.js' : '.ts'],
     });
 
+    // CE: apply + assert SQLite concurrency PRAGMAs (SCH-09; pitfalls SQ1, SQ5).
+    // Must run after migrations (so DB file exists) and before downstream
+    // reconciliation / health monitor / instance work touches the DB.
+    if (config.isCE) {
+      const { getAdapter } = await import('./db/adapter.js');
+      const adapter = getAdapter();
+      if (adapter.applyBootPragmas) {
+        await adapter.applyBootPragmas(db);
+      }
+    }
+
     await options.onAfterMigrate?.();
 
     // CE mode: ensure a default admin user exists (single-user self-hosted)
@@ -252,6 +303,87 @@ export async function startServer(server: HttpServer, options: StartServerOption
 
     startHealthMonitor();
     startGatewayEventRelay();
+
+    // Step 9a: initial runtime-bridge reconcile (mirrors existing instances into the
+    // `runtimes` table as `hosted_instance` rows). Awaited so the first HTTP request
+    // after server.listen sees the full mirror (RT-03 "within 2s" SLA).
+    try {
+      await runtimeBridgeReconcile();
+    } catch (err) {
+      console.warn('[startup] initial runtime-bridge reconcile failed:', err instanceof Error ? err.message : String(err));
+    }
+    // Phase 26-01 REL-02: marker fires even on warned failure so boot-order regression tests are robust.
+    console.log('[boot] 9a runtime-bridge reconcile complete');
+
+    // Step 9a (continued): 10s safety-net loop. Catches any instance write path
+    // that forgets to call the explicit hooks (16-RESEARCH §"Why hybrid (hook + poll)").
+    // The interval lives in server-core (not inside runtime-bridge.ts) so every
+    // platform timer is visible in one file.
+    setInterval(() => {
+      runtimeBridgeReconcile().catch((err) => {
+        console.warn('[runtime-bridge] reconcile failed:', err instanceof Error ? err.message : String(err));
+      });
+    }, 10_000);
+
+    // Step 9b: hosted-orphan sweep — fails all hosted_instance tasks in
+    // dispatched/running state with reason 'hosted-orphan-on-boot'. Must run
+    // BEFORE startTaskReaper (Step 9c) so hosted orphans don't get the
+    // generic "Reaper: dispatched > 5 min without start" error after the
+    // 5-min threshold elapses (HOSTED-04 + 20-RESEARCH §Boot Orphan Cleanup).
+    // Inner try/catch: a failed sweep must NOT block server.listen; the
+    // task-reaper will eventually catch any missed rows with the generic
+    // error as a fallback.
+    try {
+      const { failed } = await failOrphanedHostedTasks();
+      if (failed > 0) {
+        console.log(`[startup] failed ${failed} hosted-orphan task(s) on boot`);
+      }
+    } catch (err) {
+      console.warn(
+        '[startup] hosted-orphan sweep failed:',
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+    // Phase 26-01 REL-02: marker fires unconditionally; failure count carried by [startup] line above when non-zero.
+    console.log('[boot] 9b hosted-orphan sweep complete');
+
+    // Step 9c: task reaper — fails tasks stuck in dispatched > 5 min or running > 2.5 h
+    // (cleans up after daemon crashes between claim and start, or mid-task deadlocks).
+    // Must start BEFORE server.listen so a stale task from a previous server crash
+    // is already being reaped when the first daemon registers.
+    startTaskReaper();
+    console.log('[boot] 9c task-reaper started');
+
+    // Step 9c.1: task_messages batcher — 500 ms tick that flushes the
+    // in-memory buffer populated by the daemon /tasks/:id/messages endpoint
+    // to the `task_messages` table. Without this, the batcher's internal
+    // Map grows unbounded and no messages are ever persisted. Discovered as
+    // a pre-existing gap during Phase 21-04 integration testing (Rule 3
+    // blocker — SC-2 asserts ≥ 3 task_messages rows, which is only possible
+    // once this ticker runs).
+    startTaskMessageBatcher();
+
+    // Step 9d: hosted-task worker — 2s tick that dispatches queued tasks for
+    // online hosted_instance runtimes via gatewayCall('chat.send', ...)
+    // (HOSTED-01/02/03). Must start AFTER startTaskReaper (Step 9c) so by
+    // the time the first tick fires, the DB is clean (Step 9b fails boot
+    // orphans; Step 9c's initial sweep reaps any residual daemon staleness).
+    startHostedTaskWorker();
+    console.log('[boot] 9d hosted-task worker started');
+
+    // Step 9e: offline sweeper — flips daemon runtimes whose last_heartbeat_at
+    // is > 90s old to status='offline'. Does NOT touch hosted_instance rows (ST1).
+    startRuntimeOfflineSweeper();
+    console.log('[boot] 9e offline-sweeper started');
+
+    // Boot-order recap (v1.4.0+):
+    //   9a runtimeBridgeReconcile     — '[boot] 9a runtime-bridge reconcile complete'
+    //   9b failOrphanedHostedTasks    — '[boot] 9b hosted-orphan sweep complete'
+    //   9c startTaskReaper            — '[boot] 9c task-reaper started'
+    //   9d startHostedTaskWorker      — '[boot] 9d hosted-task worker started'
+    //   9e startRuntimeOfflineSweeper — '[boot] 9e offline-sweeper started'
+    // Regression test: apps/server/tests/unit/boot-sequence.test.ts asserts
+    // these markers appear in order AND before 'Server listening on port'.
 
     setInterval(async () => {
       console.log('[Scheduler] Running daily snapshots...');

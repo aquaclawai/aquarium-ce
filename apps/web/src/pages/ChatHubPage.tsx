@@ -50,6 +50,7 @@ export function ChatHubPage() {
 
   const handleStatusUpdate = useCallback((message: WsMessage) => {
     const { instanceId, payload } = message;
+    if (!payload) return;
     setInstances(prev => prev.map(inst =>
       inst.id === instanceId
         ? { ...inst, status: payload.status as InstancePublic['status'], statusMessage: (payload.statusMessage as string) ?? null }

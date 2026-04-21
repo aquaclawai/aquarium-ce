@@ -20,3 +20,109 @@ jobs:
         run: npm run typecheck -w @aquaclawai/aquarium
       - name: Lint
         run: npm run lint -w @aquarium/web
+      - name: Check i18n parity
+        run: npm run check:i18n -w @aquarium/web
+      - name: Check no dangerouslySetInnerHTML in issue detail
+        run: |
+          # UI-07 / UX6 invariant: agent-authored content in the issue detail
+          # subtree never reaches the DOM via innerHTML. SafeMarkdown (wrapping
+          # rehype-sanitize) is the only rendering entry point; any direct
+          # dangerouslySetInnerHTML is a regression that CI fails on.
+          if grep -rn "dangerouslySetInnerHTML" apps/web/src/components/issues/detail/ apps/web/src/pages/IssueDetailPage.tsx; then
+            echo "::error::UX6 violation: dangerouslySetInnerHTML found in issue detail components"
+            exit 1
+          fi
+          echo "OK: no dangerouslySetInnerHTML in apps/web/src/components/issues/detail/ or IssueDetailPage.tsx"
+      - name: Check ReactMarkdown usage goes through SafeMarkdown
+        run: |
+          # UX6 invariant: every ReactMarkdown usage in the detail subtree
+          # must come from the SafeMarkdown wrapper. Only markdown.tsx is
+          # allowed to import react-markdown directly.
+          HITS=$(grep -rln "from 'react-markdown'" apps/web/src/components/issues/detail/ | grep -v "markdown.tsx" || true)
+          if [ -n "$HITS" ]; then
+            echo "::error::UX6 violation: react-markdown imported outside markdown.tsx: $HITS"
+            exit 1
+          fi
+          echo "OK: all ReactMarkdown usage in detail/ goes through SafeMarkdown"
+      - name: Verify no dangerouslySetInnerHTML in management pages
+        # UI-07 carry-forward + MGMT-03 hard invariant: agent-authored
+        # content + plaintext daemon tokens in the management subtree
+        # never reach the DOM via innerHTML. React text children only;
+        # SafeMarkdown wrapper is the sole permitted markdown entry point.
+        # Uses `! grep` form (not `if grep; then exit 1; fi`) so grep's
+        # exit code 2 (error) also fails the step — bulletproof guard.
+        run: '! grep -rE "dangerouslySetInnerHTML" apps/web/src/components/management'
+      - name: Verify plaintext token never leaks to browser storage
+        # MGMT-03 HARD invariant: the plaintext `adt_...` token MUST
+        # live only in React useState inside DaemonTokenCreateModal.
+        # No localStorage, no sessionStorage anywhere under
+        # apps/web/src/components/management/**. Grep guards the
+        # invariant against future regressions. `! grep` form
+        # ensures grep exit 2 (error) also fails the step.
+        run: '! grep -rE "localStorage|sessionStorage" apps/web/src/components/management'
+
+  integration-smoke:
+    runs-on: ubuntu-latest
+    needs: check
+    env:
+      AQUARIUM_INTEGRATION: '1'
+      # Use a CI-scoped data-dir so each run starts clean.
+      AQUARIUM_DATA_DIR: /tmp/aq-integration-ci
+      AQ_SERVER_BASE: http://localhost:3001
+      AQ_SERVER_DB_PATH: /tmp/aq-integration-ci/aquarium.db
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build shared
+        run: npm run build -w @aquarium/shared
+      - name: Build server
+        run: npm run build -w @aquaclawai/aquarium
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Prepare data-dir
+        run: mkdir -p "$AQUARIUM_DATA_DIR"
+      - name: Start Aquarium server (background)
+        # Run the built dist via node so tsx isn't in the critical path.
+        # Redirects both streams to /tmp/aq-server.log for post-failure inspection.
+        run: |
+          NODE_OPTIONS=--no-experimental-require-module \
+            node apps/server/dist/cli.js \
+            --port 3001 \
+            --host 127.0.0.1 \
+            --data-dir "$AQUARIUM_DATA_DIR" \
+            > /tmp/aq-server.log 2>&1 &
+          echo $! > /tmp/aq-server.pid
+      - name: Wait for server /api/health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:3001/api/health >/dev/null 2>&1; then
+              echo "Server is healthy after ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::server did not become healthy within 60s"
+          echo "--- server log ---"; cat /tmp/aq-server.log || true
+          exit 1
+      - name: Run @integration tier
+        # webServer: reuseExistingServer:true here because the Vite dev
+        # server is NOT needed for the daemon-integration spec (it uses
+        # absolute :3001 URLs). For hosted-runtime + kanban scenarios that
+        # hit the UI, playwright's webServer config auto-spawns Vite.
+        run: |
+          CI=true AQUARIUM_INTEGRATION=1 \
+            npx playwright test --grep @integration --project chromium --workers=1 --reporter=line
+      - name: Stop Aquarium server
+        if: always()
+        run: |
+          PID=$(cat /tmp/aq-server.pid 2>/dev/null || true)
+          if [ -n "$PID" ]; then kill "$PID" 2>/dev/null || true; fi
+      - name: Upload server log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aq-server-log
+          path: /tmp/aq-server.log

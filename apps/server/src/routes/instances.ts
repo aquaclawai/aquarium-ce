@@ -79,7 +79,10 @@ router.post('/', async (req, res) => {
     res.status(201).json({ ok: true, data: instance } satisfies ApiResponse<Instance>);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    const status = message.includes('unique') || message.includes('duplicate') ? 409 : 500;
+    // SQLite throws "UNIQUE constraint failed: ..." (uppercase); Postgres throws "duplicate key value violates unique constraint ...".
+    // Match both dialects case-insensitively so duplicate-name conflicts return 409 instead of 500.
+    const lower = message.toLowerCase();
+    const status = lower.includes('unique') || lower.includes('duplicate') ? 409 : 500;
     res.status(status).json({ ok: false, error: message } satisfies ApiResponse);
   }
 });

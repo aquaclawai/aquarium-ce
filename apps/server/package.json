@@ -4,8 +4,16 @@
   "description": "Aquarium CE - AI agent management platform",
   "type": "module",
   "license": "Apache-2.0",
-  "keywords": ["ai", "agent", "management", "openclaw", "cli"],
-  "files": ["dist/"],
+  "keywords": [
+    "ai",
+    "agent",
+    "management",
+    "openclaw",
+    "cli"
+  ],
+  "files": [
+    "dist/"
+  ],
   "bin": {
     "aquarium": "./dist/cli.js"
   },
@@ -17,6 +25,9 @@
     "build": "tsc && shx cp -r src/data dist/data",
     "start": "NODE_OPTIONS=--no-experimental-require-module node dist/index.ce.js",
     "typecheck": "tsc --noEmit",
+    "test:unit": "NODE_OPTIONS=--no-experimental-require-module tsx --test 'tests/unit/**/*.test.ts'",
+    "test:unit:watch": "NODE_OPTIONS=--no-experimental-require-module tsx --test --watch 'tests/unit/**/*.test.ts'",
+    "test:integration": "cd ../.. && CI=false npx playwright test tests/e2e/daemon-integration.spec.ts --grep @integration --project chromium",
     "migrate": "NODE_OPTIONS=--no-experimental-require-module tsx src/db/run-migrations.ts",
     "migrate:make": "knex migrate:make --knexfile src/db/knexfile.ts",
     "prepublishOnly": "npm run build -w @aquarium/shared && npm run build:ce -w @aquarium/web && npm run build && shx mkdir -p dist/web-dist && shx cp -r ../web/dist/* dist/web-dist/ && shx mkdir -p dist/node_modules/@aquarium/shared && shx cp ../../packages/shared/package.json dist/node_modules/@aquarium/shared/ && shx cp -r ../../packages/shared/dist dist/node_modules/@aquarium/shared/"
@@ -26,14 +37,16 @@
     "adm-zip": "^0.5.16",
     "ajv": "^8.18.0",
     "archiver": "^7.0.1",
+    "better-sqlite3": "^11.0.0",
+    "commander": "14.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dockerode": "^4.0.0",
     "dotenv": "^16.4.0",
+    "execa": "9.6.1",
     "express": "^4.21.0",
     "express-rate-limit": "^8.3.1",
     "helmet": "^8.0.0",
-    "better-sqlite3": "^11.0.0",
     "knex": "^3.1.0",
     "ws": "^8.18.0"
   },

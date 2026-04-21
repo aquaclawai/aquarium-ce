@@ -29,7 +29,9 @@
       "groupChats": "群聊",
       "createInstance": "创建实例",
       "backToDashboard": "返回控制台",
-      "backToInstances": "← 返回实例列表"
+      "backToInstances": "← 返回实例列表",
+      "search": "common.buttons.search",
+      "saving": "common.buttons.saving"
     },
     "labels": {
       "email": "邮箱",
@@ -79,7 +81,8 @@
       "generic": "发生错误",
       "failedToLoad": "加载失败",
       "actionFailed": "操作失败",
-      "deleteFailed": "删除失败"
+      "deleteFailed": "删除失败",
+      "loadFailed": "common.errors.loadFailed"
     },
     "time": {
       "justNow": "刚刚",
@@ -95,7 +98,8 @@
     "comingSoon": "即将推出",
     "loading": "加载中...",
     "enabled": "已启用",
-    "disabled": "已停用"
+    "disabled": "已停用",
+    "optional": "common.optional"
   },
   "auth": {
     "login": {
@@ -212,7 +216,14 @@
         "BUDGET_CRITICAL": "{{name}} 预算告急",
         "BUDGET_WARNING": "{{name}} 预算警告"
       }
-    }
+    },
+    "instanceList": {
+      "title": "dashboard.instanceList.title",
+      "subtitle": "dashboard.instanceList.subtitle",
+      "emptyTitle": "dashboard.instanceList.emptyTitle",
+      "emptyDescription": "dashboard.instanceList.emptyDescription"
+    },
+    "ofBudget": "dashboard.ofBudget"
   },
   "instance": {
     "loading": "加载中...",
@@ -240,7 +251,10 @@
       "settings": "设置",
       "security": "安全",
       "more": "更多",
-      "extensions": "扩展"
+      "extensions": "扩展",
+      "channels": "Channels",
+      "advanced": "高级",
+      "cron": "Cron"
     },
     "overview": {
       "title": "实例详情",
@@ -278,14 +292,22 @@
       "exportTemplate": "导出为模板",
       "webhookTitle": "通知 Webhook",
       "webhookDescription": "配置即时通讯推送通知的 Webhook URL（飞书、钉钉、企业微信）。",
-      "webhookProviders": { "feishu": "飞书", "dingtalk": "钉钉", "wecom": "企业微信" },
+      "webhookProviders": {
+        "feishu": "飞书",
+        "dingtalk": "钉钉",
+        "wecom": "企业微信"
+      },
       "webhookConfigured": "已配置",
       "webhookPlaceholder": "输入 {{provider}} Webhook URL",
       "apiKeyTitle": "数据源 API 密钥",
       "apiKeyDescription": "可选的 API 密钥，用于增强数据采集。在提供商网站获取密钥。",
-      "apiKeyProviders": { "tikhub": "TikHub" },
+      "apiKeyProviders": {
+        "tikhub": "TikHub"
+      },
       "apiKeyConfigured": "已配置",
-      "apiKeyPlaceholder": "输入 {{provider}} API 密钥"
+      "apiKeyPlaceholder": "输入 {{provider}} API 密钥",
+      "cloning": "instance.overview.cloning",
+      "clone": "instance.overview.clone"
     },
     "credentials": {
       "title": "凭证",
@@ -510,12 +532,24 @@
       "naming": "命名",
       "principles": "原则",
       "identity": "身份",
-      "confirm": "确认配置"
+      "confirm": "确认配置",
+      "provider": "Fournisseur IA",
+      "model": "Modele",
+      "channels": "Canaux",
+      "name": "Nom",
+      "review": "Verification"
     },
     "agentType": {
       "title": "选择代理类型",
       "subtitle": "选择您要部署的 AI 代理类型。",
-      "comingSoon": "即将推出"
+      "comingSoon": "即将推出",
+      "description": "Chaque type d'agent dispose d'un ensemble different de capacites et d'integrations.",
+      "loading": "Chargement des types d'agent…",
+      "capabilities": {
+        "webUI": "Interface web",
+        "channels": "Canaux",
+        "rpc": "RPC"
+      }
     },
     "avatar": {
       "general": "通用",
@@ -655,7 +689,13 @@
       "summaryCustom": "自定义",
       "modelSection": "模型配置",
       "model": "模型",
-      "context": "上下文"
+      "context": "上下文",
+      "summaryMemory": "wizard.confirm.summaryMemory",
+      "memoryCloudTitle": "wizard.confirm.memoryCloudTitle",
+      "memoryMemosTitle": "wizard.confirm.memoryMemosTitle",
+      "memoryNativeTitle": "wizard.confirm.memoryNativeTitle",
+      "memorySection": "wizard.confirm.memorySection",
+      "oauthPkceDesc": "Complete the sign-in in the popup window..."
     },
     "navigation": {
       "backToAssistants": "返回我的助手",
@@ -664,7 +704,8 @@
       "next": "下一步",
       "creating": "创建中…",
       "finish": "完成并开始对话",
-      "create": "创建助手"
+      "create": "创建助手",
+      "createInstance": "Creer l'instance"
     },
     "errors": {
       "failedToCreate": "创建助手失败，请稍后重试",
@@ -689,6 +730,68 @@
           "description": "完全开放，仅建议受信任环境使用"
         }
       }
+    },
+    "title": "Creer une instance",
+    "provider": {
+      "title": "Choisissez un fournisseur IA",
+      "titleNoProviders": "Fournisseur IA",
+      "description": "Selectionnez le fournisseur IA qui alimentera votre agent.",
+      "noConfigRequired": "Ce type d'agent ne necessite pas de configuration de fournisseur.",
+      "platformAI": "Utiliser l'IA de la plateforme",
+      "platformAIDescription": "Aucune cle API requise — facturation a l'utilisation",
+      "modelCount": "{{count}} modele — apportez votre propre cle",
+      "modelCount_plural": "{{count}} modeles — apportez votre propre cle"
+    },
+    "model": {
+      "title": "Modele",
+      "chooseTitle": "Choisissez un modele",
+      "selectProviderFirst": "Selectionnez d'abord un fournisseur pour choisir un modele.",
+      "platformBanner": "Utilisation de l'IA de la plateforme — aucune cle API requise. L'utilisation sera suivie et facturee via la plateforme.",
+      "selectModelFrom": "Selectionnez le modele de {{provider}} a utiliser.",
+      "apiKeyLabel": "Cle API",
+      "apiKeyRequired": "*",
+      "apiKeyPlaceholder": "Votre cle API {{provider}}",
+      "apiKeyHint": "Votre cle est stockee de maniere chiffree et n'est jamais partagee.",
+      "defaultBadge": "Par defaut",
+      "defaultModel": "Modele par defaut : {{model}}",
+      "autoSelected": "selectionne automatiquement par la plateforme"
+    },
+    "channels": {
+      "title": "Canaux",
+      "messagingTitle": "Canaux de messagerie",
+      "description": "Activez les canaux de messagerie que vous souhaitez utiliser pour votre agent. Vous pourrez les configurer apres la creation.",
+      "notSupported": "Ce type d'agent ne prend pas en charge les canaux de messagerie.",
+      "configureLater": "Vous pourrez connecter des canaux plus tard depuis les parametres de l'instance.",
+      "whatsapp": "WhatsApp",
+      "whatsappDescription": "Necessite un scan de code QR apres le demarrage de l'instance",
+      "telegram": "Telegram",
+      "telegramDescription": "Necessite un jeton de bot Telegram depuis @BotFather"
+    },
+    "name": {
+      "title": "Nommez votre instance",
+      "description": "Donnez a votre instance d'agent un nom memorable.",
+      "label": "Nom de l'instance",
+      "placeholder": "ex. Mon assistant personnel"
+    },
+    "review": {
+      "title": "Verifier et creer",
+      "description": "Verifiez votre configuration avant de creer l'instance.",
+      "fields": {
+        "agentType": "Type d'agent",
+        "billingMode": "Mode de facturation",
+        "billingPlatform": "IA de la plateforme",
+        "billingBYOK": "BYOK (apportez votre propre cle)",
+        "provider": "Fournisseur",
+        "model": "Modele",
+        "apiKey": "Cle API",
+        "apiKeyMasked": "••••••••",
+        "apiKeyNone": "(aucune)",
+        "whatsapp": "WhatsApp",
+        "telegram": "Telegram",
+        "enabled": "Active",
+        "disabled": "Desactive",
+        "instanceName": "Nom de l'instance"
+      }
     }
   },
   "groupChat": {
@@ -699,7 +802,10 @@
       "createButton": "创建群聊",
       "memberCount": "{{count}} 名成员",
       "created": "创建时间：{{date}}",
-      "mode": "模式：{{mode}}"
+      "mode": "模式：{{mode}}",
+      "subtitle": "groupChat.list.subtitle",
+      "emptyTitle": "groupChat.list.emptyTitle",
+      "emptyDescription": "groupChat.list.emptyDescription"
     },
     "create": {
       "title": "创建新群聊",
@@ -833,7 +939,12 @@
       "geoSaveButton": "保存",
       "geoAuthFailed": "无法启动 SaleVoice 认证",
       "geoSaveFailed": "无法保存 API 密钥",
-      "geoRequired": "请先连接 SaleVoice 再创建实例"
+      "geoRequired": "请先连接 SaleVoice 再创建实例",
+      "cronScheduleSection": "templates.instantiate.cronScheduleSection",
+      "cronScheduleDescription": "templates.instantiate.cronScheduleDescription",
+      "cronScheduleTimeLabel": "templates.instantiate.cronScheduleTimeLabel",
+      "cronScheduleCustomPlaceholder": "templates.instantiate.cronScheduleCustomPlaceholder",
+      "cronScheduleCustomHint": "templates.instantiate.cronScheduleCustomHint"
     }
   },
   "skillMarket": {
@@ -1060,7 +1171,13 @@
       "invalidBudget": "预算必须为正数，留空则取消限额",
       "success": "已更新 {{email}} 的预算",
       "failed": "更新预算失败"
-    }
+    },
+    "litellm": {
+      "title": "admin.litellm.title",
+      "description": "admin.litellm.description",
+      "openDashboard": "admin.litellm.openDashboard"
+    },
+    "subtitle": "admin.subtitle"
   },
   "chat": {
     "startRequired": "启动实例以使用对话功能。",
@@ -1150,7 +1267,17 @@
         "pdf": "PDF"
       }
     },
-    "scrollToBottom": "滚动到最新消息"
+    "scrollToBottom": "滚动到最新消息",
+    "composer": {
+      "srHeader": "与已指派的代理对话",
+      "placeholder": "输入消息… (⌘⏎ 发送)",
+      "send": "发送",
+      "sending": "发送中…",
+      "noAssignee": "开始聊天前请先为此问题指派代理",
+      "sendFailed": "发送失败 — 请重试",
+      "chars": "{{count}} / {{max}}",
+      "hint": "回车换行 · ⌘⏎ 发送"
+    }
   },
   "agentUI": {
     "unavailable": {
@@ -1313,7 +1440,11 @@
     "credentials": "凭证管理",
     "account": "账号管理",
     "systemConfig": "系统配置",
-    "communityEdition": "社区版"
+    "communityEdition": "社区版",
+    "issues": "问题",
+    "agents": "代理",
+    "runtimes": "运行环境",
+    "daemonTokens": "守护进程令牌"
   },
   "assistantEdit": {
     "backButton": "返回我的助手",
@@ -1415,8 +1546,12 @@
       "expired": "已过期",
       "cancelled": "已取消",
       "yes": "是",
-      "no": "否"
-    }
+      "no": "否",
+      "emptyTitle": "暂无订阅",
+      "emptyDescription": "您还没有任何活跃的订阅计划"
+    },
+    "emptyTitle": "暂无凭证",
+    "emptyDescription": "添加您的第一个 API 密钥以开始使用"
   },
   "billing": {
     "title": "费用概览",
@@ -1579,7 +1714,13 @@
       "saved": "API Key 已保存。",
       "saveFailed": "保存 API Key 失败。",
       "deleted": "API Key 已移除。",
-      "deleteFailed": "移除 API Key 失败。"
+      "deleteFailed": "移除 API Key 失败。",
+      "oauthConnected": "已连接 OAuth",
+      "disconnectButton": "断开连接",
+      "oauthButton": "使用 {{provider}} 登录",
+      "oauthDeviceHint": "使用设备代码流程 — 将打开新页面进行身份验证。",
+      "oauthHint": "将打开弹窗进行身份验证。",
+      "orDivider": "— 或使用 API Key —"
     },
     "toolCredentials": {
       "title": "工具凭证",
@@ -1667,7 +1808,8 @@
       "eventLoginFailed": "登录失败",
       "eventSignup": "注册",
       "eventPasswordChanged": "修改密码",
-      "eventLogout": "退出登录"
+      "eventLogout": "退出登录",
+      "managedByClerk": "profilePage.security.managedByClerk"
     },
     "passwordModal": {
       "title": "修改密码",
@@ -1817,7 +1959,8 @@
       "allCategories": "所有分类",
       "capabilities": "功能",
       "loadMore": "加载更多",
-      "clawhubUnavailable": "启动实例以浏览市场"
+      "clawhubUnavailable": "启动实例以浏览市场",
+      "searching": "Searching ClawHub..."
     },
     "trust": {
       "bundled": "内置",
@@ -1972,6 +2115,733 @@
       "degraded": "{{name}} 已降级 — 可能仍在从缓存中运行",
       "retry": "重试",
       "integrityMismatch": "检测到完整性不匹配"
+    }
+  },
+  "cron": {
+    "scheduleCron": "cron.scheduleCron",
+    "scheduleAt": "cron.scheduleAt",
+    "scheduleEvery": "cron.scheduleEvery",
+    "failedToLoad": "cron.failedToLoad",
+    "saveFailed": "cron.saveFailed",
+    "confirmDelete": "cron.confirmDelete",
+    "deleteFailed": "cron.deleteFailed",
+    "runFailed": "cron.runFailed",
+    "instanceNotRunning": "Start your instance to manage scheduled tasks.",
+    "createJob": "New Task",
+    "editJob": "cron.editJob",
+    "form": {
+      "name": "cron.form.name",
+      "namePlaceholder": "cron.form.namePlaceholder",
+      "description": "cron.form.description",
+      "enabled": "cron.form.enabled",
+      "schedule": "cron.form.schedule",
+      "seconds": "cron.form.seconds",
+      "minutes": "cron.form.minutes",
+      "hours": "cron.form.hours",
+      "payload": "cron.form.payload",
+      "systemEvent": "cron.form.systemEvent",
+      "agentTurn": "cron.form.agentTurn",
+      "systemEventPlaceholder": "cron.form.systemEventPlaceholder",
+      "agentTurnMessagePlaceholder": "cron.form.agentTurnMessagePlaceholder",
+      "modelPlaceholder": "cron.form.modelPlaceholder",
+      "timeoutPlaceholder": "cron.form.timeoutPlaceholder",
+      "sessionTarget": "cron.form.sessionTarget",
+      "isolated": "cron.form.isolated",
+      "main": "cron.form.main",
+      "delivery": "cron.form.delivery",
+      "deliveryNone": "cron.form.deliveryNone",
+      "deliveryAnnounce": "cron.form.deliveryAnnounce",
+      "channelPlaceholder": "cron.form.channelPlaceholder",
+      "toPlaceholder": "cron.form.toPlaceholder"
+    },
+    "saving": "Saving...",
+    "create": "cron.create",
+    "save": "Save",
+    "cancel": "Cancel",
+    "title": "Scheduled Tasks",
+    "noJobs": "No scheduled tasks yet. Create one to automate recurring work.",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "nextRun": "cron.nextRun",
+    "disable": "cron.disable",
+    "enable": "cron.enable",
+    "runNow": "Run Now",
+    "viewHistory": "cron.viewHistory",
+    "deleteJob": "cron.deleteJob",
+    "runHistory": "cron.runHistory",
+    "noRuns": "No runs yet.",
+    "subtitle": "Automate recurring tasks for your AI agent.",
+    "loading": "Loading tasks...",
+    "name": "Name",
+    "namePlaceholder": "e.g., Daily Report",
+    "description": "Description",
+    "descriptionPlaceholder": "What this task does...",
+    "schedule": "Schedule",
+    "scheduleType": "Type",
+    "cronExpr": "Cron Expression",
+    "cronExprPlaceholder": "0 9 * * *",
+    "cronExprHelp": "Standard 5-field cron: minute hour day month weekday",
+    "timezone": "Timezone",
+    "atDatetime": "Run At",
+    "everyInterval": "Interval",
+    "everyMs": "Every (minutes)",
+    "payload": "Task Action",
+    "payloadType": "Action Type",
+    "agentTurn": "Agent Prompt",
+    "systemEvent": "System Event",
+    "message": "Prompt",
+    "messagePlaceholder": "What should the agent do?",
+    "eventText": "Event Text",
+    "eventTextPlaceholder": "Event to trigger...",
+    "delivery": "Results Delivery",
+    "deliveryMode": "Delivery",
+    "deliveryNone": "None",
+    "deliveryAnnounce": "Announce to channel",
+    "deliveryChannel": "Channel",
+    "deliveryTo": "Recipient",
+    "sessionTarget": "Session",
+    "sessionMain": "Main session",
+    "sessionIsolated": "Isolated session",
+    "model": "Model override",
+    "timeout": "Timeout (seconds)",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this scheduled task?",
+    "runNowConfirm": "Run this task now?",
+    "running": "Running...",
+    "history": "Run History",
+    "status": {
+      "ok": "Success",
+      "error": "Failed",
+      "skipped": "Skipped",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "state": {
+      "nextRun": "Next run",
+      "lastRun": "Last run",
+      "lastStatus": "Last status",
+      "lastDuration": "Duration",
+      "errors": "Consecutive errors"
+    },
+    "scheduleTypes": {
+      "cron": "Cron schedule",
+      "at": "One-time",
+      "every": "Interval"
+    }
+  },
+  "channels": {
+    "drawer": {
+      "pluginRequired": "Plugin Required",
+      "configured": "Configured",
+      "disconnectConfirm": "This will remove your {{channel}} credentials and disconnect the bot. Continue?",
+      "status": "Status",
+      "pluginRequiredDesc": "{{channel}} requires the {{pluginId}} plugin. Install it to continue.",
+      "learnMore": "Learn more",
+      "configuration": "Configuration",
+      "notConfigured": "Not yet configured",
+      "policies": "Access Policies",
+      "incompatible": "This channel is not compatible with your current instance image."
+    },
+    "status": {
+      "lastMessage": "Last msg: {{time}}",
+      "applying": "Applying...",
+      "notConfigured": "Not configured",
+      "pendingRestart": "channels.status.pendingRestart",
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "stopped": "Stopped"
+    },
+    "actions": {
+      "configure": "Configure",
+      "setup": "Set up",
+      "installing": "Installing...",
+      "installPlugin": "Install Plugin",
+      "saving": "Saving...",
+      "save": "Save & Apply",
+      "disconnect": "Disconnect",
+      "retry": "Retry",
+      "enable": "Enable",
+      "disable": "Disable"
+    },
+    "title": "Channels",
+    "subtitle": "Connect your AI agent to messaging platforms.",
+    "instanceNotRunning": "Start your instance to manage channels.",
+    "noChannelsAvailable": "No channels available for this agent type.",
+    "whatsapp": {
+      "connected": "channels.whatsapp.connected",
+      "qrExpired": "channels.whatsapp.qrExpired",
+      "sessionPersists": "channels.whatsapp.sessionPersists",
+      "scanInstructions": "channels.whatsapp.scanInstructions",
+      "connect": "channels.whatsapp.connect",
+      "connecting": "channels.whatsapp.connecting",
+      "label": "WhatsApp",
+      "description": "Connect via QR code — uses your existing WhatsApp account."
+    },
+    "applying": "Applying changes...",
+    "policies": {
+      "dmPolicy": "DM Policy",
+      "groupPolicy": "Group Policy",
+      "allowList": "Allow List",
+      "addEntry": "Add",
+      "pairing": "Pairing",
+      "pairingDesc": "New contacts must be approved before messaging.",
+      "allowlist": "Allow List",
+      "allowlistDesc": "Only listed contacts can message.",
+      "open": "Open",
+      "openDesc": "Anyone can message the bot.",
+      "disabled": "Disabled",
+      "disabledDesc": "All messages blocked."
+    },
+    "capabilities": {
+      "dm": "DM",
+      "groups": "Groups",
+      "media": "Media",
+      "reactions": "Reactions",
+      "threads": "Threads",
+      "streaming": "Streaming"
+    },
+    "telegram": {
+      "label": "Telegram",
+      "description": "Create a bot via @BotFather and paste the token.",
+      "fields": {
+        "botToken": "Bot Token",
+        "botTokenPlaceholder": "123456789:ABCdefGHI...",
+        "botTokenHelp": "Get this from @BotFather on Telegram."
+      }
+    },
+    "discord": {
+      "label": "Discord",
+      "description": "Create a bot in the Discord Developer Portal.",
+      "fields": {
+        "token": "Bot Token",
+        "tokenHelp": "Discord Developer Portal > Bot > Token."
+      }
+    },
+    "feishu": {
+      "label": "飞书 / Lark",
+      "description": "Connect via Feishu Open Platform enterprise app.",
+      "fields": {
+        "appId": "App ID",
+        "appIdHelp": "From Feishu Open Platform console.",
+        "appSecret": "App Secret",
+        "domain": "Domain",
+        "domainFeishu": "飞书 (China)",
+        "domainLark": "Lark (Global)"
+      }
+    },
+    "slack": {
+      "label": "Slack",
+      "description": "Connect via Slack Socket Mode.",
+      "fields": {
+        "appToken": "App Token",
+        "appTokenHelp": "App-Level Token (starts with xapp-).",
+        "botToken": "Bot Token",
+        "botTokenHelp": "Bot User OAuth Token (starts with xoxb-)."
+      }
+    },
+    "qqbot": {
+      "label": "QQ Bot",
+      "description": "Connect via official QQ Bot API.",
+      "fields": {
+        "appId": "App ID",
+        "appIdHelp": "From QQ Open Platform.",
+        "clientSecret": "Client Secret"
+      }
+    },
+    "wechat": {
+      "label": "WeChat",
+      "description": "Connect via QR code login."
+    },
+    "msteams": {
+      "label": "Microsoft Teams",
+      "description": "Connect via Azure Bot Framework.",
+      "fields": {
+        "appId": "App ID",
+        "appPassword": "App Password",
+        "tenantId": "Tenant ID"
+      }
+    },
+    "signal": {
+      "label": "Signal",
+      "description": "Connect via signal-cli.",
+      "fields": {
+        "account": "Phone Number",
+        "accountHelp": "E.164 format."
+      }
+    },
+    "googlechat": {
+      "label": "Google Chat",
+      "description": "Connect via service account.",
+      "fields": {
+        "serviceAccountJson": "Service Account JSON"
+      }
+    },
+    "line": {
+      "label": "LINE",
+      "description": "Connect via LINE Messaging API.",
+      "fields": {
+        "channelAccessToken": "Channel Access Token",
+        "channelSecret": "Channel Secret"
+      }
+    },
+    "matrix": {
+      "label": "Matrix",
+      "description": "Connect to any Matrix homeserver.",
+      "fields": {
+        "homeserver": "Homeserver URL",
+        "accessToken": "Access Token"
+      }
+    }
+  },
+  "issues": {
+    "board": {
+      "title": "问题",
+      "actions": {
+        "create": "新建问题",
+        "filter": "筛选",
+        "sort": "排序",
+        "hideCompleted": "隐藏已完成"
+      },
+      "columns": {
+        "backlog": "待办列表",
+        "todo": "待办",
+        "in_progress": "进行中",
+        "done": "已完成",
+        "blocked": "已阻塞",
+        "cancelled": "已取消"
+      },
+      "columnCount": "{{count}}",
+      "priority": {
+        "urgent": "紧急",
+        "high": "高",
+        "medium": "中",
+        "low": "低",
+        "none": "无"
+      },
+      "empty": {
+        "heading": "暂无问题",
+        "body": "创建第一个问题即可开始为智能体分配工作。",
+        "cta": "新建问题"
+      },
+      "emptyColumn": "暂无问题",
+      "dropHere": "拖放到此处",
+      "noMatches": "无符合筛选条件的问题",
+      "clearFilters": "清除筛选",
+      "reorderFailed": "无法移动问题 — 请重试",
+      "statusChangeFailed": "无法更新状态 — 请重试",
+      "reorderConflict": "另一会话已移动此问题 — 正在刷新",
+      "offline": "正在重新连接…",
+      "loadFailed": "无法加载问题。",
+      "createFailed": "无法创建问题 — 请重试。",
+      "createSucceeded": "已创建问题 “{{title}}”",
+      "create": {
+        "title": "新建问题",
+        "description": "描述要完成的工作。创建后,您可以在详情页面指派代理。",
+        "submit": "创建问题",
+        "creating": "创建中…",
+        "cancel": "取消",
+        "fields": {
+          "title": "标题",
+          "titlePlaceholder": "简短且以动作为导向的概述",
+          "description": "描述",
+          "descriptionPlaceholder": "可选 — 支持 Markdown",
+          "status": "状态",
+          "priority": "优先级"
+        }
+      },
+      "a11y": {
+        "picked": "已拾取问题 \"{{title}}\"",
+        "movedWithin": "问题 \"{{title}}\" 已移至 {{column}} 栏第 {{pos}}/{{total}} 位",
+        "movedAcross": "问题 \"{{title}}\" 已移至 {{column}} 栏，第 {{pos}}/{{total}} 位",
+        "dropped": "已将 \"{{title}}\" 放入 {{column}}",
+        "cancelled": "移动已取消。\"{{title}}\" 返回原位置"
+      },
+      "tooltip": {
+        "dragHint": "拖动或按空格键移动",
+        "keyboardHint": "空格键抓取 · ↑↓ 移动 · ← → 切换栏 · 空格键放下 · Esc 取消"
+      }
+    },
+    "detail": {
+      "back": "返回问题列表",
+      "titleSuffix": "问题 #{{issueNumber}} · {{workspaceName}}",
+      "notFound": "未找到问题",
+      "loadFailed": "无法加载此问题",
+      "issueNumber": "#{{number}}",
+      "postedMeta": "由 {{author}} 于 {{relativeTime}} 创建",
+      "assignee": "负责人",
+      "unassigned": "未指派",
+      "priority": "优先级",
+      "status": "状态",
+      "dueDate": "截止",
+      "noDescription": "暂无描述",
+      "actions": {
+        "edit": "编辑",
+        "assignAgent": "指派代理",
+        "changeStatus": "修改状态",
+        "delete": "删除问题"
+      },
+      "confirmDelete": {
+        "title": "删除此问题？",
+        "body": "此操作无法撤销，所有评论和任务历史都将被移除。",
+        "confirm": "删除"
+      },
+      "comments": {
+        "header": "评论",
+        "count": "{{count}}",
+        "empty": {
+          "heading": "暂无评论",
+          "body": "向已指派的代理提问或留言，开始对话。"
+        },
+        "author": {
+          "user": "{{displayName}}",
+          "agent": "{{agentName}} · 代理",
+          "system": "系统"
+        },
+        "postedAt": "{{relativeTime}}",
+        "reply": "回复",
+        "edit": "编辑",
+        "delete": "删除",
+        "cancelReply": "取消",
+        "replyPlaceholder": "回复 {{authorName}}…",
+        "addPlaceholder": "添加评论…",
+        "showMore": "查看另外 {{count}} 条回复",
+        "system": {
+          "statusChange": "状态从 {{from}} 变更为 {{to}}"
+        },
+        "postFailed": "评论发布失败 — 请重试",
+        "confirmDelete": {
+          "title": "删除此评论？",
+          "body": "此操作无法撤销。",
+          "confirm": "删除"
+        }
+      },
+      "task": {
+        "header": "当前任务",
+        "idle": "暂无活动任务",
+        "idleBody": "将此问题指派给代理或在下方聊天即可启动任务。",
+        "state": {
+          "queued": "已排队",
+          "dispatched": "已派发",
+          "running": "运行中",
+          "completed": "已完成",
+          "failed": "失败",
+          "cancelled": "已取消"
+        },
+        "startedAt": "于 {{relativeTime}} 开始",
+        "completedAt": "于 {{relativeTime}} 完成",
+        "cancel": "取消任务",
+        "cancelConfirm": {
+          "title": "取消此任务？",
+          "body": "代理将尽快停止，部分结果会被保留。",
+          "confirm": "取消任务"
+        },
+        "cancelFailed": "取消失败 — 请重试",
+        "historyHeader": "任务历史",
+        "historyEmpty": "暂无历史任务",
+        "stream": {
+          "waiting": "等待代理响应…",
+          "stalled": "{{seconds}} 秒无活动"
+        },
+        "kind": {
+          "text": "回复",
+          "thinking": "思考",
+          "tool_use": "{{toolName}}",
+          "tool_result": "{{toolName}} 结果",
+          "error": "错误"
+        },
+        "seqMeta": "seq {{seq}} · {{relativeTime}}",
+        "truncated": "⋯ 已截断（显示 {{shown}} / {{total}} 字节）",
+        "showFull": "查看完整内容",
+        "showFullLoading": "加载中…",
+        "showFullFailed": "无法加载完整消息",
+        "collapse": "收起",
+        "toolInputLabel": "输入",
+        "toolOutputLabel": "输出"
+      },
+      "ws": {
+        "reconnecting": "正在重新连接 — 补播遗漏消息…",
+        "replayDone": "已同步",
+        "paused": "在后台已暂停",
+        "resumed": "已恢复"
+      },
+      "a11y": {
+        "newMessages": "{{count}} 条新代理消息",
+        "taskCompleted": "任务已完成",
+        "taskFailed": "任务失败",
+        "taskCancelled": "任务已取消",
+        "replaying": "正在重新连接并补播遗漏消息",
+        "replayDone": "已与代理同步"
+      }
+    }
+  },
+  "management": {
+    "agents": {
+      "title": "代理",
+      "description": "代理定义需要完成的工作以及完成方式。将代理分配给某个问题后即可启动任务。",
+      "actions": {
+        "create": "新建代理",
+        "edit": "编辑",
+        "archive": "归档",
+        "restore": "恢复"
+      },
+      "tabs": {
+        "active": "活跃",
+        "archived": "已归档"
+      },
+      "filter": {
+        "search": "搜索代理…"
+      },
+      "columns": {
+        "name": "名称",
+        "runtime": "运行环境",
+        "status": "状态",
+        "maxConcurrent": "最大并发",
+        "updated": "更新时间",
+        "actions": "操作"
+      },
+      "noRuntime": "未设置运行环境",
+      "archived": "已归档",
+      "status": {
+        "idle": "空闲",
+        "working": "工作中",
+        "blocked": "已阻塞",
+        "error": "错误",
+        "offline": "离线"
+      },
+      "empty": {
+        "heading": "暂无代理",
+        "body": "创建第一个代理即可开始分配工作。",
+        "cta": "新建代理"
+      },
+      "noMatches": {
+        "heading": "没有代理匹配您的搜索",
+        "body": "请尝试其他名称。",
+        "clear": "清除搜索"
+      },
+      "archivedEmpty": "暂无已归档的代理",
+      "form": {
+        "titleCreate": "创建代理",
+        "titleEdit": "编辑代理",
+        "name": {
+          "label": "名称",
+          "placeholder": "例如：代码审阅员",
+          "hint": "简短、易于识别的名称。在工作区内必须唯一。"
+        },
+        "instructions": {
+          "label": "指令",
+          "placeholder": "描述该代理应做什么以及应如何行动。支持 Markdown。",
+          "hint": "支持 Markdown。该文本会在每次任务中发送给代理。",
+          "counter": "{{count}} / {{max}} 字符"
+        },
+        "runtime": {
+          "label": "运行环境",
+          "placeholder": "选择运行环境",
+          "none": "无运行环境（未分配前代理无法运行任务）",
+          "hint": "运行环境是代理代码实际执行的位置。在「运行环境」页面中添加。"
+        },
+        "customEnv": {
+          "label": "环境变量",
+          "hint": "任务启动时传递给守护进程运行环境。托管实例会忽略这些变量并给出警告。",
+          "keyPlaceholder": "KEY",
+          "valuePlaceholder": "值",
+          "addRow": "添加变量",
+          "removeRow": "移除变量",
+          "duplicateKey": "键 \"{{key}}\" 重复 — 仅保留最后一个值"
+        },
+        "customArgs": {
+          "label": "命令行参数",
+          "hint": "CLI 调用时追加的额外参数。每个标签一个。",
+          "placeholder": "输入参数并按回车",
+          "remove": "移除参数 \"{{arg}}\""
+        },
+        "maxConcurrent": {
+          "label": "最大并发任务数",
+          "hint": "该代理同时可运行的任务数。必须介于 1 到 16 之间。",
+          "validation": "必须介于 1 到 16 之间"
+        },
+        "actions": {
+          "create": "创建代理",
+          "save": "保存更改"
+        },
+        "validation": {
+          "nameRequired": "名称不能为空"
+        },
+        "saveSuccess": "代理已保存",
+        "saveFailed": "无法保存代理 — 请重试",
+        "nameCollision": "工作区内已存在同名代理"
+      },
+      "archiveConfirm": {
+        "title": "归档 \"{{name}}\" 吗？",
+        "body": "此操作会保留所有历史任务和评论，但在恢复之前无法再分配新工作。已排队的任务保留在队列中。",
+        "confirm": "归档代理"
+      },
+      "archive": {
+        "success": "代理已归档",
+        "failed": "归档失败 — 请重试"
+      },
+      "restoreConfirm": {
+        "title": "恢复 \"{{name}}\" 吗？",
+        "body": "代理将再次可被分配。已归档的问题仍保持归档状态。",
+        "confirm": "恢复代理"
+      },
+      "restore": {
+        "success": "代理已恢复",
+        "failed": "恢复失败 — 请重试"
+      },
+      "loadFailed": "无法加载代理。{{retry}}",
+      "a11y": {
+        "saved": "代理 \"{{name}}\" 已保存",
+        "archived": "代理 \"{{name}}\" 已归档",
+        "restored": "代理 \"{{name}}\" 已恢复"
+      }
+    },
+    "runtimes": {
+      "title": "运行环境",
+      "description": "运行环境是代理执行的位置。当实例启动或守护进程注册时，会自动添加。",
+      "filter": {
+        "search": "搜索运行环境…",
+        "all": "全部",
+        "hostedInstance": "托管",
+        "localDaemon": "本地守护进程",
+        "externalCloudDaemon": "云端守护进程",
+        "count": "{{count}}"
+      },
+      "columns": {
+        "name": "名称",
+        "kind": "类型",
+        "provider": "提供方",
+        "status": "状态",
+        "device": "设备",
+        "lastHeartbeat": "最近心跳",
+        "actions": "操作"
+      },
+      "neverHeartbeat": "从未",
+      "heartbeatJustNow": "刚刚",
+      "heartbeatRelative": "{{relativeTime}}",
+      "heartbeatAbsolute": "{{absoluteTime}}",
+      "noDeviceInfo": "—",
+      "kind": {
+        "hostedInstance": "托管",
+        "localDaemon": "本地守护进程",
+        "externalCloudDaemon": "云端守护进程"
+      },
+      "status": {
+        "online": "在线",
+        "offline": "离线",
+        "error": "错误"
+      },
+      "empty": {
+        "heading": "暂无运行环境",
+        "body": "启动一个 Aquarium 实例，或在您的机器上运行 `aquarium daemon start` 即可添加运行环境。"
+      },
+      "noMatches": {
+        "heading": "没有运行环境匹配您的筛选",
+        "clear": "清除筛选"
+      },
+      "loadFailed": "无法加载运行环境。{{retry}}",
+      "detail": {
+        "title": "{{name}}",
+        "kind": "类型",
+        "provider": "提供方",
+        "status": "状态",
+        "id": "运行环境 ID",
+        "daemonId": "守护进程 ID",
+        "instanceId": "实例 ID",
+        "createdAt": "创建时间",
+        "lastHeartbeatAt": "最近心跳",
+        "deviceInfoHeader": "设备信息",
+        "metadataHeader": "元数据",
+        "close": "关闭详情"
+      },
+      "a11y": {
+        "statusChanged": "运行环境 \"{{name}}\" 当前状态：{{status}}"
+      }
+    },
+    "daemonTokens": {
+      "title": "守护进程令牌",
+      "description": "守护进程令牌用于让 Aquarium CLI 将本机或其他机器连接到您的工作区。每个令牌的明文仅在创建时显示一次 — 请妥善保存。",
+      "actions": {
+        "create": "新建令牌",
+        "revoke": "撤销"
+      },
+      "searchPlaceholder": "搜索令牌…",
+      "columns": {
+        "name": "名称",
+        "created": "创建时间",
+        "expires": "到期时间",
+        "lastUsed": "最近使用",
+        "status": "状态",
+        "actions": "操作"
+      },
+      "neverExpires": "永不",
+      "neverUsed": "从未",
+      "relative": "{{relativeTime}}",
+      "status": {
+        "active": "有效",
+        "expiringSoon": "即将到期",
+        "expired": "已过期",
+        "revoked": "已撤销"
+      },
+      "empty": {
+        "heading": "暂无令牌",
+        "body": "创建一个令牌即可将守护进程连接到此工作区。",
+        "cta": "新建令牌"
+      },
+      "loadFailed": "无法加载令牌。{{retry}}",
+      "createModal": {
+        "title": "新建守护进程令牌",
+        "name": {
+          "label": "友好名称",
+          "placeholder": "例如：我的笔记本",
+          "hint": "便于您在列表中识别的标签。最多 100 字符。",
+          "required": "名称不能为空",
+          "tooLong": "名称不能超过 100 字符"
+        },
+        "expiry": {
+          "label": "到期时间",
+          "never": "永不",
+          "hint": "可选。达到此日期后令牌将停止工作。",
+          "clear": "清除日期",
+          "future": "到期时间必须在将来"
+        },
+        "actions": {
+          "create": "创建令牌",
+          "creating": "创建中…"
+        },
+        "createFailed": "无法创建令牌 — 请重试"
+      },
+      "copyOnce": {
+        "title": "复制您的新令牌",
+        "warning": "这是您唯一一次看到此令牌。请立即复制并妥善保存 — 我们无法再次显示。",
+        "warningIcon": "警告",
+        "tokenLabel": "令牌",
+        "copyButton": "复制到剪贴板",
+        "copied": "已复制到剪贴板",
+        "copyFailed": "复制失败 — 请手动选择文本并复制",
+        "dismiss": "我已保存",
+        "confirmClose": {
+          "title": "关闭但未保存令牌？",
+          "body": "您将无法再次看到此令牌。如果现在关闭，则需要重新创建。",
+          "confirm": "仍然关闭",
+          "cancel": "继续显示"
+        }
+      },
+      "revokeConfirm": {
+        "title": "撤销 \"{{name}}\" 吗？",
+        "body": "使用此令牌的守护进程将在一秒内失去访问权限。正在运行的任务会继续执行。此操作无法撤销。",
+        "confirm": "撤销令牌"
+      },
+      "revoke": {
+        "success": "令牌已撤销",
+        "failed": "撤销失败 — 请重试"
+      },
+      "a11y": {
+        "created": "令牌 \"{{name}}\" 已创建",
+        "revoked": "令牌 \"{{name}}\" 已撤销",
+        "copied": "令牌已复制到剪贴板"
+      }
     }
   }
 }

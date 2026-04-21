@@ -310,13 +310,28 @@ export type WsEventType =
   | 'group_chat:error'
   | 'instance:snapshot_restored'
   | 'notification'
-  | 'security_event';
+  | 'security_event'
+  | 'issue:created'
+  | 'issue:updated'
+  | 'issue:deleted'
+  | 'issue:reordered'
+  | 'task:cancelled'
+  | 'task:completed'
+  | 'task:dispatched'
+  | 'task:failed'
+  | 'task:message'
+  | 'task:started'
+  | 'comment:posted'
+  | 'comment:updated'
+  | 'comment:deleted';
 
 export interface WsMessage {
   type: WsEventType;
   instanceId?: string;
   groupChatId?: string;
-  payload: Record<string, unknown>;
+  issueId?: string;
+  taskId?: string;
+  payload?: Record<string, unknown>;
 }
 
 // === Profile ===
