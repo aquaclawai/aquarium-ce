@@ -8,7 +8,8 @@
     "build": "npm run build -w @aquarium/shared && npm run build -w @aquaclawai/aquarium && npm run build:ce -w @aquarium/web",
     "typecheck": "npm run build -w @aquarium/shared && npm run typecheck -w @aquaclawai/aquarium",
     "lint": "npm run lint -w @aquarium/web",
-    "start": "node apps/server/dist/cli.js"
+    "start": "node apps/server/dist/cli.js",
+    "test:integration": "CI=false AQUARIUM_INTEGRATION=1 npx playwright test --grep @integration --project chromium"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0"

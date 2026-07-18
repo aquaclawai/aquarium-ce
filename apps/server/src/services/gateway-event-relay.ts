@@ -126,6 +126,74 @@ export interface ChatEventData {
 // Map of "instanceId:sessionKey" -> callback
 const chatEventCallbacks = new Map<string, ChatEventCallback>();
 
+// ── Chat Stream Listener System ──
+// Multi-shot listeners keyed on "instanceId:sessionKey" — fire for every chat
+// frame (streaming / final / error). Sits alongside chatEventCallbacks (which
+// is a one-shot Promise-backed resolver used by waitForChatCompletion) so the
+// hosted worker (Phase 20-02) can observe every content-part delta without
+// breaking the one-shot contract.
+
+export interface ChatStreamPayload {
+  sessionKey: string;
+  state: 'streaming' | 'final' | 'error';
+  content?: unknown;
+  message?: { role?: string; content?: unknown };
+  role?: string;
+  messageId?: string;
+  runId?: string;
+  errorMessage?: string;
+}
+
+const chatStreamListeners = new Map<string, Set<(payload: ChatStreamPayload) => void>>();
+
+/**
+ * Fan out a chat event frame to all registered stream listeners for the given
+ * (instanceId, userSessionKey) pair. Called from the chat-event router AND from
+ * `__dispatchChatFrameForTests__`. Per-listener errors are caught + logged so
+ * one bad consumer cannot break the others or the router loop.
+ */
+function dispatchChatStream(
+  instanceId: string,
+  userSessionKey: string,
+  payload: Record<string, unknown>,
+): void {
+  const key = `${instanceId}:${userSessionKey}`;
+  const set = chatStreamListeners.get(key);
+  if (!set || set.size === 0) return;
+
+  const rawState = payload.state;
+  const state: ChatStreamPayload['state'] =
+    rawState === 'final' || rawState === 'error' || rawState === 'streaming'
+      ? rawState
+      : 'streaming';
+  const message = payload.message as { role?: string; content?: unknown } | undefined;
+
+  const streamPayload: ChatStreamPayload = {
+    sessionKey: userSessionKey,
+    state,
+    content: payload.content,
+    message,
+    role: payload.role as string | undefined,
+    messageId: payload.messageId as string | undefined,
+    runId: payload.runId as string | undefined,
+    errorMessage: payload.errorMessage as string | undefined,
+  };
+
+  // Snapshot the Set so a listener that unsubscribes itself mid-iteration
+  // cannot corrupt traversal.
+  const snapshot = [...set];
+  for (const cb of snapshot) {
+    try {
+      cb(streamPayload);
+    } catch (err) {
+      console.warn(
+        '[gateway-relay] chat stream listener threw:',
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+  }
+}
+
 // ── Pending Exec Approvals ──
 
 interface PendingApproval extends ExecApprovalRequest {
@@ -454,6 +522,13 @@ class PersistentGatewayClient {
                   }
                 }
 
+                // ── Multi-shot stream-listener fan-out ──
+                // Fires for every state value (including 'streaming' frames that
+                // the one-shot callback above ignores). Plan 20-01.
+                if (chatPayload) {
+                  dispatchChatStream(this.instanceId, userSessionKey, chatPayload);
+                }
+
                 const sendChatToSession = (payload: Record<string, unknown>) => {
                   sendToChatSession(this.instanceId, userSessionKey, {
                     type: 'instance:gateway_event',
@@ -528,6 +603,14 @@ class PersistentGatewayClient {
             clearTimeout(cb.timer);
             cb.reject(new Error(`Gateway connection lost for instance ${this.instanceId}`));
             chatEventCallbacks.delete(key);
+          }
+        }
+
+        // Clean up any chat stream listeners for this instance (Plan 20-01).
+        for (const [key, listeners] of chatStreamListeners) {
+          if (key.startsWith(`${this.instanceId}:`)) {
+            listeners.clear();
+            chatStreamListeners.delete(key);
           }
         }
 
@@ -675,6 +758,14 @@ class PersistentGatewayClient {
         clearTimeout(cb.timer);
         cb.reject(new Error(`Gateway connection closed for instance ${this.instanceId}`));
         chatEventCallbacks.delete(key);
+      }
+    }
+
+    // Clean up any chat stream listeners for this instance (Plan 20-01).
+    for (const [key, listeners] of chatStreamListeners) {
+      if (key.startsWith(`${this.instanceId}:`)) {
+        listeners.clear();
+        chatStreamListeners.delete(key);
       }
     }
 
@@ -847,4 +938,84 @@ export function cancelChatCompletion(instanceId: string, sessionKey: string): vo
     cb.reject(new Error('Chat completion cancelled'));
     chatEventCallbacks.delete(compositeKey);
   }
+}
+
+/**
+ * Register a multi-shot listener for every chat event frame matching
+ * (instanceId, sessionKey). Fires for state='streaming', 'final', AND 'error'.
+ * Returns a disposer; every consumer MUST call it in a finally block
+ * (see 20-RESEARCH §Pitfall 1) so listeners do not accumulate across
+ * reconnects. The gateway-event-relay itself also clears listeners on
+ * ws close / client close as a defensive backstop.
+ *
+ * This is a pure observation hook — it does NOT mutate instance / runtime
+ * status, and it does NOT replace the one-shot `waitForChatCompletion`
+ * Promise contract (both can be registered for the same session).
+ */
+export function registerChatStreamListener(
+  instanceId: string,
+  sessionKey: string,
+  cb: (payload: ChatStreamPayload) => void,
+): () => void {
+  const key = `${instanceId}:${sessionKey}`;
+  let set = chatStreamListeners.get(key);
+  if (!set) {
+    set = new Set();
+    chatStreamListeners.set(key, set);
+  }
+  set.add(cb);
+
+  return () => {
+    const s = chatStreamListeners.get(key);
+    if (!s) return;
+    s.delete(cb);
+    if (s.size === 0) {
+      chatStreamListeners.delete(key);
+    }
+  };
+}
+
+/**
+ * TEST-ONLY: synthesise a chat event frame as if it arrived from the gateway.
+ *
+ * Drives the same logic as the chat-event router at lines 425-499 (prefix strip,
+ * one-shot callback resolution for final/error, stream-listener fan-out) WITHOUT
+ * the WS / DLP side-effects. Unit tests in
+ * `apps/server/tests/unit/gateway-event-relay-stream.test.ts` are the sole
+ * legitimate callers. Do NOT invoke from production code.
+ */
+export function __dispatchChatFrameForTests__(
+  instanceId: string,
+  rawSessionKey: string,
+  payload: Record<string, unknown>,
+): void {
+  // Mirror the router: strip the gateway's 'agent:<agentId>:' prefix.
+  const userSessionKey = rawSessionKey.replace(/^agent:[^:]+:/, '');
+
+  // One-shot callback resolution (waitForChatCompletion).
+  const cbKey = `${instanceId}:${userSessionKey}`;
+  const callback = chatEventCallbacks.get(cbKey);
+  if (callback) {
+    const state = payload.state as string | undefined;
+    if (state === 'final') {
+      clearTimeout(callback.timer);
+      chatEventCallbacks.delete(cbKey);
+      const messageObj = payload.message as Record<string, unknown> | undefined;
+      callback.resolve({
+        sessionKey: userSessionKey,
+        state: 'final',
+        content: messageObj?.content ?? payload.content,
+        role: (messageObj?.role ?? payload.role) as string | undefined,
+        messageId: payload.messageId as string | undefined,
+      });
+    } else if (state === 'error') {
+      clearTimeout(callback.timer);
+      chatEventCallbacks.delete(cbKey);
+      const errorMessage = (payload.errorMessage as string) || 'Agent run failed';
+      callback.reject(new Error(errorMessage));
+    }
+  }
+
+  // Multi-shot stream-listener fan-out.
+  dispatchChatStream(instanceId, userSessionKey, payload);
 }

@@ -27,6 +27,14 @@ export interface DbAdapter {
 
   /** The dialect name for conditionals in service code */
   readonly dialect: 'pg' | 'sqlite';
+
+  /**
+   * Apply boot-time PRAGMAs / session settings and assert they stuck.
+   * - SQLite: sets journal_mode=WAL, synchronous=NORMAL, busy_timeout=5000, foreign_keys=ON
+   *   and throws if any value does not read back as expected. Required for v1.4 concurrency.
+   * - Postgres: no-op (optional; may be omitted entirely).
+   */
+  applyBootPragmas?(knex: Knex): Promise<void>;
 }
 
 let _adapter: DbAdapter | undefined;

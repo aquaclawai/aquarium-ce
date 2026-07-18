@@ -687,7 +687,7 @@ function ModelSection({
                           }}
                           style={{ width: '100%', justifyContent: 'center' }}
                         >
-                          {t('aiTab.byokCredential.oauthButton', `Sign in with ${providerDef?.label ?? selectedProvider}`)}
+                          {t('aiTab.byokCredential.oauthButton', { provider: providerDef?.label ?? selectedProvider })}
                         </Button>
                         <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', margin: '0.25rem 0 0 0' }}>
                           {providerDef?.oauthFlow === 'device_code'

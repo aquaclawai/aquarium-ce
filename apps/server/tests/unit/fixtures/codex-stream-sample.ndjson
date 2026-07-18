@@ -1,0 +1,11 @@
+{"id":1,"result":{"serverInfo":{"name":"codex-cli","version":"0.118.0"}}}
+{"id":2,"result":{"threadId":"thread_abc"}}
+{"id":3,"result":{"turn":{"turnId":"turn_xyz"}}}
+{"method":"thread/started","params":{"threadId":"thread_abc"}}
+{"method":"turn/started","params":{"threadId":"thread_abc","turnId":"turn_xyz"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread_abc","turnId":"turn_xyz","itemId":"it_1","delta":"Hello"}}
+{"method":"item/agentMessage/delta","params":{"threadId":"thread_abc","turnId":"turn_xyz","itemId":"it_1","delta":" world"}}
+{"id":100,"method":"item/commandExecution/requestApproval","params":{"threadId":"thread_abc","turnId":"turn_xyz","tool_name":"exec","command":"ls /tmp"}}
+{"method":"item/completed","params":{"threadId":"thread_abc","turnId":"turn_xyz","item":{"id":"it_2","type":"commandExecution","command":"ls /tmp","aggregatedOutput":"foo\nbar\n","status":"succeeded"}}}
+{"method":"turn/completed","params":{"threadId":"thread_abc","turnId":"turn_xyz"}}
+{"method":"turn/bogus","params":

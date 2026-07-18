@@ -7,6 +7,29 @@ import { defineConfig, devices } from '@playwright/test';
 // require('dotenv').config();
 
 /**
+ * Test tiers:
+ *   • Default (`playwright test` / `playwright test --grep -v @integration`):
+ *     the regular E2E suite that runs against the Vite dev server + a
+ *     separately-running Express API. This tier is the main CI gate.
+ *
+ *   • @integration tier (`playwright test --grep @integration`):
+ *     spawns real subprocesses (built daemon CLI via dist/cli.js + PATH-
+ *     hijacked fake-binary stubs from apps/server/tests/unit/fixtures/)
+ *     and drives full register → claim → stream → complete cycles. Specs
+ *     with the `@integration` tag guard themselves with:
+ *       test.skip(
+ *         process.env.CI === 'true' && process.env.AQUARIUM_INTEGRATION !== '1',
+ *         '…opt-in via AQUARIUM_INTEGRATION=1 for the CI integration-smoke job',
+ *       );
+ *     so `CI=true` skips them UNLESS the dedicated `integration-smoke`
+ *     GitHub Actions job (.github/workflows/ci.yml) sets the opt-in env.
+ *
+ * Run locally:
+ *   npm run dev                           # terminal 1 (Express API :3001)
+ *   npm run test:integration              # terminal 2 (root script)
+ */
+
+/**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({

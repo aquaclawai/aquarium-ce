@@ -76,7 +76,7 @@ export function InstancePage() {
   }, [id, subscribe, unsubscribe]);
 
   const handleStatusUpdate = useCallback((message: WsMessage) => {
-    if (message.instanceId === id && message.type === 'instance:status') {
+    if (message.instanceId === id && message.type === 'instance:status' && message.payload) {
       const newStatus = message.payload.status as Instance['status'];
       const newStatusMessage = (message.payload.statusMessage as string) ?? null;
       setInstance(prev => prev ? { ...prev, status: newStatus, statusMessage: newStatusMessage } : null);
@@ -108,6 +108,7 @@ export function InstancePage() {
 
   const handleExecApprovalResolved = useCallback((message: WsMessage) => {
     if (message.instanceId !== id) return;
+    if (!message.payload) return;
     const approvalId = message.payload.approvalId as string;
     setExecApprovals(prev => prev.filter(a => a.approvalId !== approvalId));
   }, [id]);
@@ -157,6 +158,7 @@ export function InstancePage() {
 
   const handleSecurityEvent = useCallback((message: WsMessage) => {
     if (message.instanceId !== id) return;
+    if (!message.payload) return;
     const severity = message.payload.severity as string;
     if (severity === 'critical') {
       const category = (message.payload.category as string) ?? 'security_event';

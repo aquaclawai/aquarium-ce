@@ -1,0 +1,5 @@
+{"type":"text","sessionId":"oc_sess","text":"OpenClaw says hi"}
+{"type":"tool_use","sessionId":"oc_sess","toolUseId":"tu_oc_1","tool":"bash","input":{"cmd":"ls"}}
+{"type":"tool_result","sessionId":"oc_sess","toolUseId":"tu_oc_1","content":"foo\nbar","isError":false}
+{"type":"done","sessionId":"oc_sess","reason":"completed"}
+{"type":"text"

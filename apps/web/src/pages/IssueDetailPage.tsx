@@ -1,0 +1,240 @@
+import { useCallback, useEffect, useMemo } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { ChevronLeft } from 'lucide-react';
+import { api } from '../api';
+import { useIssueDetail } from '../components/issues/detail/useIssueDetail';
+import { IssueHeader } from '../components/issues/detail/IssueHeader';
+import { IssueDescription } from '../components/issues/detail/IssueDescription';
+import { CommentsTimeline } from '../components/issues/detail/CommentsTimeline';
+import { IssueActionSidebar } from '../components/issues/detail/IssueActionSidebar';
+import type { UpdateIssuePatch } from '../components/issues/detail/IssueActionSidebar';
+import { TaskPanel } from '../components/issues/detail/TaskPanel';
+import { ReconnectBanner } from '../components/issues/detail/ReconnectBanner';
+import { useTaskStream } from '../components/issues/detail/useTaskStream';
+import {
+  ChatComposer,
+  type ChatSubmitArgs,
+  type ChatSubmitResult,
+} from '../components/issues/detail/ChatComposer';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import type { AgentTask, Comment, Issue, IssueStatus } from '@aquarium/shared';
+
+/**
+ * Route component for /issues/:id. Wires useIssueDetail → IssueHeader +
+ * IssueDescription + CommentsTimeline + IssueActionSidebar. Live
+ * reconciliation is provided by the hook; this page only dispatches user
+ * actions (post/edit/delete comment, patch/delete issue) against the REST
+ * API — WS events flowing back update state through useIssueDetail.
+ *
+ * Wave 1 leaves Wave 2 (task panel) and Wave 5 (chat composer) insertion
+ * points as comment markers inside the main column; the detail page's
+ * architecture does not require changes for those waves.
+ */
+export function IssueDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { t } = useTranslation();
+  const { issue, comments, latestTask, overrideLatestTask, loading, error, refetch } =
+    useIssueDetail(id ?? '');
+  // Lifted from TaskPanel so the page-level ReconnectBanner and TaskPanel both
+  // read the same stream state (single source of truth). Phase 24-03 §D.
+  const stream = useTaskStream({ taskId: latestTask?.id ?? null });
+
+  // Phase 24-05 / CHAT-01: anchor chat submissions to the most-recent user
+  // comment. 17-04 treats triggerCommentId as the anchor signal (the server
+  // still writes the NEWLY-created comment's id as the task's
+  // trigger_comment_id — see createUserComment line 149). On the first chat
+  // turn there is no prior user comment; passing null still enqueues a task
+  // because the server keys on "triggerCommentId is truthy" to decide.
+  const lastUserCommentId = useMemo(() => {
+    const userComments = comments.filter((c) => c.authorType === 'user');
+    return userComments.length > 0 ? userComments[userComments.length - 1].id : null;
+  }, [comments]);
+
+  // Set document.title while this page is mounted; restore on unmount.
+  useEffect(() => {
+    if (!issue) return;
+    const prev = document.title;
+    document.title = t('issues.detail.titleSuffix', {
+      issueNumber: issue.issueNumber,
+      workspaceName: 'Aquarium',
+    });
+    return () => { document.title = prev; };
+  }, [issue, t]);
+
+  // issue:deleted → navigate back to /issues (hook sets error =
+  // 'ISSUE_DELETED' when the WS event fires).
+  useEffect(() => {
+    if (error === 'ISSUE_DELETED') {
+      toast.info(t('issues.detail.notFound'));
+      navigate('/issues');
+    }
+  }, [error, navigate, t]);
+
+  const handleCommentPost = useCallback(async (content: string, parentId?: string) => {
+    if (!id) return;
+    try {
+      await api.post<{ comment: unknown; enqueuedTask: unknown }>(
+        `/issues/${id}/comments`,
+        { content, parentId: parentId ?? null },
+      );
+      refetch();
+    } catch (err) {
+      toast.error(t('issues.detail.comments.postFailed'));
+      throw err;
+    }
+  }, [id, refetch, t]);
+
+  const handleCommentEdit = useCallback(async (commentId: string, content: string) => {
+    try {
+      await api.patch(`/comments/${commentId}`, { content });
+      refetch();
+    } catch {
+      toast.error(t('issues.detail.comments.postFailed'));
+    }
+  }, [refetch, t]);
+
+  const handleCommentDelete = useCallback(async (commentId: string) => {
+    try {
+      await api.delete(`/comments/${commentId}`);
+      refetch();
+    } catch {
+      toast.error(t('issues.detail.comments.postFailed'));
+    }
+  }, [refetch, t]);
+
+  const handleIssuePatch = useCallback(async (patch: UpdateIssuePatch) => {
+    if (!id) return;
+    try {
+      await api.patch<Issue>(`/issues/${id}`, patch);
+      refetch();
+    } catch {
+      toast.error(t('issues.board.statusChangeFailed'));
+    }
+  }, [id, refetch, t]);
+
+  const handleIssueDelete = useCallback(async () => {
+    if (!id) return;
+    try {
+      await api.delete(`/issues/${id}`);
+      navigate('/issues');
+    } catch {
+      toast.error(t('issues.board.statusChangeFailed'));
+    }
+  }, [id, navigate, t]);
+
+  const handleIssueAssign = useCallback(() => {
+    // Wave 3 wires the assignee popover here; Wave 1 leaves it as a no-op.
+  }, []);
+
+  const handleIssueChangeStatus = useCallback((status: IssueStatus) => {
+    void handleIssuePatch({ status });
+  }, [handleIssuePatch]);
+
+  const handleIssueEdit = useCallback(() => {
+    // Wave 3 wires the inline-edit flow; Wave 1 leaves it as a no-op.
+  }, []);
+
+  // Phase 24-05 / CHAT-01 — ChatComposer submit handler.
+  //   1. POST the user comment with triggerCommentId (anchor signal per 17-04).
+  //   2. Server returns { comment, enqueuedTask }.
+  //   3. overrideLatestTask gives TaskPanel an optimistic hand-off — the
+  //      stream starts immediately without waiting for the task:dispatched WS.
+  //   4. refetch() keeps the local comments list consistent even in the rare
+  //      case where comment:posted is dropped (defence-in-depth).
+  const handleChatSubmit = useCallback(
+    async (args: ChatSubmitArgs): Promise<ChatSubmitResult> => {
+      if (!id) throw new Error('no issue id');
+      const data = await api.post<{ comment: Comment; enqueuedTask: AgentTask | null }>(
+        `/issues/${id}/comments`,
+        { content: args.content, triggerCommentId: args.triggerCommentId },
+      );
+      if (data.enqueuedTask) {
+        overrideLatestTask(data.enqueuedTask);
+      }
+      refetch();
+      return { comment: data.comment, enqueuedTask: data.enqueuedTask };
+    },
+    [id, refetch, overrideLatestTask],
+  );
+
+  if (loading && !issue) {
+    return (
+      <div className="p-6 max-w-[1200px] mx-auto space-y-4" data-testid="issue-detail-loading">
+        <Skeleton className="h-16" />
+        <Skeleton className="h-32" />
+        <Skeleton className="h-64" />
+      </div>
+    );
+  }
+
+  if (!issue) {
+    return (
+      <div className="p-6 max-w-[1200px] mx-auto space-y-4">
+        <p className="text-sm text-muted-foreground">
+          {t('issues.detail.notFound')}
+        </p>
+        <Button variant="outline" asChild>
+          <Link to="/issues">
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            {t('issues.detail.back')}
+          </Link>
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="p-6 pb-8 max-w-[1200px] mx-auto space-y-6"
+      data-testid="issue-detail"
+      data-issue-id={issue.id}
+    >
+      <div>
+        <Button variant="ghost" asChild>
+          <Link to="/issues">
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            {t('issues.detail.back')}
+          </Link>
+        </Button>
+      </div>
+      {/* sr-only live region host for Wave 2-3 announcements */}
+      <div role="status" aria-live="polite" className="visually-hidden" />
+      {/* Phase 24-03: ReconnectBanner surfaces WS reconnect + replay state. */}
+      <ReconnectBanner
+        isReconnecting={stream.isReconnecting}
+        isReplaying={stream.isReplaying}
+      />
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
+        <div className="space-y-6">
+          <IssueHeader
+            issue={issue}
+            onEdit={handleIssueEdit}
+            onDelete={handleIssueDelete}
+            onAssign={handleIssueAssign}
+            onChangeStatus={handleIssueChangeStatus}
+          />
+          <IssueDescription description={issue.description} />
+          <CommentsTimeline
+            issueId={id ?? ''}
+            comments={comments}
+            onPost={handleCommentPost}
+            onEdit={handleCommentEdit}
+            onDelete={handleCommentDelete}
+            loadingIds={new Set()}
+          />
+          <TaskPanel issueId={id ?? ''} latestTask={latestTask} stream={stream} />
+          <ChatComposer
+            issue={issue}
+            lastUserCommentId={lastUserCommentId}
+            onSubmit={handleChatSubmit}
+          />
+        </div>
+        <IssueActionSidebar issue={issue} onPatch={handleIssuePatch} />
+      </div>
+    </div>
+  );
+}

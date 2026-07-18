@@ -20,6 +20,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           boxShadow: '0 4px 24px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08)',
           padding: '16px',
           lineHeight: '1.5',
+          zIndex: 'var(--z-toast)',
         },
       }}
       {...props}

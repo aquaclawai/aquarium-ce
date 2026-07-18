@@ -29,7 +29,9 @@
       "groupChats": "Group Chats",
       "createInstance": "Create Instance",
       "backToDashboard": "Back to Dashboard",
-      "backToInstances": "← Back to Instances"
+      "backToInstances": "← Back to Instances",
+      "search": "common.buttons.search",
+      "saving": "common.buttons.saving"
     },
     "labels": {
       "email": "Email",
@@ -79,7 +81,8 @@
       "generic": "An error occurred",
       "failedToLoad": "Failed to load",
       "actionFailed": "Action failed",
-      "deleteFailed": "Delete failed"
+      "deleteFailed": "Delete failed",
+      "loadFailed": "common.errors.loadFailed"
     },
     "time": {
       "justNow": "just now",
@@ -95,7 +98,8 @@
     "comingSoon": "Coming soon",
     "loading": "Loading...",
     "enabled": "Enabled",
-    "disabled": "Disabled"
+    "disabled": "Disabled",
+    "optional": "common.optional"
   },
   "auth": {
     "login": {
@@ -212,7 +216,14 @@
         "BUDGET_CRITICAL": "{{name}} budget critical",
         "BUDGET_WARNING": "{{name}} budget warning"
       }
-    }
+    },
+    "instanceList": {
+      "title": "dashboard.instanceList.title",
+      "subtitle": "dashboard.instanceList.subtitle",
+      "emptyTitle": "dashboard.instanceList.emptyTitle",
+      "emptyDescription": "dashboard.instanceList.emptyDescription"
+    },
+    "ofBudget": "dashboard.ofBudget"
   },
   "instance": {
     "loading": "Loading...",
@@ -242,7 +253,8 @@
       "more": "More",
       "extensions": "Extensions",
       "channels": "Channels",
-      "cron": "Cron"
+      "cron": "Cron",
+      "advanced": "Advanced"
     },
     "overview": {
       "title": "Instance Details",
@@ -293,7 +305,9 @@
         "tikhub": "TikHub"
       },
       "apiKeyConfigured": "Configured",
-      "apiKeyPlaceholder": "Enter {{provider}} API key"
+      "apiKeyPlaceholder": "Enter {{provider}} API key",
+      "cloning": "instance.overview.cloning",
+      "clone": "instance.overview.clone"
     },
     "credentials": {
       "title": "Credentials",
@@ -518,12 +532,24 @@
       "naming": "Name",
       "principles": "Principles",
       "identity": "Identity",
-      "confirm": "Confirm"
+      "confirm": "Confirm",
+      "provider": "Fournisseur IA",
+      "model": "Modele",
+      "channels": "Canaux",
+      "name": "Nom",
+      "review": "Verification"
     },
     "agentType": {
       "title": "Choose agent type",
       "subtitle": "Select the type of AI agent you want to deploy.",
-      "comingSoon": "Coming Soon"
+      "comingSoon": "Coming Soon",
+      "description": "Chaque type d'agent dispose d'un ensemble different de capacites et d'integrations.",
+      "loading": "Chargement des types d'agent…",
+      "capabilities": {
+        "webUI": "Interface web",
+        "channels": "Canaux",
+        "rpc": "RPC"
+      }
     },
     "avatar": {
       "general": "General",
@@ -664,7 +690,12 @@
       "summaryIdentity": "Identity Description",
       "summaryCredential": "Credential Source",
       "summaryDefault": "Default",
-      "summaryCustom": "Custom"
+      "summaryCustom": "Custom",
+      "summaryMemory": "wizard.confirm.summaryMemory",
+      "memoryCloudTitle": "wizard.confirm.memoryCloudTitle",
+      "memoryMemosTitle": "wizard.confirm.memoryMemosTitle",
+      "memoryNativeTitle": "wizard.confirm.memoryNativeTitle",
+      "memorySection": "wizard.confirm.memorySection"
     },
     "navigation": {
       "backToAssistants": "← Back to My Assistants",
@@ -673,7 +704,8 @@
       "next": "Next",
       "creating": "Creating…",
       "finish": "Finish & Start Chat",
-      "create": "Create Assistant"
+      "create": "Create Assistant",
+      "createInstance": "Creer l'instance"
     },
     "errors": {
       "failedToCreate": "Failed to create assistant. Please try again.",
@@ -698,6 +730,68 @@
           "description": "Fully open, recommended only for trusted environments"
         }
       }
+    },
+    "title": "Creer une instance",
+    "provider": {
+      "title": "Choisissez un fournisseur IA",
+      "titleNoProviders": "Fournisseur IA",
+      "description": "Selectionnez le fournisseur IA qui alimentera votre agent.",
+      "noConfigRequired": "Ce type d'agent ne necessite pas de configuration de fournisseur.",
+      "platformAI": "Utiliser l'IA de la plateforme",
+      "platformAIDescription": "Aucune cle API requise — facturation a l'utilisation",
+      "modelCount": "{{count}} modele — apportez votre propre cle",
+      "modelCount_plural": "{{count}} modeles — apportez votre propre cle"
+    },
+    "model": {
+      "title": "Modele",
+      "chooseTitle": "Choisissez un modele",
+      "selectProviderFirst": "Selectionnez d'abord un fournisseur pour choisir un modele.",
+      "platformBanner": "Utilisation de l'IA de la plateforme — aucune cle API requise. L'utilisation sera suivie et facturee via la plateforme.",
+      "selectModelFrom": "Selectionnez le modele de {{provider}} a utiliser.",
+      "apiKeyLabel": "Cle API",
+      "apiKeyRequired": "*",
+      "apiKeyPlaceholder": "Votre cle API {{provider}}",
+      "apiKeyHint": "Votre cle est stockee de maniere chiffree et n'est jamais partagee.",
+      "defaultBadge": "Par defaut",
+      "defaultModel": "Modele par defaut : {{model}}",
+      "autoSelected": "selectionne automatiquement par la plateforme"
+    },
+    "channels": {
+      "title": "Canaux",
+      "messagingTitle": "Canaux de messagerie",
+      "description": "Activez les canaux de messagerie que vous souhaitez utiliser pour votre agent. Vous pourrez les configurer apres la creation.",
+      "notSupported": "Ce type d'agent ne prend pas en charge les canaux de messagerie.",
+      "configureLater": "Vous pourrez connecter des canaux plus tard depuis les parametres de l'instance.",
+      "whatsapp": "WhatsApp",
+      "whatsappDescription": "Necessite un scan de code QR apres le demarrage de l'instance",
+      "telegram": "Telegram",
+      "telegramDescription": "Necessite un jeton de bot Telegram depuis @BotFather"
+    },
+    "name": {
+      "title": "Nommez votre instance",
+      "description": "Donnez a votre instance d'agent un nom memorable.",
+      "label": "Nom de l'instance",
+      "placeholder": "ex. Mon assistant personnel"
+    },
+    "review": {
+      "title": "Verifier et creer",
+      "description": "Verifiez votre configuration avant de creer l'instance.",
+      "fields": {
+        "agentType": "Type d'agent",
+        "billingMode": "Mode de facturation",
+        "billingPlatform": "IA de la plateforme",
+        "billingBYOK": "BYOK (apportez votre propre cle)",
+        "provider": "Fournisseur",
+        "model": "Modele",
+        "apiKey": "Cle API",
+        "apiKeyMasked": "••••••••",
+        "apiKeyNone": "(aucune)",
+        "whatsapp": "WhatsApp",
+        "telegram": "Telegram",
+        "enabled": "Active",
+        "disabled": "Desactive",
+        "instanceName": "Nom de l'instance"
+      }
     }
   },
   "groupChat": {
@@ -708,7 +802,10 @@
       "createButton": "Create Group Chat",
       "memberCount": "{{count}} members",
       "created": "Created: {{date}}",
-      "mode": "Mode: {{mode}}"
+      "mode": "Mode: {{mode}}",
+      "subtitle": "groupChat.list.subtitle",
+      "emptyTitle": "groupChat.list.emptyTitle",
+      "emptyDescription": "groupChat.list.emptyDescription"
     },
     "create": {
       "title": "Create New Group Chat",
@@ -842,7 +939,12 @@
       "geoSaveButton": "Save",
       "geoAuthFailed": "Failed to start SaleVoice authentication",
       "geoSaveFailed": "Failed to save API key",
-      "geoRequired": "Please connect SaleVoice before creating the instance"
+      "geoRequired": "Please connect SaleVoice before creating the instance",
+      "cronScheduleSection": "templates.instantiate.cronScheduleSection",
+      "cronScheduleDescription": "templates.instantiate.cronScheduleDescription",
+      "cronScheduleTimeLabel": "templates.instantiate.cronScheduleTimeLabel",
+      "cronScheduleCustomPlaceholder": "templates.instantiate.cronScheduleCustomPlaceholder",
+      "cronScheduleCustomHint": "templates.instantiate.cronScheduleCustomHint"
     }
   },
   "skillMarket": {
@@ -1069,7 +1171,13 @@
       "invalidBudget": "Budget must be a positive number or empty to remove",
       "success": "Budget updated for {{email}}",
       "failed": "Failed to update budget"
-    }
+    },
+    "litellm": {
+      "title": "admin.litellm.title",
+      "description": "admin.litellm.description",
+      "openDashboard": "admin.litellm.openDashboard"
+    },
+    "subtitle": "admin.subtitle"
   },
   "chat": {
     "startRequired": "Start the instance to use Chat.",
@@ -1159,7 +1267,17 @@
         "pdf": "PDF"
       }
     },
-    "scrollToBottom": "Scroll to latest messages"
+    "scrollToBottom": "Scroll to latest messages",
+    "composer": {
+      "srHeader": "Chat with the assigned agent",
+      "placeholder": "Type a message… (⌘⏎ to send)",
+      "send": "Send",
+      "sending": "Sending…",
+      "noAssignee": "Assign an agent to this issue before chatting",
+      "sendFailed": "Couldn't send — please try again",
+      "chars": "{{count}} / {{max}}",
+      "hint": "Enter for newline · ⌘⏎ to send"
+    }
   },
   "agentUI": {
     "unavailable": {
@@ -1353,7 +1471,11 @@
     "credentials": "Credentials",
     "account": "Account",
     "systemConfig": "System Config",
-    "communityEdition": "Community Edition"
+    "communityEdition": "Community Edition",
+    "issues": "Issues",
+    "agents": "Agents",
+    "runtimes": "Runtimes",
+    "daemonTokens": "Daemon Tokens"
   },
   "credentials": {
     "title": "Credential Management",
@@ -1424,8 +1546,12 @@
       "expired": "Expired",
       "cancelled": "Cancelled",
       "yes": "Yes",
-      "no": "No"
-    }
+      "no": "No",
+      "emptyTitle": "No subscriptions yet",
+      "emptyDescription": "You don't have any active subscription plans"
+    },
+    "emptyTitle": "No credentials yet",
+    "emptyDescription": "Add your first API key to get started"
   },
   "billing": {
     "title": "Billing Overview",
@@ -1588,7 +1714,13 @@
       "saved": "API key saved.",
       "saveFailed": "Failed to save API key.",
       "deleted": "API key removed.",
-      "deleteFailed": "Failed to remove API key."
+      "deleteFailed": "Failed to remove API key.",
+      "oauthConnected": "OAuth connected",
+      "disconnectButton": "Disconnect",
+      "oauthButton": "Sign in with {{provider}}",
+      "oauthDeviceHint": "Uses device code flow — opens a new page to authenticate.",
+      "oauthHint": "Opens a popup to authenticate.",
+      "orDivider": "— or use API key —"
     },
     "toolCredentials": {
       "title": "Tool Credentials",
@@ -1676,7 +1808,8 @@
       "eventLoginFailed": "Login Failed",
       "eventSignup": "Signup",
       "eventPasswordChanged": "Password Changed",
-      "eventLogout": "Logout"
+      "eventLogout": "Logout",
+      "managedByClerk": "profilePage.security.managedByClerk"
     },
     "passwordModal": {
       "title": "Change Password",
@@ -1793,7 +1926,48 @@
       "cron": "Cron schedule",
       "at": "One-time",
       "every": "Interval"
-    }
+    },
+    "scheduleCron": "cron.scheduleCron",
+    "scheduleAt": "cron.scheduleAt",
+    "scheduleEvery": "cron.scheduleEvery",
+    "failedToLoad": "cron.failedToLoad",
+    "saveFailed": "cron.saveFailed",
+    "confirmDelete": "cron.confirmDelete",
+    "deleteFailed": "cron.deleteFailed",
+    "runFailed": "cron.runFailed",
+    "editJob": "cron.editJob",
+    "form": {
+      "name": "cron.form.name",
+      "namePlaceholder": "cron.form.namePlaceholder",
+      "description": "cron.form.description",
+      "enabled": "cron.form.enabled",
+      "schedule": "cron.form.schedule",
+      "seconds": "cron.form.seconds",
+      "minutes": "cron.form.minutes",
+      "hours": "cron.form.hours",
+      "payload": "cron.form.payload",
+      "systemEvent": "cron.form.systemEvent",
+      "agentTurn": "cron.form.agentTurn",
+      "systemEventPlaceholder": "cron.form.systemEventPlaceholder",
+      "agentTurnMessagePlaceholder": "cron.form.agentTurnMessagePlaceholder",
+      "modelPlaceholder": "cron.form.modelPlaceholder",
+      "timeoutPlaceholder": "cron.form.timeoutPlaceholder",
+      "sessionTarget": "cron.form.sessionTarget",
+      "isolated": "cron.form.isolated",
+      "main": "cron.form.main",
+      "delivery": "cron.form.delivery",
+      "deliveryNone": "cron.form.deliveryNone",
+      "deliveryAnnounce": "cron.form.deliveryAnnounce",
+      "channelPlaceholder": "cron.form.channelPlaceholder",
+      "toPlaceholder": "cron.form.toPlaceholder"
+    },
+    "create": "cron.create",
+    "nextRun": "cron.nextRun",
+    "disable": "cron.disable",
+    "enable": "cron.enable",
+    "viewHistory": "cron.viewHistory",
+    "deleteJob": "cron.deleteJob",
+    "runHistory": "cron.runHistory"
   },
   "channels": {
     "title": "Channels",
@@ -1807,7 +1981,8 @@
       "stopped": "Stopped",
       "notConfigured": "Not configured",
       "applying": "Applying...",
-      "lastMessage": "Last msg: {{time}}"
+      "lastMessage": "Last msg: {{time}}",
+      "pendingRestart": "channels.status.pendingRestart"
     },
     "actions": {
       "configure": "Configure",
@@ -1855,18 +2030,108 @@
       "threads": "Threads",
       "streaming": "Streaming"
     },
-    "whatsapp": { "label": "WhatsApp", "description": "Connect via QR code — uses your existing WhatsApp account." },
-    "telegram": { "label": "Telegram", "description": "Create a bot via @BotFather and paste the token.", "fields": { "botToken": "Bot Token", "botTokenPlaceholder": "123456789:ABCdefGHI...", "botTokenHelp": "Get this from @BotFather on Telegram." } },
-    "discord": { "label": "Discord", "description": "Create a bot in the Discord Developer Portal.", "fields": { "token": "Bot Token", "tokenHelp": "Discord Developer Portal > Bot > Token." } },
-    "feishu": { "label": "飞书 / Lark", "description": "Connect via Feishu Open Platform enterprise app.", "fields": { "appId": "App ID", "appIdHelp": "From Feishu Open Platform console.", "appSecret": "App Secret", "domain": "Domain", "domainFeishu": "飞书 (China)", "domainLark": "Lark (Global)" } },
-    "slack": { "label": "Slack", "description": "Connect via Slack Socket Mode.", "fields": { "appToken": "App Token", "appTokenHelp": "App-Level Token (starts with xapp-).", "botToken": "Bot Token", "botTokenHelp": "Bot User OAuth Token (starts with xoxb-)." } },
-    "qqbot": { "label": "QQ Bot", "description": "Connect via official QQ Bot API.", "fields": { "appId": "App ID", "appIdHelp": "From QQ Open Platform.", "clientSecret": "Client Secret" } },
-    "wechat": { "label": "WeChat", "description": "Connect via QR code login." },
-    "msteams": { "label": "Microsoft Teams", "description": "Connect via Azure Bot Framework.", "fields": { "appId": "App ID", "appPassword": "App Password", "tenantId": "Tenant ID" } },
-    "signal": { "label": "Signal", "description": "Connect via signal-cli.", "fields": { "account": "Phone Number", "accountHelp": "E.164 format." } },
-    "googlechat": { "label": "Google Chat", "description": "Connect via service account.", "fields": { "serviceAccountJson": "Service Account JSON" } },
-    "line": { "label": "LINE", "description": "Connect via LINE Messaging API.", "fields": { "channelAccessToken": "Channel Access Token", "channelSecret": "Channel Secret" } },
-    "matrix": { "label": "Matrix", "description": "Connect to any Matrix homeserver.", "fields": { "homeserver": "Homeserver URL", "accessToken": "Access Token" } }
+    "whatsapp": {
+      "label": "WhatsApp",
+      "description": "Connect via QR code — uses your existing WhatsApp account.",
+      "connected": "channels.whatsapp.connected",
+      "qrExpired": "channels.whatsapp.qrExpired",
+      "sessionPersists": "channels.whatsapp.sessionPersists",
+      "scanInstructions": "channels.whatsapp.scanInstructions",
+      "connect": "channels.whatsapp.connect",
+      "connecting": "channels.whatsapp.connecting"
+    },
+    "telegram": {
+      "label": "Telegram",
+      "description": "Create a bot via @BotFather and paste the token.",
+      "fields": {
+        "botToken": "Bot Token",
+        "botTokenPlaceholder": "123456789:ABCdefGHI...",
+        "botTokenHelp": "Get this from @BotFather on Telegram."
+      }
+    },
+    "discord": {
+      "label": "Discord",
+      "description": "Create a bot in the Discord Developer Portal.",
+      "fields": {
+        "token": "Bot Token",
+        "tokenHelp": "Discord Developer Portal > Bot > Token."
+      }
+    },
+    "feishu": {
+      "label": "飞书 / Lark",
+      "description": "Connect via Feishu Open Platform enterprise app.",
+      "fields": {
+        "appId": "App ID",
+        "appIdHelp": "From Feishu Open Platform console.",
+        "appSecret": "App Secret",
+        "domain": "Domain",
+        "domainFeishu": "飞书 (China)",
+        "domainLark": "Lark (Global)"
+      }
+    },
+    "slack": {
+      "label": "Slack",
+      "description": "Connect via Slack Socket Mode.",
+      "fields": {
+        "appToken": "App Token",
+        "appTokenHelp": "App-Level Token (starts with xapp-).",
+        "botToken": "Bot Token",
+        "botTokenHelp": "Bot User OAuth Token (starts with xoxb-)."
+      }
+    },
+    "qqbot": {
+      "label": "QQ Bot",
+      "description": "Connect via official QQ Bot API.",
+      "fields": {
+        "appId": "App ID",
+        "appIdHelp": "From QQ Open Platform.",
+        "clientSecret": "Client Secret"
+      }
+    },
+    "wechat": {
+      "label": "WeChat",
+      "description": "Connect via QR code login."
+    },
+    "msteams": {
+      "label": "Microsoft Teams",
+      "description": "Connect via Azure Bot Framework.",
+      "fields": {
+        "appId": "App ID",
+        "appPassword": "App Password",
+        "tenantId": "Tenant ID"
+      }
+    },
+    "signal": {
+      "label": "Signal",
+      "description": "Connect via signal-cli.",
+      "fields": {
+        "account": "Phone Number",
+        "accountHelp": "E.164 format."
+      }
+    },
+    "googlechat": {
+      "label": "Google Chat",
+      "description": "Connect via service account.",
+      "fields": {
+        "serviceAccountJson": "Service Account JSON"
+      }
+    },
+    "line": {
+      "label": "LINE",
+      "description": "Connect via LINE Messaging API.",
+      "fields": {
+        "channelAccessToken": "Channel Access Token",
+        "channelSecret": "Channel Secret"
+      }
+    },
+    "matrix": {
+      "label": "Matrix",
+      "description": "Connect to any Matrix homeserver.",
+      "fields": {
+        "homeserver": "Homeserver URL",
+        "accessToken": "Access Token"
+      }
+    }
   },
   "exportWizard": {
     "title": "Export as Template",
@@ -2128,6 +2393,455 @@
       "degraded": "{{name}} is degraded — may still be running from cache",
       "retry": "Retry",
       "integrityMismatch": "Integrity mismatch detected"
+    }
+  },
+  "issues": {
+    "board": {
+      "title": "Issues",
+      "actions": {
+        "create": "New issue",
+        "filter": "Filter",
+        "sort": "Sort",
+        "hideCompleted": "Hide completed"
+      },
+      "columns": {
+        "backlog": "Backlog",
+        "todo": "Todo",
+        "in_progress": "In Progress",
+        "done": "Done",
+        "blocked": "Blocked",
+        "cancelled": "Cancelled"
+      },
+      "columnCount": "{{count}}",
+      "priority": {
+        "urgent": "Urgent",
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low",
+        "none": "None"
+      },
+      "empty": {
+        "heading": "No issues yet",
+        "body": "Create your first issue to start assigning work to agents.",
+        "cta": "New issue"
+      },
+      "emptyColumn": "No issues",
+      "dropHere": "Drop to move here",
+      "noMatches": "No issues match your filters",
+      "clearFilters": "Clear filters",
+      "reorderFailed": "Couldn't move issue — please try again",
+      "statusChangeFailed": "Couldn't update status — please try again",
+      "reorderConflict": "Another session moved this issue — refreshing",
+      "offline": "Reconnecting…",
+      "loadFailed": "Couldn't load issues.",
+      "createFailed": "Couldn't create issue — please try again.",
+      "createSucceeded": "Issue \"{{title}}\" created",
+      "create": {
+        "title": "New issue",
+        "description": "Describe the work. You can assign an agent from the detail page once it's created.",
+        "submit": "Create issue",
+        "creating": "Creating…",
+        "cancel": "Cancel",
+        "fields": {
+          "title": "Title",
+          "titlePlaceholder": "A short, action-oriented summary",
+          "description": "Description",
+          "descriptionPlaceholder": "Optional — markdown is supported",
+          "status": "Status",
+          "priority": "Priority"
+        }
+      },
+      "a11y": {
+        "picked": "Picked up issue \"{{title}}\"",
+        "movedWithin": "Issue \"{{title}}\" moved to position {{pos}} of {{total}} in {{column}}",
+        "movedAcross": "Issue \"{{title}}\" moved to {{column}} column, position {{pos}} of {{total}}",
+        "dropped": "Dropped \"{{title}}\" into {{column}}",
+        "cancelled": "Move cancelled. \"{{title}}\" returned to original position"
+      },
+      "tooltip": {
+        "dragHint": "Drag or press Space to move",
+        "keyboardHint": "Space to grab · ↑↓ to move · ← → to change column · Space to drop · Esc to cancel"
+      }
+    },
+    "detail": {
+      "back": "Back to Issues",
+      "titleSuffix": "Issue #{{issueNumber}} · {{workspaceName}}",
+      "notFound": "Issue not found",
+      "loadFailed": "Couldn't load this issue",
+      "issueNumber": "#{{number}}",
+      "postedMeta": "Created {{relativeTime}} by {{author}}",
+      "assignee": "Assignee",
+      "unassigned": "Unassigned",
+      "priority": "Priority",
+      "status": "Status",
+      "dueDate": "Due",
+      "noDescription": "No description",
+      "actions": {
+        "edit": "Edit",
+        "assignAgent": "Assign agent",
+        "changeStatus": "Change status",
+        "delete": "Delete issue"
+      },
+      "confirmDelete": {
+        "title": "Delete this issue?",
+        "body": "This cannot be undone. All comments and task history will be removed.",
+        "confirm": "Delete"
+      },
+      "comments": {
+        "header": "Comments",
+        "count": "{{count}}",
+        "empty": {
+          "heading": "No comments yet",
+          "body": "Ask the assigned agent a question or leave a note to start the conversation."
+        },
+        "author": {
+          "user": "{{displayName}}",
+          "agent": "{{agentName}} · agent",
+          "system": "System"
+        },
+        "postedAt": "{{relativeTime}}",
+        "reply": "Reply",
+        "edit": "Edit",
+        "delete": "Delete",
+        "cancelReply": "Cancel",
+        "replyPlaceholder": "Reply to {{authorName}}…",
+        "addPlaceholder": "Add a comment…",
+        "showMore": "Show {{count}} more replies",
+        "system": {
+          "statusChange": "Status changed from {{from}} to {{to}}"
+        },
+        "postFailed": "Couldn't post comment — please try again",
+        "confirmDelete": {
+          "title": "Delete this comment?",
+          "body": "This cannot be undone.",
+          "confirm": "Delete"
+        }
+      },
+      "task": {
+        "header": "Active task",
+        "idle": "No active task",
+        "idleBody": "Assign this issue to an agent or chat below to start a task.",
+        "state": {
+          "queued": "Queued",
+          "dispatched": "Dispatched",
+          "running": "Running",
+          "completed": "Completed",
+          "failed": "Failed",
+          "cancelled": "Cancelled"
+        },
+        "startedAt": "Started {{relativeTime}}",
+        "completedAt": "Completed {{relativeTime}}",
+        "cancel": "Cancel task",
+        "cancelConfirm": {
+          "title": "Cancel this task?",
+          "body": "The agent will stop as soon as possible. Partial results are preserved.",
+          "confirm": "Cancel task"
+        },
+        "cancelFailed": "Couldn't cancel — please try again",
+        "historyHeader": "Task history",
+        "historyEmpty": "No prior tasks",
+        "stream": {
+          "waiting": "Waiting for the agent to respond…",
+          "stalled": "No activity for {{seconds}}s"
+        },
+        "kind": {
+          "text": "reply",
+          "thinking": "thinking",
+          "tool_use": "{{toolName}}",
+          "tool_result": "{{toolName}} result",
+          "error": "error"
+        },
+        "seqMeta": "seq {{seq}} · {{relativeTime}}",
+        "truncated": "⋯ truncated (showing {{shown}} of {{total}} bytes)",
+        "showFull": "Show full",
+        "showFullLoading": "Loading…",
+        "showFullFailed": "Couldn't load the full message",
+        "collapse": "Collapse",
+        "toolInputLabel": "Input",
+        "toolOutputLabel": "Output"
+      },
+      "ws": {
+        "reconnecting": "Reconnecting — replaying missed messages…",
+        "replayDone": "Caught up",
+        "paused": "Paused while in background",
+        "resumed": "Resumed"
+      },
+      "a11y": {
+        "newMessages": "{{count}} new agent messages",
+        "taskCompleted": "Task completed",
+        "taskFailed": "Task failed",
+        "taskCancelled": "Task cancelled",
+        "replaying": "Reconnecting and replaying missed messages",
+        "replayDone": "Caught up with agent"
+      }
+    }
+  },
+  "management": {
+    "agents": {
+      "title": "Agents",
+      "description": "Agents define what work gets done and how. Assign one to an issue and it starts a task.",
+      "actions": {
+        "create": "New agent",
+        "edit": "Edit",
+        "archive": "Archive",
+        "restore": "Restore"
+      },
+      "tabs": {
+        "active": "Active",
+        "archived": "Archived"
+      },
+      "filter": {
+        "search": "Search agents…"
+      },
+      "columns": {
+        "name": "Name",
+        "runtime": "Runtime",
+        "status": "Status",
+        "maxConcurrent": "Max concurrent",
+        "updated": "Updated",
+        "actions": "Actions"
+      },
+      "noRuntime": "No runtime",
+      "archived": "Archived",
+      "status": {
+        "idle": "Idle",
+        "working": "Working",
+        "blocked": "Blocked",
+        "error": "Error",
+        "offline": "Offline"
+      },
+      "empty": {
+        "heading": "No agents yet",
+        "body": "Create your first agent to start assigning work.",
+        "cta": "New agent"
+      },
+      "noMatches": {
+        "heading": "No agents match your search",
+        "body": "Try a different name.",
+        "clear": "Clear search"
+      },
+      "archivedEmpty": "No archived agents",
+      "form": {
+        "titleCreate": "Create agent",
+        "titleEdit": "Edit agent",
+        "name": {
+          "label": "Name",
+          "placeholder": "e.g. Code reviewer",
+          "hint": "A short, human-friendly name. Must be unique in your workspace."
+        },
+        "instructions": {
+          "label": "Instructions",
+          "placeholder": "Describe what this agent should do and how it should behave. Markdown is supported.",
+          "hint": "Markdown is supported. This text is sent to the agent on every task.",
+          "counter": "{{count}} / {{max}} characters"
+        },
+        "runtime": {
+          "label": "Runtime",
+          "placeholder": "Choose a runtime",
+          "none": "No runtime (agent can't run tasks until assigned)",
+          "hint": "Runtimes are where the agent's code actually executes. Add one from the Runtimes page."
+        },
+        "customEnv": {
+          "label": "Environment variables",
+          "hint": "Passed to daemon runtimes when a task starts. Hosted instances ignore these with a warning.",
+          "keyPlaceholder": "KEY",
+          "valuePlaceholder": "value",
+          "addRow": "Add variable",
+          "removeRow": "Remove variable",
+          "duplicateKey": "Duplicate key \"{{key}}\" — only the last value is kept"
+        },
+        "customArgs": {
+          "label": "Command-line arguments",
+          "hint": "Extra arguments appended when the CLI is invoked. One per tag.",
+          "placeholder": "Type an argument and press Enter",
+          "remove": "Remove argument \"{{arg}}\""
+        },
+        "maxConcurrent": {
+          "label": "Max concurrent tasks",
+          "hint": "How many tasks this agent can run at once. Must be between 1 and 16.",
+          "validation": "Must be between 1 and 16"
+        },
+        "actions": {
+          "create": "Create agent",
+          "save": "Save changes"
+        },
+        "validation": {
+          "nameRequired": "Name is required"
+        },
+        "saveSuccess": "Agent saved",
+        "saveFailed": "Couldn't save the agent — please try again",
+        "nameCollision": "An agent with this name already exists in your workspace"
+      },
+      "archiveConfirm": {
+        "title": "Archive \"{{name}}\"?",
+        "body": "This preserves all historical tasks and comments, but you can't assign new work until you restore it. Any queued tasks stay in the queue.",
+        "confirm": "Archive agent"
+      },
+      "archive": {
+        "success": "Agent archived",
+        "failed": "Couldn't archive — please try again"
+      },
+      "restoreConfirm": {
+        "title": "Restore \"{{name}}\"?",
+        "body": "The agent becomes assignable again. Existing archived issues stay archived.",
+        "confirm": "Restore agent"
+      },
+      "restore": {
+        "success": "Agent restored",
+        "failed": "Couldn't restore — please try again"
+      },
+      "loadFailed": "Couldn't load agents. {{retry}}",
+      "a11y": {
+        "saved": "Agent \"{{name}}\" saved",
+        "archived": "Agent \"{{name}}\" archived",
+        "restored": "Agent \"{{name}}\" restored"
+      }
+    },
+    "runtimes": {
+      "title": "Runtimes",
+      "description": "Runtimes are where agents execute. They're added automatically when an instance starts or a daemon registers.",
+      "filter": {
+        "search": "Search runtimes…",
+        "all": "All",
+        "hostedInstance": "Hosted",
+        "localDaemon": "Local daemon",
+        "externalCloudDaemon": "Cloud daemon",
+        "count": "{{count}}"
+      },
+      "columns": {
+        "name": "Name",
+        "kind": "Kind",
+        "provider": "Provider",
+        "status": "Status",
+        "device": "Device",
+        "lastHeartbeat": "Last heartbeat",
+        "actions": "Actions"
+      },
+      "neverHeartbeat": "Never",
+      "heartbeatJustNow": "Just now",
+      "heartbeatRelative": "{{relativeTime}}",
+      "heartbeatAbsolute": "{{absoluteTime}}",
+      "noDeviceInfo": "—",
+      "kind": {
+        "hostedInstance": "Hosted",
+        "localDaemon": "Local daemon",
+        "externalCloudDaemon": "Cloud daemon"
+      },
+      "status": {
+        "online": "Online",
+        "offline": "Offline",
+        "error": "Error"
+      },
+      "empty": {
+        "heading": "No runtimes yet",
+        "body": "Start an Aquarium instance or run `aquarium daemon start` on your machine to add a runtime."
+      },
+      "noMatches": {
+        "heading": "No runtimes match your filter",
+        "clear": "Clear filter"
+      },
+      "loadFailed": "Couldn't load runtimes. {{retry}}",
+      "detail": {
+        "title": "{{name}}",
+        "kind": "Kind",
+        "provider": "Provider",
+        "status": "Status",
+        "id": "Runtime ID",
+        "daemonId": "Daemon ID",
+        "instanceId": "Instance ID",
+        "createdAt": "Created",
+        "lastHeartbeatAt": "Last heartbeat",
+        "deviceInfoHeader": "Device info",
+        "metadataHeader": "Metadata",
+        "close": "Close details"
+      },
+      "a11y": {
+        "statusChanged": "Runtime \"{{name}}\" is now {{status}}"
+      }
+    },
+    "daemonTokens": {
+      "title": "Daemon Tokens",
+      "description": "Daemon tokens let the Aquarium CLI connect this machine or another to your workspace. Each token appears in plaintext only when you create it — store it somewhere safe.",
+      "actions": {
+        "create": "New token",
+        "revoke": "Revoke"
+      },
+      "searchPlaceholder": "Search tokens…",
+      "columns": {
+        "name": "Name",
+        "created": "Created",
+        "expires": "Expires",
+        "lastUsed": "Last used",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "neverExpires": "Never",
+      "neverUsed": "Never",
+      "relative": "{{relativeTime}}",
+      "status": {
+        "active": "Active",
+        "expiringSoon": "Expires soon",
+        "expired": "Expired",
+        "revoked": "Revoked"
+      },
+      "empty": {
+        "heading": "No tokens yet",
+        "body": "Create a token to connect a daemon to this workspace.",
+        "cta": "New token"
+      },
+      "loadFailed": "Couldn't load tokens. {{retry}}",
+      "createModal": {
+        "title": "New daemon token",
+        "name": {
+          "label": "Friendly name",
+          "placeholder": "e.g. My laptop",
+          "hint": "A label you'll recognise on the list. Max 100 characters.",
+          "required": "Name is required",
+          "tooLong": "Name must be 100 characters or fewer"
+        },
+        "expiry": {
+          "label": "Expires",
+          "never": "Never",
+          "hint": "Optional. After this date the token stops working.",
+          "clear": "Clear date",
+          "future": "Expiry must be in the future"
+        },
+        "actions": {
+          "create": "Create token",
+          "creating": "Creating…"
+        },
+        "createFailed": "Couldn't create token — please try again"
+      },
+      "copyOnce": {
+        "title": "Copy your new token",
+        "warning": "This is the only time you'll see this token. Copy it now and store it somewhere safe — we can't show it again.",
+        "warningIcon": "Warning",
+        "tokenLabel": "Token",
+        "copyButton": "Copy to clipboard",
+        "copied": "Copied to clipboard",
+        "copyFailed": "Couldn't copy — select the text and copy manually",
+        "dismiss": "I've saved it",
+        "confirmClose": {
+          "title": "Close without saving the token?",
+          "body": "You won't see this token again. If you close now, you'll need to create a new one.",
+          "confirm": "Close anyway",
+          "cancel": "Keep showing"
+        }
+      },
+      "revokeConfirm": {
+        "title": "Revoke \"{{name}}\"?",
+        "body": "The daemon using this token loses access within one second. Already-running tasks continue. This can't be undone.",
+        "confirm": "Revoke token"
+      },
+      "revoke": {
+        "success": "Token revoked",
+        "failed": "Couldn't revoke — please try again"
+      },
+      "a11y": {
+        "created": "Token \"{{name}}\" created",
+        "revoked": "Token \"{{name}}\" revoked",
+        "copied": "Token copied to clipboard"
+      }
     }
   }
 }
